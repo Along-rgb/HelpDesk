@@ -1,0 +1,130 @@
+/* _topbar.scss - Ultimate Clean & Fixed Version */
+
+// --- Variables & Mixins ---
+$topbar-bg: #3f51b5;
+$topbar-text: white;
+$topbar-height: 5rem;
+$transition: 0.3s;
+
+@mixin flex-center {
+    display: flex;
+    align-items: center;
+}
+
+@mixin circle-button {
+    @include flex-center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: background-color $transition;
+    color: $topbar-text;
+
+    &:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    i { font-size: 1.5rem; }
+}
+
+// --- Main Layout ---
+.layout-topbar {
+    @include flex-center;
+    // ⭐ Key Fix: บังคับจัดเรียงแนวนอน แยกซ้าย-ขวา เสมอ ⭐
+    justify-content: space-between !important; 
+    flex-direction: row !important; 
+    
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%;
+    height: $topbar-height;
+    padding: 0 1.5rem;
+    z-index: 997;
+    background-color: $topbar-bg;
+    color: $topbar-text;
+    box-shadow: 0px 3px 5px rgba(0,0,0,0.02);
+    transition: left $transition;
+
+    // 1. Logo Section (Left)
+    .layout-topbar-logo {
+        @include flex-center;
+        gap: 0.5rem;
+        color: $topbar-text;
+        font-size: 1.1rem;
+        font-weight: 700;
+        text-decoration: none;
+        white-space: nowrap;
+        border-radius: 12px;
+        width: auto !important;
+
+        // ⭐ Fix Position: ล็อกให้เป็นลำดับที่ 1 (ซ้าย) เสมอ ⭐
+        order: 1 !important; 
+        margin-right: auto !important; 
+        margin-left: 0 !important;
+
+        img {
+            width: 42px; height: 42px; object-fit: contain;
+        }
+
+        &:focus { outline: none; box-shadow: 0 0 0 2px #ffffff; }
+    }
+
+    // 2. Actions Section (Right)
+    .layout-topbar-actions {
+        @include flex-center;
+        gap: 0.5rem;
+        
+        // ⭐ Fix Position: ล็อกให้เป็นลำดับที่ 2 (ขวา) เสมอ ⭐
+        order: 2 !important; 
+        margin-left: auto !important; 
+        margin-right: 0 !important;
+
+        .topbar-action-btn {
+            @include circle-button; // ใช้ Mixin ลดโค้ด
+            
+            span {
+                font-size: 0.9rem;
+                font-weight: 600;
+                margin-left: 0.5rem;
+            }
+        }
+
+        .hamburger-btn {
+            display: flex !important; // โชว์ปุ่มเมนูเสมอ
+        }
+    }
+
+    // --- Cleanup Legacy Code (ซ่อนของเก่าทิ้ง) ---
+    .layout-menu-button, 
+    .layout-topbar-menu-button, 
+    .layout-topbar-menu,
+    .layout-topbar-bottom { 
+        display: none !important; 
+    }
+}
+
+// --- Responsive ---
+@media (max-width: 991px) {
+    .layout-topbar .layout-topbar-logo {
+        font-size: 0.9rem;
+        
+        // ตัดคำถ้าชื่อยาวเกินในมือถือ
+        span {
+            display: inline-block;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            vertical-align: middle;
+        }
+    }
+}
+
+@media (max-width: 576px) {
+    // ซ่อนคำว่า Settings ในจอมือถือเล็ก
+    .layout-topbar .settings-text {
+        display: none !important;
+    }
+}

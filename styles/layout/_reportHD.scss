@@ -1,0 +1,98 @@
+/* ReportHD.scss */
+
+$primary-color: #6366f1;
+$border-color: #dee2e6;
+$text-muted: #6c757d;
+
+.report-hd-view {
+
+    /* --- 1. Custom TabMenu (Folder Style) --- */
+    .custom-tabmenu {
+        .p-tabmenu-nav {
+            border-bottom: 1px solid $border-color;
+            background: transparent;
+        }
+
+        .p-tabmenuitem {
+            margin-bottom: -1px;
+            
+            .p-menuitem-link {
+                background: transparent;
+                border: 1px solid transparent;
+                border-bottom: none;
+                color: $text-muted;
+                border-radius: 6px 6px 0 0;
+                padding: 1rem 1.5rem;
+                transition: all 0.2s;
+                
+                /* ปรับขนาดตัวหนังสือ Tab */
+                font-size: 14px; 
+                font-weight: 500;
+            }
+
+            &:not(.p-highlight):hover .p-menuitem-link {
+                background-color: #f8f9fa;
+                border-color: #e9ecef #e9ecef $border-color;
+            }
+
+            &.p-highlight .p-menuitem-link {
+                background: #ffffff;
+                border: 1px solid $border-color;
+                border-bottom-color: #ffffff;
+                border-top: 3px solid $primary-color;
+                color: darken($primary-color, 10%);
+                font-weight: bold;
+            }
+        }
+    }
+
+    /* --- 2. DataTable Styling --- */
+    .p-datatable {
+        /* ตีกรอบรอบตาราง */
+        border: 1px solid $border-color;
+        border-radius: 4px; 
+        overflow: hidden;
+
+        .p-datatable-table {
+            width: 100%;
+        }
+
+        .p-column-header-content {
+            justify-content: center;
+        }
+
+        /* เส้นขอบตาราง */
+        &.p-datatable-gridlines .p-datatable-thead > tr > th,
+        &.p-datatable-gridlines .p-datatable-tbody > tr > td {
+            border: 1px solid $border-color;
+        }
+
+        /* ⭐ ส่วนหัวตาราง (Header) ⭐ */
+        .p-datatable-thead > tr > th {
+            font-size: 12px;       /* ตัวหนังสือเล็ก */
+            padding: 0.6rem 0.5rem; /* ลดช่องว่าง */
+            white-space: nowrap;    /* 📌 บังคับไม่ให้ตัดคำ (เป็นบรรทัดเดียว) */
+        }
+
+        /* ⭐ ส่วนเนื้อหา (Body) ⭐ */
+        .p-datatable-tbody > tr > td {
+            font-size: 12px;       /* ตัวหนังสือเล็ก */
+            padding: 0.6rem 0.5rem;
+            vertical-align: middle;
+            
+            /* เนื้อหาให้ตัดคำได้ (เผื่อยาวมาก) */
+            word-break: break-word;
+            white-space: normal;
+        }
+
+        /* Paginator */
+        .p-paginator {
+            border-top: 1px solid $border-color;
+            justify-content: center;
+            
+            .p-paginator-current, .p-paginator-element {
+                font-size: 12px;
+            }
+        }
+    }
+}

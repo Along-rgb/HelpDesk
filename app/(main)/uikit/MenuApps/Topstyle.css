@@ -1,0 +1,43 @@
+/* tabStyle.module.css */
+
+/* 1. สถานะปกติ (Normal) */
+/* ใช้ :global() เพื่อบอกว่า class ข้างในเป็นของ PrimeReact ที่เราต้องการแก้ */
+.customTabmenu :global(.p-tabmenu-nav .p-tabmenuitem:not(.p-highlight) .p-menuitem-link) {
+    background: transparent !important;
+    border-color: transparent !important;
+}
+
+.customTabmenu :global(.p-tabmenu-nav .p-tabmenuitem:not(.p-highlight) .p-menuitem-link .p-menuitem-text) {
+    color: #6c757d !important; /* สีเทา */
+    font-weight: 500 !important;
+}
+
+/* 2. สถานะเอาเมาส์ชี้ (Hover) */
+.customTabmenu :global(.p-tabmenu-nav .p-tabmenuitem:not(.p-highlight) .p-menuitem-link:hover .p-menuitem-text) {
+    color: #2563eb !important; /* สีฟ้า */
+}
+.customTabmenu :global(.p-tabmenu-nav .p-tabmenuitem:not(.p-highlight) .p-menuitem-link:hover) {
+    background: #eff6ff !important; /* ฟ้าจางๆ */
+}
+
+/* 3. สถานะเลือกอยู่ (Active) */
+.customTabmenu :global(.p-tabmenu-nav .p-tabmenuitem.p-highlight .p-menuitem-link) {
+    border-color: #2563eb !important;
+    border-bottom-width: 3px !important;
+    background: transparent !important;
+}
+
+.customTabmenu :global(.p-tabmenu-nav .p-tabmenuitem.p-highlight .p-menuitem-link .p-menuitem-text) {
+    color: #2563eb !important; /* สีฟ้า */
+    font-weight: bold !important;
+}
+
+/* 4. เส้นวิ่ง (Ink Bar) */
+.customTabmenu :global(.p-tabmenu-ink-bar) {
+    background-color: #2563eb !important;
+}
+
+/* 5. ซ่อน Icon */
+.customTabmenu :global(.p-menuitem-icon) {
+    display: none !important;
+}

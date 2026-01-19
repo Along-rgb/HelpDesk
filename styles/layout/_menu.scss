@@ -1,0 +1,118 @@
+/* =========================================
+   CLEAN SIDEBAR & MENU SYSTEM (Fixed Red & Dropdown)
+   ========================================= */
+
+// Variables
+$sidebar-width: 300px;
+$topbar-height: 5rem;
+$sidebar-bg: #ffffff;
+$border-color: #dfe7ef;
+$menu-text-color: #495057;
+$menu-active-color: #3f51b5;
+$danger-color: #ef4444; // สีแดง
+$transition-speed: 0.2s;
+
+// 1. Sidebar Container
+.layout-sidebar {
+    position: fixed;
+    top: $topbar-height;
+    left: 0;
+    width: $sidebar-width;
+    height: calc(100vh - #{$topbar-height});
+    z-index: 900;
+    background-color: $sidebar-bg;
+    border-right: 2px solid var(--surface-border, $border-color);
+    box-shadow: 4px 0px 10px rgba(0, 0, 0, 0.03);
+    overflow-y: auto;
+    transition: transform $transition-speed;
+    transform: translateX(0);
+
+    &::-webkit-scrollbar { width: 6px; }
+    &::-webkit-scrollbar-thumb { background-color: rgba(0, 0, 0, 0.1); border-radius: 10px; }
+}
+
+// 2. Menu Styling
+.layout-menu {
+    margin: 0;
+    padding: 1rem;
+    list-style: none;
+
+    // General Link Styling
+    a {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.2rem;
+        border-radius: 8px;
+        color: $menu-text-color;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        
+        .layout-menuitem-icon {
+            margin-right: 0.8rem;
+            font-size: 1.1rem;
+            color: lighten($menu-text-color, 15%);
+        }
+        .layout-submenu-toggler {
+            margin-left: auto;
+            font-size: 0.8rem;
+            transition: transform 0.2s;
+        }
+
+        &:hover {
+            background-color: var(--surface-hover, #f8f9fa);
+            color: $menu-active-color;
+            .layout-menuitem-icon { color: $menu-active-color; }
+        }
+        &.active-route {
+            background-color: rgba(63, 81, 181, 0.08);
+            color: $menu-active-color;
+            font-weight: 600;
+            .layout-menuitem-icon { color: $menu-active-color; }
+        }
+    }
+
+    // Arrow Rotation Logic
+    .rotate-180 {
+        transform: rotate(-180deg);
+    }
+
+    // Submenu Indentation
+    ul {
+        margin: 0; padding: 0; list-style: none; overflow: hidden;
+        li a { padding-left: 2.5rem; } // ย่อหน้าเมนูย่อย
+    }
+
+    // --- 3. FIX: Logout Color (บังคับสีแดงทุกจุด) ---
+    .logout-item {
+        a {
+            color: $danger-color !important; // บังคับตัวหนังสือแดง
+            
+            .layout-menuitem-icon,
+            .layout-menuitem-text {
+                color: $danger-color !important; // บังคับไอคอนแดง
+            }
+
+            &:hover {
+                background-color: rgba($danger-color, 0.08) !important;
+            }
+        }
+    }
+
+    // --- 4. Separator ---
+    .menu-separator-container {
+        padding: 0.5rem 1.5rem;
+        hr {
+            border: 0;
+            border-top: 1px solid $border-color;
+            margin: 0.5rem 0;
+        }
+    }
+}
+
+// Mobile Responsive
+@media screen and (max-width: 991px) {
+    .layout-sidebar { transform: translateX(-100%); border: none; }
+    .layout-sidebar.active { transform: translateX(0); }
+}

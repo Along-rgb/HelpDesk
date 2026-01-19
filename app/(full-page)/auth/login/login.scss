@@ -1,0 +1,85 @@
+.login-container {
+    min-height: 100vh;
+    background: url('/layout/images/bg_login.jpg') center/cover no-repeat;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+}
+bg_Login
+/* กล่อง login */
+.login-box {
+ background: #ffffffcc;      /* โปร่งนิดๆ ให้เห็น BG */
+    backdrop-filter: blur(10px);
+    padding: 2.5rem 2.5rem;
+    width: 420px;
+    border-radius: 28px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    text-align: center;      
+}
+
+/* Logo */
+.login-logo {
+    margin-bottom: -10px; /* ขยับโลโก้เข้าใกล้ title */
+}
+
+/* Title */
+.login-title {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-top: -5px;  /* ขยับขึ้น */
+}
+
+.login-subtitle {
+    font-size: 1.2rem;
+    color: #444;
+    margin-top: -12px; /* ขยับขึ้น */
+}
+
+/* Labels */
+.login-label {
+    display: block;
+    text-align: left;
+    margin-bottom: 0.3rem;
+    margin-top: -3px; /* ขยับขึ้น */
+    font-weight: 600;
+    color: #1e1e1e;
+}
+
+/* Forgot password */
+.forgot-pass {
+    color: #3f51b5;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+/* Button */
+.login-button {
+    background: #3f51b5 !important;
+    border: none !important;
+    padding: 0.9rem !important;
+    font-size: 1.1rem;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+}
+
+/* Version */
+.login-version {
+    margin-top: 0.5rem;
+    color: #414141;
+      text-align: center;
+}
+
+/* Footer text */
+.login-footer-text {
+    font-size: 0.9rem;
+    color: #7b7b7b;
+    margin-top: -5px;
+      text-align: center;
+}
+.gradient-text {
+    background: linear-gradient(90deg, #1d2125, #7F60FF, #FF4D8E);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
