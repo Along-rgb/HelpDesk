@@ -1,0 +1,31 @@
+name: CI Check Code
+
+# ทำงานเมื่อมีการ Push หรือ Pull Request เข้า branch main
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest # ใช้เครื่อง Linux จำลอง (ช่วยเช็คเรื่องตัวพิมพ์เล็ก/ใหญ่ได้!)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18' # หรือเปลี่ยนเป็นเวอร์ชันที่คุณใช้
+
+      - name: Install Dependencies
+        run: npm install # ลงโปรแกรมที่จำเป็น
+
+      - name: Try Build
+        run: npm run build # ลอง Build ดูว่าผ่านไหม (ถ้าชื่อไฟล์ผิด หรือโค้ดพัง จะแดงตรงนี้)
+
+      # ถ้ามี Test ให้เปิดบรรทัดนี้
+      # - name: Run Test
+      #   run: npm test
