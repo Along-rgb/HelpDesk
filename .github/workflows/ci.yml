@@ -21,7 +21,7 @@ jobs:
           node-version: '18' # หรือเปลี่ยนเป็นเวอร์ชันที่คุณใช้
 
       - name: Install Dependencies
-        run: npm install # ลงโปรแกรมที่จำเป็น
+        run: npm install --legacy-peer-deps # ลงโปรแกรมที่จำเป็น
 
       - name: Try Build
         run: npm run build # ลอง Build ดูว่าผ่านไหม (ถ้าชื่อไฟล์ผิด หรือโค้ดพัง จะแดงตรงนี้)
