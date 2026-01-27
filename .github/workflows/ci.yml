@@ -18,7 +18,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18' # หรือเปลี่ยนเป็นเวอร์ชันที่คุณใช้
+          node-version: '20' # หรือเปลี่ยนเป็นเวอร์ชันที่คุณใช้
 
       - name: Install Dependencies
         run: npm install --legacy-peer-deps # ลงโปรแกรมที่จำเป็น
