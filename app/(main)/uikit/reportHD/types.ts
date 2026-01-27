@@ -12,10 +12,11 @@ export interface ReportItem {
     building: string;
     floor: string;
     room: string;
-    date: string;           // วันที่ (รับเป็น String จาก API)
+    date: string ;           // วันที่ (รับเป็น String จาก API)
     note: string;
     
     // Field เสริมที่อาจมีหรือไม่มี
+    technician?: string;
     category?: string;
     department?: string;
 }

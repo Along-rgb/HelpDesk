@@ -14,7 +14,6 @@ export const useTicketTable = () => {
     const [selectedTickets, setSelectedTickets] = useState<Ticket[]>([]);
     const [dialogVisible, setDialogVisible] = useState(false);
     const [currentAssignees, setCurrentAssignees] = useState<Assignee[]>([]);
-
     // ✅ Helper Function: ใช้กรองข้อมูล (Search)
     const filterTickets = (data: Ticket[], filterValue: string) => {
         if (!filterValue) return data;
@@ -33,28 +32,23 @@ export const useTicketTable = () => {
             .then((data) => {
                 const ticketData = data as Ticket[];
 
-                // ✅ [UPDATE] เรียงลำดับตาม ID (ລະຫັດ) อย่างเดียว (จากมาก -> น้อย)
-                // ตัดเรื่องวันที่ออกไป เพื่อป้องกันการชนกันของข้อมูล
+                // ✅ เรียงลำดับตาม ID (ລະຫັດ) อย่างเดียว (จากมาก -> น้อย)
                 ticketData.sort((a, b) => {
                     const idA = Number(a.id);
                     const idB = Number(b.id);
                     
-                    // กรณี ID เป็นตัวเลข (เช่น 2259, 2258) ให้ลบกันตรงๆ
                     if (!isNaN(idA) && !isNaN(idB)) {
                         return idB - idA; 
                     }
-                    // กรณี ID เป็น String ผสมตัวหนังสือ (Fallback)
                     return String(b.id).localeCompare(String(a.id));
                 });
 
                 setTickets(ticketData);
-                
-                // กรองข้อมูลหลังจาก Sort แล้ว
                 setFilteredTickets(filterTickets(ticketData, globalFilter));
             })
             .catch((err) => console.error("Fetch Error:", err))
             .finally(() => setLoading(false));
-    }, [globalFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [globalFilter]); 
 
     useEffect(() => { fetchData(); }, []);
 
@@ -68,7 +62,6 @@ export const useTicketTable = () => {
     const onGlobalFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setGlobalFilter(value);
-        // ใช้ข้อมูล tickets ที่ Sort มาแล้วเสมอ
         setFilteredTickets(filterTickets(tickets, value));
     };
 
@@ -89,14 +82,21 @@ export const useTicketTable = () => {
         if (!assignFilter || (Array.isArray(assignFilter) && assignFilter.length === 0) || selectedTickets.length === 0) return;
 
         const newAssignees: Assignee[] = assignFilter.map((item: any, index) => {
+            // Logic การตั้งชื่อ
             let assignedName = item.label || item.firstname ? `${item.firstname} ${item.lastname || ''}` : item;
             let assignedId = item.id;
+            
+            // ✅ ดึงเบอร์โทรศัพท์ (item เป็น any อยู่แล้ว ตรงนี้จึงไม่ error)
+            let assignedPhone = item.Phonenumber || ''; 
 
             if (typeof item === 'string') {
                 const found = ASSIGNMENT_GROUPS.flatMap(g => g.items).find((i: any) => i.value === item || i.label === item);
                 if (found) {
                     assignedName = found.label;
                     assignedId = found.id;
+                    
+                    // ✅ [FIXED] ใช้ (found as any) เพื่อแก้ปัญหา Property 'Phonenumber' does not exist
+                    assignedPhone = (found as any).Phonenumber || '';
                 }
             }
 
@@ -104,7 +104,8 @@ export const useTicketTable = () => {
                 id: assignedId || (Date.now() + index),
                 name: assignedName,
                 status: 'waiting',
-                image: ''
+                image: '',
+                phone: assignedPhone 
             };
         });
 

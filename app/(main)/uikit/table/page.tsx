@@ -53,7 +53,7 @@ export default function TableDemo() {
                     <DataTable
                         value={tickets} paginator rows={10} dataKey="id" size="small"
                         scrollable scrollHeight="flex"
-                        tableStyle={{ minWidth: '60rem' }} style={{ fontSize: '0.85rem' }}
+                        tableStyle={{ minWidth: '60rem' }} style={{ fontSize: '1rem' }}
                         emptyMessage={<div className="text-center p-4">ບໍ່ພົບຂໍ້ມູນ</div>}               
                         first={first} onPage={(e) => setFirst(e.first)}
                     >
@@ -74,15 +74,15 @@ export default function TableDemo() {
                             {...centerProps} 
                         /> 
 
-                        <Column field="title" header="ຫົວຂໍ້ເລື່ອງ" body={TitleBody} style={{ minWidth: "150px", maxWidth: "300px" }} />
-                        <Column field="date" header="ວັນທີ່ຮ້ອງຂໍ" style={{ minWidth: "140px" }} {...centerProps} />
+                        <Column field="title" header="ຫົວຂໍ້ເລື່ອງ" body={TitleBody} style={{ minWidth: "200px" }} />
+                        <Column field="date" header="ວັນທີ່ຮ້ອງຂໍ" style={{ minWidth: "170px" }} {...centerProps} />
                         <Column field="firstname_req" header="ຜູ້ຮ້ອງຂໍ" body={RequesterBody} style={{ minWidth: "100px" }} {...centerProps} />                 
                         <Column header="ມອບໝາຍໃຫ້" style={{ minWidth: "140px" }} {...centerProps}
                             body={(rowData: Ticket) => AssigneeBody(rowData, openAssigneeDialog)}
                         />   
                         <Column 
                             field="status" header="ສະຖານະ" style={{ minWidth: "100px" }} {...centerProps} 
-                            body={(rowData) => <Tag value={rowData.status} severity={STATUS_MAP[rowData.status] as any} style={{ fontSize: '0.75rem' }} />}
+                            body={(rowData) => <Tag value={rowData.status} severity={STATUS_MAP[rowData.status] as any} style={{ fontSize: '0.85rem' }} />}
                         />                   
                         <Column header="ຄວາມສຳຄັນ" style={{ minWidth: "130px" }} {...centerProps}
                             body={(rowData) => <PrioritySelector priority={rowData.priority} onChange={(val) => onPriorityChange(rowData.id, val)} />}

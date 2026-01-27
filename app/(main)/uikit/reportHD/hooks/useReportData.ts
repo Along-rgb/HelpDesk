@@ -1,7 +1,6 @@
-//  Logic ການດືງຂໍ້ມູນ, Loading, ແລະ Error handling ມາ file ນີ້
 // src/app/reports/hooks/useReportData.ts
 import { useState, useEffect } from 'react';
-import { ReportService } from '../service'; // เช็ค path ให้ถูกตามโครงสร้างโฟลเดอร์จริง
+import { ReportService } from '../test';
 import { ReportItem } from '../types';
 
 export function useReportData(activeIndex: number, dateRange: Date[] | any) {
@@ -14,13 +13,21 @@ export function useReportData(activeIndex: number, dateRange: Date[] | any) {
         const controller = new AbortController();
         
         const fetchData = async () => {
+            // ✅ Logic ใหม่: ตรวจสอบก่อนว่าเลือกวันที่ครบหรือยัง
+            // ถ้า dateRange เป็น null, หรือว่าง, หรือเลือกไม่ครบทั้ง Start/End
+            if (!dateRange || dateRange.length < 2 || !dateRange[0] || !dateRange[1]) {
+                setData([]); // สั่งให้ข้อมูลเป็นค่าว่างทันที
+                setLoading(false);
+                return; // จบการทำงาน ไม่ต้องไปเรียก API
+            }
+
             setLoading(true);
             setError(null);
             
             try {
                 const filter = {
-                    startDate: dateRange?.[0] || null,
-                    endDate: dateRange?.[1] || null,
+                    startDate: dateRange[0],
+                    endDate: dateRange[1],
                     tabIndex: activeIndex
                 };
                 
@@ -47,7 +54,7 @@ export function useReportData(activeIndex: number, dateRange: Date[] | any) {
 
         fetchData();
 
-        // Cleanup function: จะถูกเรียกเมื่อ activeIndex หรือ dateRange เปลี่ยน
+        // Cleanup function
         return () => {
             controller.abort();
         };

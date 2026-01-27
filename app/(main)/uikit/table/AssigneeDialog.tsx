@@ -33,7 +33,7 @@ export const AssigneeDialog = ({ visible, onHide, assignees }: Props) => {
                                     <span className="text-xs text-500">Staff / IT Support</span>
                                 </div>
                             </div>
-                            <Tag value={statusInfo.label} severity={statusInfo.severity as any} style={{ fontSize: '0.7rem' }} />
+                            <Tag value={statusInfo.label} severity={statusInfo.severity as any} style={{ fontSize: '0.85rem' }} />
                         </div>
                     );
                 })}

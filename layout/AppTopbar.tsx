@@ -19,19 +19,19 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
 
     return (
         <div className="layout-topbar">
-            <Link href="#" className="layout-topbar-logo">
+            <h1  className="layout-topbar-logo">
                 <img src={`/layout/images/faifarlao3.png`} width="47.22px" height={'35px'} alt="logo" />
                 <span>EDL-HelpDesk | ການຈັດການບໍລິຫານວຽກງານ  ICT </span>
-            </Link>
+            </h1>
 
-    
             <div className="layout-topbar-actions">   
-                <Link href="/documentation">
+
+                {/* <Link href="/documentation">
                     <button type="button" className="p-link topbar-action-btn">
                         <i className="pi pi-cog"></i>
                 
                     </button>
-                </Link>
+                </Link> */}
 
                 <button 
                     ref={menubuttonRef} 

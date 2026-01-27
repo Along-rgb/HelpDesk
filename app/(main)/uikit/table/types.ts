@@ -5,6 +5,7 @@ export interface Assignee {
     id: number | string;
     name: string;
     image?: string;
+    phone?: string;
     status: 'doing' | 'done' | 'waiting';
 }
 

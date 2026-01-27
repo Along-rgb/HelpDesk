@@ -16,9 +16,9 @@ export const ASSIGNMENT_GROUPS = [
         label: 'ຄອມພີວເຕີທົ່ວໄປ (Computer)',
         code: 'COMP',
         items: [
-            { label: 'ທະນູຄຳ ວັນລາສີ', id: '1001', firstname: 'ທະນູຄຳ', lastname: 'ວັນລາສີ', value: 'TK' },
-            { label: ' ແສງປີຊາ ທຳມະວົງ', id: '1002', firstname: ' ແສງປີຊາ', lastname: 'ທຳມະວົງ', value: 'SP' },
-            { label: 'ສອນປະດິດ ສີຫາວົງ', id: '1003', firstname: 'ສອນປະດິດ', lastname: 'ສີຫາວົງ', value: 'SS' }
+            { label: 'ທະນູຄຳ ວັນລາສີ', id: '1001', firstname: 'ທະນູຄຳ', lastname: 'ວັນລາສີ',Phonenumber:'020 55422254', value: 'TK' },
+            { label: ' ແສງປີຊາ ທຳມະວົງ', id: '1002', firstname: ' ແສງປີຊາ', lastname: 'ທຳມະວົງ',Phonenumber:'020 51735702', value: 'SP' },
+            { label: 'ສອນປະດິດ ສີຫາວົງ', id: '1003', firstname: 'ສອນປະດິດ', lastname: 'ສີຫາວົງ',Phonenumber:'020 55518311', value: 'SS' }
         ]
     },
     {

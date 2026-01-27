@@ -6039,4 +6039,43 @@
     background: #3B82F6;
     color: #ffffff;
   }
+  /* 1. สถานะปกติ (Default): สีเทา */
+.custom-report-tabs .p-tabmenu-nav .p-tabmenuitem .p-menuitem-link {
+    color: #6c757d !important; /* ตัวหนังสือสีเทา */
+    background: #ffffff !important;
+    border-color: transparent transparent #e5e7eb transparent !important; /* เส้นขอบล่างสีเทาจาง */
+    transition: all 0.2s ease-in-out;
+}
+
+.custom-report-tabs .p-tabmenu-nav .p-tabmenuitem .p-menuitem-link .p-menuitem-icon {
+    color: #6c757d !important; /* ไอคอนสีเทາ */
+}
+
+/* 2. เงื่อนไขที่ 1: เมื่อถูกเลือก (Active) -> เปลี่ยนเป็นสีฟ้าเข้ม */
+.custom-report-tabs .p-tabmenu-nav .p-tabmenuitem.p-highlight .p-menuitem-link {
+    color: #3B82F6 !important; /* สีฟ้า Primary */
+    background: #ffffff !important;
+    border-color: transparent transparent #3B82F6 transparent !important; /* เส้นขอบล่างสีฟ้า */
+    border-bottom-width: 3px !important; /* เพิ่มความหนาของเส้นขอบเพื่อให้ดูชัดเจนว่าเป็น Active */
+    font-weight: 700; /* ตัวหนา */
+}
+
+.custom-report-tabs .p-tabmenu-nav .p-tabmenuitem.p-highlight .p-menuitem-link .p-menuitem-icon {
+    color: #3B82F6 !important; /* ไอคอนเปลี่ยนเป็นสีฟ้า */
+}
+
+/* 3. เงื่อนไขที่ 2: เมื่อเอาเมาส์ไปชี้ (Hover) -> เปลี่ยนเป็นสีฟ้า + พื้นหลังฟ้าจาง */
+/* ใช้ :not(.p-highlight) เพื่อไม่ให้ทับซ้อนกับสถานะ Active */
+.custom-report-tabs .p-tabmenu-nav .p-tabmenuitem:not(.p-disabled):hover .p-menuitem-link {
+    color: #3B82F6 !important; /* ตัวหนังสือเปลี่ยนเป็นสีฟ้า */
+    background: #EFF6FF !important; /* พื้นหลังสีฟ้าอ่อน (Blue-50) */
+    border-color: transparent transparent #3B82F6 transparent !important; /* เส้นขอบล่างสีฟ้า */
+}
+
+.custom-report-tabs .p-tabmenu-nav .p-tabmenuitem:not(.p-disabled):hover .p-menuitem-link .p-menuitem-icon {
+    color: #3B82F6 !important; /* ไอคอนเปลี่ยนเป็นสีฟ้า */
+}
+html {
+    overflow-y: scroll;
+}
 }

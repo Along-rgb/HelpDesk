@@ -798,7 +798,29 @@
       "title": "ຂໍລົງໄອດີໃໝ່",
       "date": "13/01/2026 4:55 PM",
       "requester": "ທ ທັດສະນີ ມີໄຊບົວ",
-      "assignees": [],
+      "assignees": [
+        {
+          "id": "1001",
+          "name": "ທະນູຄຳ ວັນລາສີ",
+          "status": "waiting",
+          "image": "",
+          "phone": "020 55422254"
+        },
+        {
+          "id": "1002",
+          "name": " ແສງປີຊາ ທຳມະວົງ",
+          "status": "waiting",
+          "image": "",
+          "phone": "020 51735702"
+        },
+        {
+          "id": "1003",
+          "name": "ສອນປະດິດ ສີຫາວົງ",
+          "status": "waiting",
+          "image": "",
+          "phone": "020 55518311"
+        }
+      ],
       "status": "ລໍຖ້າຮັບວຽກ",
       "priority": "ບໍ່ລະບຸ",
       "verified": false,
@@ -813,7 +835,22 @@
       "title": "ເຊື່ອມຕໍ່ WiFi ບໍ່ໄດ້",
       "date": "14/01/2026 2:11 PM",
       "requester": "ທ ທັດສະນີ ມີໄຊບົວ",
-      "assignees": [],
+      "assignees": [
+        {
+          "id": "1001",
+          "name": "ທະນູຄຳ ວັນລາສີ",
+          "status": "waiting",
+          "image": "",
+          "phone": "020 55422254"
+        },
+        {
+          "id": "1002",
+          "name": " ແສງປີຊາ ທຳມະວົງ",
+          "status": "waiting",
+          "image": "",
+          "phone": "020 51735702"
+        }
+      ],
       "status": "ລໍຖ້າຮັບວຽກ",
       "priority": "ບໍ່ລະບຸ",
       "verified": false,
@@ -866,6 +903,34 @@
       "level": "ຊັ້ນ 02",
       "room": "-",
       "description": "<p>ຈໍເປີດບໍ່ຕິດເປັນຈຳນວນ 12 ຫນ່ວຍ</p>"
+    },
+    {
+      "id": "2278",
+      "title": "ໂທລະສັບໂທບໍ່ໄດ້",
+      "date": "19/01/2026 2:06 PM",
+      "requester": "ທ ທັດສະນີ ມີໄຊບົວ",
+      "assignees": [
+        {
+          "id": "1001",
+          "name": "ທະນູຄຳ ວັນລາສີ",
+          "status": "waiting",
+          "image": ""
+        },
+        {
+          "id": "1002",
+          "name": " ແສງປີຊາ ທຳມະວົງ",
+          "status": "waiting",
+          "image": ""
+        }
+      ],
+      "status": "ລໍຖ້າຮັບວຽກ",
+      "priority": "ບໍ່ລະບຸ",
+      "verified": false,
+      "category": "ການສື່ສານ (Communication)",
+      "building": "ຕືກ ສຳນັກງານໃຫຍ່",
+      "level": "ຊັ້ນ 01",
+      "room": "101",
+      "description": "<p>fjdwyfgwu</p>"
     }
   ]
 }

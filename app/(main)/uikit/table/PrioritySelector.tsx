@@ -13,7 +13,7 @@ export const PrioritySelector = ({ priority, onChange }: Props) => {
 
     const getTagStyle = (value: string) => {
         const baseStyle: React.CSSProperties = {
-            fontSize: '0.75rem',
+            fontSize: '0.95rem',
             padding: '0.15rem 0.5rem',
             width: 'auto',
             display: 'inline-block'
