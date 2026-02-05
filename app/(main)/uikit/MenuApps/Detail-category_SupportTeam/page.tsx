@@ -11,24 +11,35 @@ import SupportTeamCreateDialog from './SupportTeamCreateDialog';
 import SupportTeamTable from './SupportTeamTable';
 import { useSupportTeam } from '../hooks/useSupportTeam';
 import { useIssues } from '../hooks/useIssues';
-import { SupportTeamData, CreatePayload } from '../types';
+import { SupportTeamData, CreateSupportTeamPayload } from '../types';
+// นำเข้า Utility ที่เราสร้างไว้ (ถ้ายังไม่มีให้สร้างตามคำแนะนำก่อนหน้า)
+import { createDataMap } from '../utils/dataMapping'; 
 
 const CUSTOM_TAB_CSS = `
-    .custom-tabmenu .p-menuitem-text { color: #000000 !important; transition: color 0.2s; }
+    .custom-tabmenu .p-menuitem-text { color: #6c757d !important; transition: color 0.2s; font-weight: 500; }
     .custom-tabmenu .p-menuitem-link:hover .p-menuitem-text { color: var(--primary-color) !important; }
     .custom-tabmenu .p-highlight .p-menuitem-text { color: var(--primary-color) !important; font-weight: bold; }
+    .custom-tabmenu .p-tabmenu-nav { border-bottom: 1px solid #dee2e6; }
+    .custom-tabmenu .p-tabmenuitem .p-menuitem-link { background: transparent !important; border: none !important; box-shadow: none !important; }
+    .custom-tabmenu .p-highlight .p-menuitem-link { border-bottom: 2px solid var(--primary-color) !important; border-radius: 0; }
 `;
 
 export default function SupportTeamPage() {
     const searchParams = useSearchParams();
     const [activeIndex, setActiveIndex] = useState(0);
 
+    // 1. Main Data (ทีมงาน)
     const { toast, items, loading, saveData, deleteData } = useSupportTeam(activeIndex);
 
-    // ✅ ดึงข้อมูลหมวดปัญหาจาก API (useIssues) มาใช้งานจริง
+    // 2. Reference Data (หมวดหมู่ปัญหา) - สำหรับ Lookup & Dropdown
     const { items: issueItems } = useIssues(0);
 
-    // ✅ แปลงข้อมูล IssueData -> Dropdown Option
+    // [Performance Optimization] สร้าง Map เตรียมไว้ให้ Table (Lookup O(1))
+    const issueCategoryMap = useMemo(() => {
+        return createDataMap(issueItems, 'id', 'title');
+    }, [issueItems]);
+
+    // แปลงเป็น Options สำหรับ Dropdown ใน Dialog
     const issueCategoryOptions = useMemo(() => {
         return issueItems.map(issue => ({
             label: issue.title, 
@@ -36,17 +47,9 @@ export default function SupportTeamPage() {
         }));
     }, [issueItems]);
 
-    // ✅ โครงสร้าง User Options (รอ API จริง)
-    // ปล่อยเป็น Array ว่างไว้ก่อนตามที่แจ้ง
+    // TODO: รอ API ดึงรายชื่อ User จริงๆ (ตอนนี้ Mock ไว้ก่อน)
     const adminUserOptions: {label: string, value: any}[] = []; 
     
-    // หากต้องการดึง API จริง ให้ทำ useEffect ตรงนี้:
-    /*
-    useEffect(() => {
-         // fetchUsers().then(data => setAdminUserOptions(...));
-    }, []);
-    */
-
     const [isDialogVisible, setDialogVisible] = useState(false);
     const [isSaving, setSaving] = useState(false);
     const [globalFilter, setGlobalFilter] = useState('');
@@ -65,7 +68,7 @@ export default function SupportTeamPage() {
             dialogHeader: `ເພີ່ມ${currentLabel}`,
             label: `ຊື່${currentLabel}`
         };
-    }, [activeIndex]);
+    }, [activeIndex, tabItems]);
 
     useEffect(() => {
         const tabParam = searchParams.get('tab');
@@ -80,7 +83,7 @@ export default function SupportTeamPage() {
     const openNew = () => { setSelectedItem(null); setDialogVisible(true); };
     const openEdit = (item: SupportTeamData) => { setSelectedItem(item); setDialogVisible(true); };
     
-    const handleSave = async (payload: CreatePayload) => {
+    const handleSave = async (payload: CreateSupportTeamPayload) => {
         setSaving(true);
         const success = await saveData(payload, selectedItem?.id);
         if (success) setDialogVisible(false);
@@ -89,7 +92,7 @@ export default function SupportTeamPage() {
 
     const confirmDelete = (item: SupportTeamData) => {
         confirmDialog({
-            message: `ທ່ານຕ້ອງການລົບຂໍ້ມູນ "${item.name}" แທ້ບໍ່?`, // แสดงชื่อถ้ามี
+            message: `ທ່ານຕ້ອງການລົບຂໍ້ມູນ "${item.name || 'ລາຍການນີ້'}" ແທ້ບໍ່?`,
             header: 'ຢືນຢັນການລົບ',
             icon: 'pi pi-exclamation-triangle',
             acceptLabel: 'ຕົກລົງ', rejectLabel: 'ຍົກເລີກ', acceptClassName: 'p-button-danger',
@@ -128,9 +131,11 @@ export default function SupportTeamPage() {
                 header={renderHeader()} 
                 globalFilter={globalFilter} 
                 label={config.label}
-                activeTab={activeIndex} // ✅ ต้องส่ง activeTab ไปที่ Table ด้วย! (สำคัญ)
+                activeTab={activeIndex} 
                 onEdit={openEdit}
                 onDelete={confirmDelete}
+                // ส่ง Map ไปให้ Table ทำ Lookup
+                issueCategoryMap={issueCategoryMap} 
             />
 
             <SupportTeamCreateDialog 

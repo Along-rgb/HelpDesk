@@ -1,8 +1,8 @@
+// src/uikit/MenuApps/Detail-category_Issues/page.tsx
 'use client';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { TabMenu } from 'primereact/tabmenu';
-import { MenuItem } from 'primereact/menuitem';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
@@ -11,29 +11,43 @@ import IssuesTable from './IssuesTable';
 import IssuesCreateDialog from './IssuesCreateDialog';
 import { useIssues } from '../hooks/useIssues';
 import { IssueData, CreateIssuePayload } from '../types';
+import { createDataMap } from '../utils/dataMapping'; // Import Utility ใหม่
 
 const CUSTOM_TAB_CSS = `
-    .custom-tabmenu .p-menuitem-text { color: #000000 !important; transition: color 0.2s; }
+    .custom-tabmenu .p-menuitem-text { color: #6c757d !important; transition: color 0.2s; font-weight: 500; }
     .custom-tabmenu .p-menuitem-link:hover .p-menuitem-text { color: var(--primary-color) !important; }
     .custom-tabmenu .p-highlight .p-menuitem-text { color: var(--primary-color) !important; font-weight: bold; }
+    .custom-tabmenu .p-tabmenu-nav { border-bottom: 1px solid #dee2e6; }
+    .custom-tabmenu .p-tabmenuitem .p-menuitem-link { background: transparent !important; border: none !important; box-shadow: none !important; }
+    .custom-tabmenu .p-highlight .p-menuitem-link { border-bottom: 2px solid var(--primary-color) !important; border-radius: 0; }
 `;
 
 export default function IssuesPage() {
     const searchParams = useSearchParams();
     const [activeIndex, setActiveIndex] = useState<number>(0);
 
+    // Main Data
     const { toast, items, loading, saveData, deleteData } = useIssues(activeIndex);
+    
+    // [Microservices Strategy] ดึง Category (Tab 0) เตรียมไว้สำหรับ Join
+    const { items: categoryItems } = useIssues(0);
+
+    // [Performance] 1. แปลง Array เป็น Map ทันที (O(N)) เพื่อให้ Table ดึงใช้ได้เลย (O(1))
+    const categoryMap = useMemo(() => {
+        return createDataMap(categoryItems, 'id', 'title');
+    }, [categoryItems]);
+
+    // [UX] 2. แปลงเป็น Options สำหรับ Dropdown
+    const categoryOptions = useMemo(() => {
+        return categoryItems.map(c => ({ label: c.title, value: c.id }));
+    }, [categoryItems]);
     
     const [isDialogVisible, setDialogVisible] = useState(false);
     const [isSaving, setSaving] = useState(false);
     const [globalFilter, setGlobalFilter] = useState('');
     const [selectedItem, setSelectedItem] = useState<IssueData | null>(null);
 
-    // [แก้ไข] เอา icon ออกแล้ว
-    const tabItems: MenuItem[] = [
-        { label: 'ໝວດໝູ່' },
-        { label: 'ລາຍການຫົວຂໍ້' }
-    ];
+    const tabItems = [{ label: 'ໝວດໝູ່' }, { label: 'ລາຍການຫົວຂໍ້' }];
 
     useEffect(() => {
         const tabParam = searchParams.get('tab');
@@ -84,17 +98,11 @@ export default function IssuesPage() {
 
     return (
         <div className="card p-4 surface-card shadow-2 border-round">
-               <style>{CUSTOM_TAB_CSS}</style>
+                   <style>{CUSTOM_TAB_CSS}</style>
             <Toast ref={toast} />
             <ConfirmDialog />
-            
             <div className="mb-4">
-                <TabMenu 
-                    model={tabItems} 
-                    activeIndex={activeIndex} 
-                    onTabChange={(e) => setActiveIndex(e.index)} 
-                    className="custom-tabmenu" 
-                />
+                <TabMenu model={tabItems} activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)} className="custom-tabmenu" />
             </div>
 
             <IssuesTable 
@@ -103,8 +111,11 @@ export default function IssuesPage() {
                 header={renderHeader()}
                 globalFilter={globalFilter}
                 nameColumnHeader={columnNameHeader}
+                activeTab={activeIndex}
                 onEdit={openEdit}
                 onDelete={confirmDelete}
+                // [Clean Code] ส่ง Map ไปแทน Array เพื่อความเร็ว
+                categoryMap={categoryMap}
             />
 
             <IssuesCreateDialog 
@@ -114,6 +125,8 @@ export default function IssuesPage() {
                 itemNameLabel={columnNameHeader}
                 isSaving={isSaving}
                 editData={selectedItem}
+                activeTab={activeIndex}              
+                categoryOptions={categoryOptions}    
             />
         </div>
     );

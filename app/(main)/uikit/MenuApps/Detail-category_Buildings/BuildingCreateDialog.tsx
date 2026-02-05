@@ -6,7 +6,7 @@ import { InputText } from 'primereact/inputtext';
 import { RadioButton } from 'primereact/radiobutton';
 import { Dropdown } from 'primereact/dropdown';
 import axiosClientsHelpDesk from '../../../../../config/axiosClientsHelpDesk'; 
-import { BuildingData, CreateBuildingPayload } from '../types';
+import { BuildingData, CreateBuildingPayload, BuildingTabs } from '../types';
 
 interface Props {
     visible: boolean;
@@ -21,25 +21,23 @@ interface Props {
 
 export default function BuildingCreateDialog({ visible, onHide, onSave, itemNameLabel, activeTab, buildingOptions, isSaving, editData }: Props) {
     const [name, setName] = useState('');
-    const [code, setCode] = useState(''); // ใช้สำหรับ Description ใน Tab ห้อง
+    const [code, setCode] = useState(''); 
     const [status, setStatus] = useState<string>('ACTIVE');
     
-    // State สำหรับ Dropdown
     const [selectedBuilding, setSelectedBuilding] = useState<BuildingData | null>(null);
     const [selectedLevel, setSelectedLevel] = useState<BuildingData | null>(null);
     const [levelOptions, setLevelOptions] = useState<BuildingData[]>([]);
 
     const [submitted, setSubmitted] = useState(false);
 
-    // เช็ค Tab
-    const isLevelTab = activeTab === 1;
-    const isRoomTab = activeTab === 2;
+    const isLevelTab = activeTab === BuildingTabs.LEVEL;
+    const isRoomTab = activeTab === BuildingTabs.ROOM;
 
+    // Reset Form
     useEffect(() => {
         if (visible) {
             setSubmitted(false);
             if (editData) {
-                // Edit Mode
                 setName(editData.name);
                 setCode(editData.code);
                 setStatus(editData.status);
@@ -48,13 +46,13 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
                     const parent = buildingOptions.find(b => b.id === editData.parentId);
                     setSelectedBuilding(parent || null);
                 } else if (isRoomTab) {
-                    // กรณีแก้ไขห้อง: ต้อง Reset หรือหา Logic ดึงตึก/ชั้น ของห้องนั้นๆ มาแสดง
-                    // เบื้องต้น Reset เพื่อให้เลือกใหม่ หรือต้องมีข้อมูล parentId เชื่อมโยง
+                    // TODO: ຖ້າຕ້ອງການໃຫ້ Auto Select Building ເວລາ Edit Room
+                    // ຕ້ອງມີ buildingId ໃນ editData ຫຼື API ຕ້ອງສົ່ງ hierarchy ມາ
+                    // ຕອນນີ້ໃຫ້ Reset ເພື່ອປ້ອງກັນຂໍ້ມູນຜິດພາດ
                     setSelectedBuilding(null); 
                     setSelectedLevel(null);
                 }
             } else {
-                // New Mode
                 setName('');
                 setCode('');
                 setStatus('ACTIVE');
@@ -65,7 +63,7 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
         }
     }, [visible, editData, buildingOptions, isLevelTab, isRoomTab]);
 
-    // Fetch Levels เมื่อเลือก Building (สำหรับ Tab ห้อง)
+    // Fetch Levels Logic (Improved)
     useEffect(() => {
         if (isRoomTab && selectedBuilding) {
             const fetchLevels = async () => {
@@ -73,13 +71,11 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
                     const res = await axiosClientsHelpDesk.get('/buildings', {
                         params: { type: 'LEVEL', status: 'ACTIVE', parentId: selectedBuilding.id }
                     });
-                    if (res.data && Array.isArray(res.data.data)) {
-                        setLevelOptions(res.data.data);
-                    } else if (Array.isArray(res.data)) {
-                        setLevelOptions(res.data);
-                    }
+                    const levels = Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+                    setLevelOptions(levels);
                 } catch (err) {
                     console.error("Error fetching levels:", err);
+                    setLevelOptions([]);
                 }
             };
             fetchLevels();
@@ -103,8 +99,8 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
         }
 
         onSave({ 
-            name, // สำหรับ Tab ห้อง ค่านี้คือ "หมายเลขห้อง"
-            code, // สำหรับ Tab ห้อง ค่านี้คือ "คำอธิบาย"
+            name, 
+            code, 
             status,
             parentId: finalParentId || null
         });
@@ -117,15 +113,11 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
         </div>
     );
 
-    // --- จัดการ Label ตาม Requirement ---
     let mainInputLabel = itemNameLabel;
     let descriptionLabel = "ລາຍລະອຽດ (ວ່າງໄດ້)";
 
     if (isRoomTab) {
-        // Requirement: เพิ่มส่วนของ ໝາຍເລກຫ້ອງ (ใช้แทน Name) และ ลบ ຊື່ຫ້ອງ ออก
         mainInputLabel = "ໝາຍເລກຫ້ອງ"; 
-        
-        // Requirement: แก้ไขส่วนของ ລະຫັດຫ້ອງ เป็น คำอธิบาย
         descriptionLabel = "ຄຳອະທິບາຍ"; 
     }
 
@@ -143,7 +135,6 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
         >
             <div className="flex flex-column gap-3">
                 
-                {/* 1. เลือกตึก/อาคาร */}
                 {(isLevelTab || isRoomTab) && (
                     <div className="field mb-0">
                         <label htmlFor="parentBuilding" className="font-bold block mb-2">
@@ -163,7 +154,6 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
                     </div>
                 )}
 
-                {/* 2. เลือกระดับชั้น (Requirement: เพิ่มส่วนของ ລະດັບຊັ້ນ) */}
                 {isRoomTab && (
                     <div className="field mb-0">
                         <label htmlFor="parentLevel" className="font-bold block mb-2">
@@ -185,7 +175,6 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
                     </div>
                 )}
 
-                {/* 3. ช่องกรอกหลัก (Requirement: ໝາຍເລກຫ້ອງ แทน ຊື່ຫ້ອງ) */}
                 <div className="field mb-0">
                     <label htmlFor="name" className="font-bold block mb-2">
                         {mainInputLabel} <span className="text-red-500">*</span>
@@ -200,13 +189,11 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
                     {submitted && !name.trim() && <small className="text-red-500">ກະລຸນາປ້ອນ {mainInputLabel}</small>}
                 </div>
 
-                {/* 4. ช่องรอง (Requirement: แก้ไข ລະຫັດຫ້ອງ เป็น คำอธิบาย) */}
                 <div className="field mb-0">
                     <label htmlFor="code" className="font-bold block mb-2">{descriptionLabel}</label>
                     <InputText id="code" value={code} onChange={(e) => setCode(e.target.value)} className="w-full" />
                 </div>
 
-                {/* 5. สถานะ */}
                 <div className="field">
                     <label className="font-bold block mb-2">ສະຖານະ:</label>
                     <div className="flex gap-4">

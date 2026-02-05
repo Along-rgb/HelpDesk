@@ -1,9 +1,8 @@
+// src/uikit/MenuApps/Detail-category_Service_Requests/page.tsx
 'use client';
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { TabMenu } from 'primereact/tabmenu';
-import { MenuItem } from 'primereact/menuitem';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
@@ -11,30 +10,42 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import ServiceRequestCreateDialog from './ServiceRequestCreateDialog';
 import ServiceRequestTable from './ServiceRequestTable';
 import { useServiceRequest } from '../hooks/useServiceRequest';
-import { ServiceRequestData, CreateServiceRequestPayload } from '../types';
+import { ServiceRequestData, CreateServiceRequestPayload, ServiceRequestTabs } from '../types';
+import { createDataMap } from '../utils/dataMapping';
 
 const CUSTOM_TAB_CSS = `
-    .custom-tabmenu .p-menuitem-text { color: #000000 !important; transition: color 0.2s; }
+    .custom-tabmenu .p-menuitem-text { color: #6c757d !important; transition: color 0.2s; font-weight: 500; }
     .custom-tabmenu .p-menuitem-link:hover .p-menuitem-text { color: var(--primary-color) !important; }
     .custom-tabmenu .p-highlight .p-menuitem-text { color: var(--primary-color) !important; font-weight: bold; }
-`
+    .custom-tabmenu .p-tabmenu-nav { border-bottom: 1px solid #dee2e6; }
+    .custom-tabmenu .p-tabmenuitem .p-menuitem-link { background: transparent !important; border: none !important; box-shadow: none !important; }
+    .custom-tabmenu .p-highlight .p-menuitem-link { border-bottom: 2px solid var(--primary-color) !important; border-radius: 0; }
+`;
 
 export default function ServiceRequestsPage() {
     const searchParams = useSearchParams();
-    const [activeIndex, setActiveIndex] = useState(0);
+    const [activeIndex, setActiveIndex] = useState(ServiceRequestTabs.CATEGORY);
 
     const { toast, items, loading, saveData, deleteData } = useServiceRequest(activeIndex);
+    
+    // Fetch categories for lookup
+    const { items: categoryItems } = useServiceRequest(ServiceRequestTabs.CATEGORY);
+
+    // [Optimization] Create Map for O(1) Lookup
+    const categoryMap = useMemo(() => {
+        return createDataMap(categoryItems, 'id', 'name');
+    }, [categoryItems]);
+
+    const categoryOptions = useMemo(() => {
+        return categoryItems.map(c => ({ label: c.name, value: c.id }));
+    }, [categoryItems]);
 
     const [isDialogVisible, setDialogVisible] = useState(false);
     const [isSaving, setSaving] = useState(false);
     const [globalFilter, setGlobalFilter] = useState('');
     const [selectedItem, setSelectedItem] = useState<ServiceRequestData | null>(null);
 
-    // [แก้ไข] เอา icon ออกแล้ว
-    const tabItems: MenuItem[] = [
-        { label: 'ໝວດໝູ່' },
-        { label: 'ລາຍການຫົວຂໍ້' }
-    ];
+    const tabItems = [{ label: 'ໝວດໝູ່' }, { label: 'ລາຍການຫົວຂໍ້' }];
 
     useEffect(() => {
         const tabParam = searchParams.get('tab');
@@ -45,7 +56,7 @@ export default function ServiceRequestsPage() {
     }, [searchParams]);
 
     const config = useMemo(() => {
-        return activeIndex === 0
+        return activeIndex === ServiceRequestTabs.CATEGORY
             ? { header: 'ຈັດການຂໍ້ມູນໝວດໝູ່', dialogHeader: 'ເພີ່ມໝວດໝູ່', label: 'ຊື່ໝວດໝູ່' }
             : { header: 'ຈັດການຂໍ້ມູນລາຍການຫົວຂໍ້', dialogHeader: 'ເພີ່ມລາຍການ', label: 'ຊື່ລາຍການຫົວຂໍ້' };
     }, [activeIndex]);
@@ -85,16 +96,11 @@ export default function ServiceRequestsPage() {
 
     return (
         <div className="card p-4 surface-card shadow-2 border-round">
-            <style>{CUSTOM_TAB_CSS}</style>
+              <style>{CUSTOM_TAB_CSS}</style>
             <Toast ref={toast} />
             <ConfirmDialog />
             <div className="mb-4">
-                <TabMenu
-                    model={tabItems}
-                    activeIndex={activeIndex}
-                    onTabChange={(e) => setActiveIndex(e.index)}
-                    className="custom-tabmenu"
-                />
+                <TabMenu model={tabItems} activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)} className="custom-tabmenu" />
             </div>
 
             <ServiceRequestTable
@@ -103,8 +109,10 @@ export default function ServiceRequestsPage() {
                 header={renderHeader()}
                 globalFilter={globalFilter}
                 label={config.label}
+                activeTab={activeIndex}
                 onEdit={openEdit}
                 onDelete={confirmDelete}
+                categoryMap={categoryMap} // Pass Map
             />
 
             <ServiceRequestCreateDialog
@@ -115,6 +123,8 @@ export default function ServiceRequestsPage() {
                 inputLabel={config.label}
                 isSaving={isSaving}
                 editData={selectedItem}
+                activeTab={activeIndex}
+                categoryOptions={categoryOptions}
             />
         </div>
     );

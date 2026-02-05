@@ -1,8 +1,8 @@
+// src/uikit/MenuApps/Detail-category_Buildings/page.tsx
 'use client';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { TabMenu } from 'primereact/tabmenu';
-import { MenuItem } from 'primereact/menuitem';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
@@ -10,31 +10,35 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import ManagementTable from './ManagementTable';
 import BuildingCreateDialog from './BuildingCreateDialog';
 import { useBuilding } from '../hooks/useBuilding';
-import { BuildingData, CreateBuildingPayload } from '../types';
+import { BuildingData, CreateBuildingPayload, BuildingTabs } from '../types';
+import { createDataMap } from '../utils/dataMapping';
 
 const CUSTOM_TAB_CSS = `
-    .custom-tabmenu .p-menuitem-text { color: #000000 !important; transition: color 0.2s; }
+    .custom-tabmenu .p-menuitem-text { color: #6c757d !important; transition: color 0.2s; font-weight: 500; }
     .custom-tabmenu .p-menuitem-link:hover .p-menuitem-text { color: var(--primary-color) !important; }
     .custom-tabmenu .p-highlight .p-menuitem-text { color: var(--primary-color) !important; font-weight: bold; }
+    .custom-tabmenu .p-tabmenu-nav { border-bottom: 1px solid #dee2e6; }
+    .custom-tabmenu .p-tabmenuitem .p-menuitem-link { background: transparent !important; border: none !important; box-shadow: none !important; }
+    .custom-tabmenu .p-highlight .p-menuitem-link { border-bottom: 2px solid var(--primary-color) !important; border-radius: 0; }
 `;
 
 export default function BuildingsPage() {
     const searchParams = useSearchParams();
-    const [activeIndex, setActiveIndex] = useState<number>(0);
+    const [activeIndex, setActiveIndex] = useState<number>(BuildingTabs.BUILDING);
     
     const { toast, items, loading, buildingOptions, saveData, deleteData } = useBuilding(activeIndex);
+
+    // [Optimization] ສ້າງ Map ຂອງ Building ເພື່ອສົ່ງໃຫ້ Table lookup (O(1))
+    const buildingMap = useMemo(() => {
+        return createDataMap(buildingOptions, 'id', 'name');
+    }, [buildingOptions]);
 
     const [isDialogVisible, setDialogVisible] = useState(false);
     const [isSaving, setSaving] = useState(false);
     const [globalFilter, setGlobalFilter] = useState('');
     const [selectedItem, setSelectedItem] = useState<BuildingData | null>(null);
 
-    // เมนู (ไม่มี Icon)
-    const tabItems: MenuItem[] = [
-        { label: 'ຕຶກ/ອາຄານ' },
-        { label: 'ລະດັບຊັ້ນ' },
-        { label: 'ຫ້ອງ' }
-    ];
+    const tabItems = [{ label: 'ຕຶກ/ອາຄານ' }, { label: 'ລະດັບຊັ້ນ' }, { label: 'ຫ້ອງ' }];
 
     useEffect(() => {
         const tabParam = searchParams.get('tab');
@@ -45,8 +49,8 @@ export default function BuildingsPage() {
     }, [searchParams]);
 
     const { tableHeaderTitle, columnNameHeader } = useMemo(() => {
-        if (activeIndex === 0) return { tableHeaderTitle: 'ຈັດການຕຶກ/ອາຄານ', columnNameHeader: 'ຊື່ຕຶກ/ອາຄານ' };
-        if (activeIndex === 1) return { tableHeaderTitle: 'ຈັດການລະດັບຊັ້ນ', columnNameHeader: 'ລະຫັດລະດັບຊັ້ນ' };
+        if (activeIndex === BuildingTabs.BUILDING) return { tableHeaderTitle: 'ຈັດການຕຶກ/ອາຄານ', columnNameHeader: 'ຊື່ຕຶກ/ອາຄານ' };
+        if (activeIndex === BuildingTabs.LEVEL) return { tableHeaderTitle: 'ຈັດການລະດັບຊັ້ນ', columnNameHeader: 'ລະຫັດລະດັບຊັ້ນ' };
         return { tableHeaderTitle: 'ຈັດການຫ້ອງ', columnNameHeader: 'ຊື່ຫ້ອງ' };
     }, [activeIndex]);
 
@@ -85,17 +89,11 @@ export default function BuildingsPage() {
 
     return (
         <div className="card p-4 surface-card shadow-2 border-round">
-              <style>{CUSTOM_TAB_CSS}</style>
+             <style>{CUSTOM_TAB_CSS}</style>
             <Toast ref={toast} />
             <ConfirmDialog />
-            
             <div className="mb-4">
-                <TabMenu 
-                    model={tabItems} 
-                    activeIndex={activeIndex} 
-                    onTabChange={(e) => setActiveIndex(e.index)} 
-                    className="custom-tabmenu" /* ใช้งาน CSS Class ที่แก้ใหม่ */
-                />
+                <TabMenu model={tabItems} activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)} className="custom-tabmenu" />
             </div>
 
             <ManagementTable 
@@ -107,6 +105,8 @@ export default function BuildingsPage() {
                 activeTab={activeIndex}
                 onEdit={openEdit}
                 onDelete={confirmDelete}
+                // [Refactor] ສົ່ງ Map ແທນ Array
+                buildingMap={buildingMap}
             />
 
             <BuildingCreateDialog 

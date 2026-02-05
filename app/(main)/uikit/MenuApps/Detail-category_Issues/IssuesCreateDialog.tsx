@@ -1,10 +1,10 @@
-// src/uikit/MenuApps/Detail-category_Issues/IssuesCreateDialog.tsx
 import React, { useState, useEffect } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { RadioButton } from 'primereact/radiobutton';
-import { IssueData, CreateIssuePayload } from '../types';
+import { Dropdown } from 'primereact/dropdown';
+import { IssueData, CreateIssuePayload, IssueTabs } from '../types';
 
 interface Props {
     visible: boolean;
@@ -13,26 +13,41 @@ interface Props {
     itemNameLabel: string;
     isSaving: boolean;
     editData?: IssueData | null;
+    activeTab: number;                         
+    categoryOptions: { label: string, value: any }[];
 }
 
-export default function IssueCreateDialog({ visible, onHide, onSave, itemNameLabel, isSaving, editData }: Props) {
+export default function IssueCreateDialog({ 
+    visible, 
+    onHide, 
+    onSave, 
+    itemNameLabel, 
+    isSaving, 
+    editData,
+    activeTab,
+    categoryOptions
+}: Props) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [status, setStatus] = useState<string>('ACTIVE');
+    const [parentId, setParentId] = useState<number | null>(null);
     const [submitted, setSubmitted] = useState(false);
+
+    const isTopicTab = activeTab === IssueTabs.TOPIC;
 
     useEffect(() => {
         if (visible) {
             if (editData) {
-                // Edit Mode
                 setTitle(editData.title);
                 setDescription(editData.description);
                 setStatus(editData.status);
+                // Type safe access
+                setParentId(editData.parentId || null);
             } else {
-                // New Mode
                 setTitle('');
                 setDescription('');
                 setStatus('ACTIVE');
+                setParentId(null);
             }
             setSubmitted(false);
         }
@@ -42,6 +57,7 @@ export default function IssueCreateDialog({ visible, onHide, onSave, itemNameLab
         setTitle('');
         setDescription('');
         setStatus('ACTIVE');
+        setParentId(null);
         onHide();
     };
 
@@ -49,8 +65,18 @@ export default function IssueCreateDialog({ visible, onHide, onSave, itemNameLab
         setSubmitted(true);
         if (!title.trim()) return;
 
-        onSave({ title, description, status });
-        // ไม่ต้องเรียก handleHide() ที่นี่ เพราะ page.tsx จะเป็นคนสั่งปิดเมื่อ save สำเร็จ
+        if (isTopicTab && !parentId) {
+            return; 
+        }
+
+        const payload: CreateIssuePayload = { 
+            title, 
+            description, 
+            status,
+            parentId: isTopicTab && parentId ? parentId : undefined
+        };
+
+        onSave(payload);
     };
 
     const renderFooter = () => (
@@ -72,7 +98,7 @@ export default function IssueCreateDialog({ visible, onHide, onSave, itemNameLab
         </div>
     );
 
-    const dialogHeader = editData ? 'ແກ້ໄຂຂໍ້ມູນການແຈ້ງບັນຫາ' : 'ເພີ່ມຂໍ້ມູນການແຈ້ງບັນຫາ';
+    const dialogHeader = editData ? 'ແກ້ໄຂຂໍ້ມູນ' : 'ເພີ່ມຂໍ້ມູນ';
 
     return (
         <Dialog 
@@ -87,6 +113,26 @@ export default function IssueCreateDialog({ visible, onHide, onSave, itemNameLab
             className="p-fluid"
         >
             <div className="flex flex-column gap-3">
+                
+                {isTopicTab && (
+                    <div className="field mb-0">
+                        <label htmlFor="parentId" className="font-bold block mb-2">
+                            ເລືອກໝວດໝູ່ <span className="text-red-500">*</span>
+                        </label>
+                        <Dropdown 
+                            id="parentId"
+                            value={parentId} 
+                            options={categoryOptions} 
+                            onChange={(e) => setParentId(e.value)} 
+                            placeholder="ເລືອກໝວດໝູ່"
+                            className={submitted && !parentId ? 'p-invalid w-full' : 'w-full'}
+                            filter
+                            autoFocus
+                        />
+                        {submitted && !parentId && <small className="text-red-500">ກະລຸນາເລືອກໝວດໝູ່</small>}
+                    </div>
+                )}
+
                 <div className="field mb-0">
                     <label htmlFor="title" className="font-bold block mb-2">
                         {itemNameLabel} <span className="text-red-500">*</span>
@@ -96,7 +142,7 @@ export default function IssueCreateDialog({ visible, onHide, onSave, itemNameLab
                         value={title} 
                         onChange={(e) => setTitle(e.target.value)} 
                         className={submitted && !title.trim() ? 'p-invalid w-full' : 'w-full'}
-                        autoFocus
+                        autoFocus={!isTopicTab} 
                     />
                     {submitted && !title.trim() && <small className="text-red-500">ກະລຸນາປ້ອນ {itemNameLabel}</small>}
                 </div>

@@ -6,12 +6,12 @@ import { InputText } from 'primereact/inputtext';
 import { RadioButton } from 'primereact/radiobutton';
 import { Dropdown } from 'primereact/dropdown';       
 import { MultiSelect } from 'primereact/multiselect'; 
-import { SupportTeamData, CreatePayload } from '../types';
+import { SupportTeamData, CreateSupportTeamPayload, SupportTeamTabs } from '../types';
 
 interface Props {
     visible: boolean;
     onHide: () => void;
-    onSave: (data: CreatePayload) => void;
+    onSave: (data: CreateSupportTeamPayload) => void;
     headerTitle: string;
     inputLabel: string;
     isSaving: boolean;
@@ -19,6 +19,14 @@ interface Props {
     activeTab: number;
     issueOptions?: { label: string, value: any }[];
     userOptions?: { label: string, value: any }[];
+}
+
+interface FormState {
+    name: string;
+    description: string;
+    status: string;
+    issueCategoryId: number | null;
+    assignedAdminIds: number[];
 }
 
 export default function SupportTeamCreateDialog({ 
@@ -34,35 +42,32 @@ export default function SupportTeamCreateDialog({
     userOptions = [] 
 }: Props) {
     
-    // [Clean Code] รวม State ทั้งหมดไว้ใน Object เดียว
-    // และกำหนด assignedAdminIds เริ่มต้นเป็น [] แทน null เพื่อแก้ TypeScript Error
-    const initialFormState = {
+    // [Type Safe]
+    const initialFormState: FormState = {
         name: '',
         description: '',
         status: 'ACTIVE',
-        issueCategoryId: null as any,
-        assignedAdminIds: [] as any[] 
+        issueCategoryId: null,
+        assignedAdminIds: [] 
     };
 
-    const [form, setForm] = useState(initialFormState);
+    const [form, setForm] = useState<FormState>(initialFormState);
     const [submitted, setSubmitted] = useState(false);
-    const isSystemAdminTab = activeTab === 1;
+    const isSystemAdminTab = activeTab === SupportTeamTabs.SYSTEM_ADMIN;
 
     useEffect(() => {
         if (visible) {
             setSubmitted(false);
             if (editData) {
-                // Map ข้อมูลเดิมเข้า Form
                 setForm({
                     name: editData.name || '',
                     description: editData.description || '',
                     status: editData.status || 'ACTIVE',
                     issueCategoryId: editData.issueCategoryId || null,
-                    // ใช้ || [] เพื่อกันไม่ให้ค่าเป็น null ซึ่งจะทำให้ TypeScript แจ้งเตือน
-                    assignedAdminIds: editData.assignedAdmins?.map(a => a.id) || []
+                    assignedAdminIds: editData.assignedAdmins ? editData.assignedAdmins.map(a => a.id) : []
                 });
             } else {
-                setForm(initialFormState); // Reset เป็นค่าเริ่มต้น
+                setForm(initialFormState);
             }
         }
     }, [visible, editData]);
@@ -70,24 +75,24 @@ export default function SupportTeamCreateDialog({
     const handleSave = () => {
         setSubmitted(true);
 
-        // Validation Logic
+        // Validation
         if (isSystemAdminTab) {
             if (!form.issueCategoryId || form.assignedAdminIds.length === 0) return;
         } else {
             if (!form.name.trim()) return;
         }
 
-        // ส่งข้อมูลกลับ (ใช้ Object Spread เพื่อความสั้นกระชับ)
-        onSave({ 
+        const payload: CreateSupportTeamPayload = {
             ...form,
             name: isSystemAdminTab ? '' : form.name,
-            // ส่ง assignedAdminIds เป็น Array เสมอ (ไม่ส่ง null)
+            issueCategoryId: form.issueCategoryId || undefined,
             assignedAdminIds: form.assignedAdminIds
-        });
+        };
+
+        onSave(payload);
     };
 
-    // Helper Function: สำหรับอัปเดตค่าใน Form แบบบรรทัดเดียวจบ
-    const updateField = (key: keyof typeof form, value: any) => {
+    const updateField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
         setForm(prev => ({ ...prev, [key]: value }));
     };
 
@@ -112,7 +117,6 @@ export default function SupportTeamCreateDialog({
         >
             <div className="flex flex-column gap-3">
                 
-                {/* Conditional Rendering ตาม Tab */}
                 {isSystemAdminTab ? (
                     <>
                         <div className="field mb-0">

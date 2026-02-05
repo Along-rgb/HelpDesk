@@ -1,16 +1,13 @@
-// src/components/settings/data.ts
+// src/uikit/MenuApps/data.ts
 import { MenuItem } from './types';
 
-// ปรับโครงสร้างข้อมูลให้ระบุ "tabIndex" ได้ชัดเจน
-export const MENU_ITEMS: any[] = [ // ใช้ any ชั่วคราว หรือแก้ Interface MenuItem ให้รองรับ subMenus
+export const MENU_ITEMS: MenuItem[] = [
     {
         id: 'users',
         title: 'ຜູ້ໃຊ້ ແລະ ການອະນຸຍາດ',
         icon: 'pi pi-users',
         path: '/uikit/MenuApps/Detail-category_SupportTeam',
-        // [Clean Code] เปลี่ยนจาก descriptions ธรรมดา เป็น subMenus ที่มี target ชัดเจน
         subMenus: [
-            // { label: 'ກຸ່ມທີມຊ່ວຍເຫຼືອ', tabIndex: 0 },
             { label: 'ວິຊາການ', tabIndex: 0 }, 
             { label: 'ຜູ້ຄຸ້ມຄອງລະບົບ', tabIndex: 1 },
             { label: 'ຜູ້ຮ້ອງຂໍ', tabIndex: 2 }

@@ -8,7 +8,7 @@ const AppFooter = () => {
     return (
         <div className="layout-footer">
             <span className="font-medium ml-2 gradient-text "> EDL-HelpDesk & Asset Management System | ລະບົບບໍລິຫານຈັດການວຽກງານ ICT </span>
-            <span className='layout-footer-font gradient-text '>V 1.3.1 </span>
+            <span className='layout-footer-font gradient-text '>V 2.0.1 </span>
         </div>
        
     );

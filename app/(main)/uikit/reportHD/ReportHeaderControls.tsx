@@ -6,9 +6,10 @@ import { Button } from 'primereact/button';
 interface Props {
     dateRange: Date[] | any;
     setDateRange: (value: any) => void;
+    onExportClick: () => void; // ✅ ປ່ຽນຊື່ function ໃຫ້ສື່ຄວາມໝາຍວ່າ "ກົດສົ່ງອອກ" (ຍັງບໍ່ທັນ Print)
 }
 
-export const ReportHeaderControls = ({ dateRange, setDateRange }: Props) => {
+export const ReportHeaderControls = ({ dateRange, setDateRange, onExportClick }: Props) => {
     return (
         <div className="flex flex-column md:flex-row justify-content-between align-items-center mb-4">
             <h5 className="m-0 text-900 font-bold mb-3 md:mb-0">
@@ -36,7 +37,15 @@ export const ReportHeaderControls = ({ dateRange, setDateRange }: Props) => {
                         />
                     )}
                 </div>
-                <Button label="ສົ່ງອອກ" icon="pi pi-file-excel" severity="success" size="small" />
+                
+                {/* ✅ ປຸ່ມນີ້ຈະໄປເປີດ Dialog ໃຫ້ເລືອກກ່ອນ */}
+                <Button 
+                    label="ສົ່ງອອກ / ພິມ" 
+                    icon="pi pi-download" 
+                    severity="success" 
+                    size="small" 
+                    onClick={onExportClick} 
+                />
             </div>
         </div>
     );

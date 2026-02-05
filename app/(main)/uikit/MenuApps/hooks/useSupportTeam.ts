@@ -1,5 +1,7 @@
+// src/uikit/MenuApps/hooks/useSupportTeam.ts
 import { useCoreApi } from '../hooks/useCoreApi';
-import { SupportTeamData, CreatePayload } from '../types';
+// แก้ไข: เปลี่ยน CreatePayload เป็น CreateSupportTeamPayload
+import { SupportTeamData, CreateSupportTeamPayload } from '../types';
 
 export function useSupportTeam(activeIndex: number) {
     const getRoleType = (index: number) => {
@@ -9,7 +11,8 @@ export function useSupportTeam(activeIndex: number) {
 
     const role = getRoleType(activeIndex);
 
-    const { toast, items, loading, saveData, deleteData, fetchData } = useCoreApi<SupportTeamData, CreatePayload>(
+    // แก้ไข: ส่ง Generic Type ที่ถูกต้องเข้าไป
+    const { toast, items, loading, saveData, deleteData, fetchData } = useCoreApi<SupportTeamData, CreateSupportTeamPayload>(
         '/support-teams',
         { role },
         activeIndex

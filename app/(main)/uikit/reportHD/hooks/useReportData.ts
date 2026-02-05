@@ -11,7 +11,7 @@ export function useReportData(activeIndex: number, dateRange: Date[] | any) {
     useEffect(() => {
         // สร้าง Controller สำหรับยกเลิก request เก่า
         const controller = new AbortController();
-        
+           
         const fetchData = async () => {
             // ✅ Logic ใหม่: ตรวจสอบก่อนว่าเลือกวันที่ครบหรือยัง
             // ถ้า dateRange เป็น null, หรือว่าง, หรือเลือกไม่ครบทั้ง Start/End
