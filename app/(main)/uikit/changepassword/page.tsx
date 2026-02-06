@@ -81,7 +81,7 @@ const ChangePasswordPage = () => {
             disabled={isLoading}
             className="w-full"
             inputStyle={{ width: '100%' }}
-            placeholder="........."
+            placeholder=""
           />
         </div>
 
