@@ -1,106 +1,82 @@
+// invalidstate/useTicketForm.ts
 import { useState, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { TicketForm, MasterData, City } from './types';
 import { ticketService } from '../../../services/ticketService';
-// *** Import ข้อมูลกลางมาใช้ ***
 import { CATEGORY_MAP } from './ticketData'; 
 
 const INITIAL_FORM: TicketForm = {
     category: null,
+    assetNumber: "",
     topic: null,
     building: null,
     level: null,
     roomNumber: null,
     description: "",
-    attachment: null,
+    attachments: [], 
+    images: [], 
 };
 
 export const useTicketForm = () => {
-    // Hooks
     const router = useRouter();
     const searchParams = useSearchParams();
-    const fileInputRef = useRef<HTMLInputElement>(null);
     
-    // 1. Logic ดึงค่าจาก URL มาแสดงผลทันที (Clean Code: ใช้ Map จากไฟล์กลาง)
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null); 
+
     const getInitialCategory = (): City | null => {
         const code = searchParams.get('category');
-        // ตรวจสอบว่ามี Code นี้ในระบบหรือไม่
         if (code && CATEGORY_MAP[code]) {
             return { name: CATEGORY_MAP[code], code };
         }
         return null;
     };
 
-    const initialCategory = getInitialCategory();
-
-    // 2. State Definitions
     const [form, setForm] = useState<TicketForm>({
         ...INITIAL_FORM,
-        category: initialCategory // ใส่ค่าหมวดหมู่ทันทีถ้ามี
+        category: getInitialCategory()
     });
     
     const [masterData, setMasterData] = useState<MasterData | null>(null);
     const [availableTopics, setAvailableTopics] = useState<City[]>([]);
-    
-    // Loading & UI States
-    const [isLoading, setIsLoading] = useState(false); 
     const [isSubmitting, setIsSubmitting] = useState(false); 
-    const [isCategoryLocked, setIsCategoryLocked] = useState(!!initialCategory);
+    const [isCategoryLocked, setIsCategoryLocked] = useState(!!getInitialCategory());
 
-    // 3. Data Loading Logic (Parallel Fetching)
     useEffect(() => {
         let isMounted = true; 
-
         const initData = async () => {
             try {
                 const categoryCode = searchParams.get('category');
-                
-                // โหลดข้อมูลพร้อมกัน (Parallel) เพื่อ Performance ที่ดีขึ้น
                 const masterDataPromise = ticketService.getMasterData();
                 const topicsPromise = categoryCode 
                     ? ticketService.getTopicsByCategory(categoryCode) 
                     : Promise.resolve([]);
 
                 const [data, topics] = await Promise.all([masterDataPromise, topicsPromise]);
-                
                 if (!isMounted) return;
 
                 setMasterData(data);
+                if (topics && topics.length > 0) setAvailableTopics(topics);
 
-                if (topics && topics.length > 0) {
-                    setAvailableTopics(topics);
-                }
-
-                // Update ข้อมูล Category จาก Database (เพื่อความมั่นใจ 100%)
                 if (categoryCode && data.categories) {
                     const realCategoryObj = data.categories.find(c => c.code === categoryCode);
-                    if (realCategoryObj) {
-                        setForm(prev => ({ ...prev, category: realCategoryObj }));
-                    }
+                    if (realCategoryObj) setForm(prev => ({ ...prev, category: realCategoryObj }));
                 }
-
             } catch (error) {
                 console.error("Failed to load data", error);
             }
         };
-
         initData();
-
         return () => { isMounted = false; };
     }, [searchParams]); 
 
-    // 4. Helper Functions (State Updaters)
     const updateField = (field: keyof TicketForm, value: any) => {
         setForm(prev => ({ ...prev, [field]: value }));
     };
 
-    // 5. Event Handlers
     const handleCategoryChange = async (category: City | null) => {
         if (isCategoryLocked) return;
-
         setForm(prev => ({ ...prev, category, topic: null })); 
-        setAvailableTopics([]);
-
         if (category && category.code) {
             const topics = await ticketService.getTopicsByCategory(category.code);
             setAvailableTopics(topics);
@@ -115,33 +91,105 @@ export const useTicketForm = () => {
         setForm(prev => ({ ...prev, level, roomNumber: null }));
     };
 
+    // --- File Logic (Documents: PDF, DOCX, XLSX) ---
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0] || null;
-        setForm(prev => ({ ...prev, attachment: file }));
-    };
+        if (e.target.files && e.target.files.length > 0) {
+            const newFiles = Array.from(e.target.files);
 
-    // Handler: สำหรับปุ่ม "ປ້ອນໃໝ່" (Clear Form)
-    const handleReset = () => {
-        if (isCategoryLocked) {
-             // ถ้า Lock Category ให้ Reset ค่าอื่น แต่คง Category ไว้
-             setForm(prev => ({
-                 ...INITIAL_FORM,
-                 category: prev.category 
-             }));
-        } else {
-            // ถ้าไม่ Lock ก็ Reset ทั้งหมด
-            setForm(INITIAL_FORM);
-            setAvailableTopics([]);
+            // ตรวจสอบ MIME Type สำหรับเอกสาร
+            const allowedDocTypes = [
+                'application/pdf',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'      // .xlsx
+            ];
+
+            const hasInvalidFile = newFiles.some(file => !allowedDocTypes.includes(file.type));
+
+            if (hasInvalidFile) {
+                alert("อนุญาตเฉพาะไฟล์ PDF, DOCX และ XLSX เท่านั้น");
+                if (fileInputRef.current) fileInputRef.current.value = "";
+                return;
+            }
+
+            const currentFiles = form.attachments;
+            if (currentFiles.length + newFiles.length > 2) {
+                alert("ท่านสามารถแนบไฟล์ได้สูงสุด 2 ไฟล์เท่านั้น");
+                return;
+            }
+
+            const MAX_SIZE_MB = 30;
+            const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
+            const totalSizeCurrent = currentFiles.reduce((acc, file) => acc + file.size, 0);
+            const totalSizeNew = newFiles.reduce((acc, file) => acc + file.size, 0);
+
+            if (totalSizeCurrent + totalSizeNew > MAX_SIZE_BYTES) {
+                alert(`ขนาดไฟล์รวมต้องไม่เกิน ${MAX_SIZE_MB}MB`);
+                return;
+            }
+
+            setForm(prev => ({
+                ...prev,
+                attachments: [...prev.attachments, ...newFiles]
+            }));
         }
-        
-        // Clear File Input UI
         if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
-    // Handler: สำหรับปุ่ม "ຍົກເລີກ" (Back to Previous Page)
-    const handleCancel = () => {
-        router.back();
+    const handleRemoveFile = (indexToRemove: number) => {
+        setForm(prev => ({
+            ...prev,
+            attachments: prev.attachments.filter((_, index) => index !== indexToRemove)
+        }));
     };
+
+    // --- Images Logic (PNG, JPEG, GIF) ---
+    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const newFiles = Array.from(e.target.files);
+
+            // ตรวจสอบ MIME Type สำหรับรูปภาพ
+            const allowedImageTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+            const hasInvalidImage = newFiles.some(file => !allowedImageTypes.includes(file.type));
+            
+            if (hasInvalidImage) {
+                alert("อนุญาตเฉพาะรูปภาพประเภท PNG, JPEG และ GIF เท่านั้น");
+                if (imageInputRef.current) imageInputRef.current.value = "";
+                return;
+            }
+
+            const totalImages = form.images.length + newFiles.length;
+            if (totalImages > 6) {
+                alert("ท่านสามารถแนบรูปได้สูงสุด 6 รูปเท่านั้น");
+                return;
+            }
+
+            setForm(prev => ({
+                ...prev,
+                images: [...prev.images, ...newFiles]
+            }));
+        }
+        if (imageInputRef.current) imageInputRef.current.value = "";
+    };
+
+    const handleRemoveImage = (indexToRemove: number) => {
+        setForm(prev => ({
+            ...prev,
+            images: prev.images.filter((_, index) => index !== indexToRemove)
+        }));
+    };
+
+    const handleReset = () => {
+        if (isCategoryLocked) {
+             setForm(prev => ({ ...INITIAL_FORM, category: prev.category }));
+        } else {
+            setForm(INITIAL_FORM);
+            setAvailableTopics([]);
+        }
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        if (imageInputRef.current) imageInputRef.current.value = "";
+    };
+
+    const handleCancel = () => router.back();
 
     const handleSubmit = async () => {
         setIsSubmitting(true);
@@ -154,28 +202,16 @@ export const useTicketForm = () => {
                 alert("Error: " + result.message);
             }
         } catch (error) {
-            console.error("Submit Error:", error);
-            alert("ເກີດຂໍ້ຜິດພາດໃນການເຊື່ອມຕໍ່ລະບົບ");
+            alert("เกิดข้อผิดพลาดในการเชื่อมต่อระบบ");
         } finally {
             setIsSubmitting(false);
         }
     };
 
     return {
-        form,
-        masterData,
-        availableTopics,
-        isLoading, 
-        isSubmitting,
-        isCategoryLocked,
-        updateField,
-        handleCategoryChange,
-        handleBuildingChange,
-        handleLevelChange,
-        handleFileSelect,
-        handleSubmit,
-        handleReset,
-        handleCancel, // <--- Export Function ใหม่
-        fileInputRef
+        form, masterData, availableTopics, isSubmitting, isCategoryLocked,
+        updateField, handleCategoryChange, handleBuildingChange, handleLevelChange,
+        handleFileSelect, handleRemoveFile, handleImageSelect, handleRemoveImage, 
+        handleSubmit, handleReset, handleCancel, fileInputRef, imageInputRef      
     };
 };

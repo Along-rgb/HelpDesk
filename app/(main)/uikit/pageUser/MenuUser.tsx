@@ -22,8 +22,6 @@ export const MenuCard: React.FC<MenuCardProps> = ({ item, onSelect }) => {
                     <div className="text-white">
                         <div className="text-2xl font-bold">{item.title}</div>
                     </div>
-                    
-                    {/* เปลี่ยนจาก <i> เป็น <img> สำหรับ SVG Icon */}
                     <div className="icon-wrapper">
                          <img 
                             src={item.icon} 

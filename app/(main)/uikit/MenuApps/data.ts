@@ -43,5 +43,5 @@ export const MENU_ITEMS: MenuItem[] = [
             { label: 'ໝວດໝູ່', tabIndex: 0 },
             { label: 'ລາຍການຫົວຂໍ້', tabIndex: 1 }
         ]
-    }
+    } 
 ];

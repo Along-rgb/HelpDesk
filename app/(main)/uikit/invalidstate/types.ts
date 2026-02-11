@@ -8,12 +8,14 @@ export interface City {
 // UI State (หน้าฟอร์ม)
 export interface TicketForm {
     category: City | null;
+    assetNumber?: string;
     topic: City | null;
     building: City | null;
     level: City | null;
     roomNumber: City | null;
     description: string;
-    attachment: File | null;
+   attachments: File[];
+    images: File[];
 }
 
 // Database Schema (ตรงกับ Fake-DB.json)

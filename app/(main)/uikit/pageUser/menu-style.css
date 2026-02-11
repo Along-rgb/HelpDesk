@@ -1,5 +1,14 @@
 /* app/(main)/uikit/pageUser/menu-style.css */
 
+/* สร้าง Animation สำหรับการขยับไปมา */
+@keyframes icon-float {
+    0% { transform: translateY(0px) rotate(0deg); }
+    25% { transform: translateY(-5px) rotate(5deg); }
+    50% { transform: translateY(0px) rotate(0deg); }
+    75% { transform: translateY(-5px) rotate(-5deg); }
+    100% { transform: translateY(0px) rotate(0deg); }
+}
+
 .custom-card-container {
     border-radius: 24px;
     position: relative;
@@ -11,6 +20,7 @@
     justify-content: center;
     border: none;
     overflow: visible;
+    border-bottom: 3px solid #000000;
 }
 
 /* Gradient Backgrounds */
@@ -33,35 +43,34 @@
     transform: translateY(-10px);
 }
 
-.bg-green-gradient:hover { box-shadow: 0 20px 40px rgba(66, 255, 218, 0.7); }
-.bg-blue-gradient:hover { box-shadow: 0 20px 40px rgba(86, 164, 255, 0.7); }
-.bg-orange-gradient:hover { box-shadow: 0 20px 40px rgba(255, 154, 68, 0.7); }
+/* เมื่อ Hover ให้เรียกใช้ Animation icon-float */
+.custom-card-container:hover .icon-wrapper {
+   animation: icon-float 2s ease-in-out infinite;
+}
 
 .card-badge {
     position: absolute;
     top: -5px;
     right: -5px;
-    background-color: #ff3d60;
-    color: white;
+    background-color: var(--red-500);
+    color: var(--primary-color-text);
     border-radius: 50%;
     width: 34px;
     height: 34px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
-    font-size: 1rem;
+    font-weight: 700;
     box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     z-index: 10;
 }
 
-/* ส่วนของ Wrapper ไอคอน */
 .icon-wrapper {
     margin-left: 1.5rem;
     transition: transform 0.3s ease;
+    will-change: transform;
 }
 
-/* ปรับขนาดรูปภาพ SVG ตรงนี้ */
 .img-icon-svg {
     width: 80px;  
     height: 80px; 
@@ -69,18 +78,60 @@
     display: block;
 }
 
-.custom-card-container:hover .icon-wrapper {
-    animation: floating-icon 2s ease-in-out infinite;
+.divider-container {
+    background-color: var(--surface-300); 
+    border-radius: 20px 20px 0 0;
+    padding: 1rem 0;
+    margin-top: 3rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    border: 2px solid #000000; /* ขอบดำเฉพาะส่วนหัวข้อด้านบน */
+    border-bottom: none;
 }
-
-@keyframes floating-icon {
-    0%, 100% { transform: translateY(0) scale(1); }
-    50% { transform: translateY(-8px) scale(1.05); }
+.divider-text {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-color);
+    z-index: 1;
 }
-
-.title-text {
-    text-shadow: 1px 2px 4px rgba(0,0,0,0.15);
-    color: white;
+.selection-button-group {
+    display: flex;
+    width: 100%;
+    border-left: 2px solid #000000;
+    border-right: 2px solid #000000;
+    border-bottom: 2px solid #000000; /* เส้นคั่นสุดท้ายระหว่างปุ่มกับตาราง */
+    background-color: var(--surface-a);
+    overflow: hidden; 
+}
+.selection-btn {
+    flex: 1;
+    padding: 1.25rem;
+    border: none; 
+    background: transparent;
+    font-size: 1.2rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
     text-align: center;
-    padding: 0 10px;
+    color: var(--text-color-secondary);
+    font-family: var(--font-family);
+    border-right: 2px solid #000000; 
+}
+.selection-btn:first-child {
+    border-right: 2px solid #000000;
+}
+.selection-btn.active {
+    background-color: var(--primary-color); 
+    color: var(--primary-color-text);
+}
+
+.selection-btn:last-child {
+    border-right: none;
+}
+
+/* ลบเงาและขอบของตารางที่อาจจะมาจาก Card class เดิม */
+.table-content-wrapper {
+    box-shadow: none !important;
 }

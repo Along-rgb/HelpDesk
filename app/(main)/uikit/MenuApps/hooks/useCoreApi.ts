@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Toast } from 'primereact/toast';
-import axiosClientsHelpDesk from '../../../../../config/axiosClientsHelpDesk'; // ปรับ path ให้ตรงกับที่อยู่ไฟล์ axios ของคุณ
+import axiosClientsHelpDesk from '../../../../../config/axiosClientsHelpDesk'; 
 
 export function useCoreApi<T, P>(
     endpoint: string,
