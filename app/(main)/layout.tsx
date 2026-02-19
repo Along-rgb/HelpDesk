@@ -5,11 +5,15 @@ interface AppLayoutProps {
     children: React.ReactNode;
 }
 
+export const viewport = {
+    width: 'device-width',
+    initialScale: 1,
+};
+
 export const metadata: Metadata = {
     title: 'ICT-HelpDesk',
     description: 'The ultimate collection of design-agnostic, flexible and accessible React UI Components.',
     robots: { index: false, follow: false },
-    viewport: { initialScale: 1, width: 'device-width' },
     openGraph: {
         type: 'website',
         title: 'HelpDesk',

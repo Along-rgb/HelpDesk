@@ -51,7 +51,7 @@ export const TicketActionMenu: React.FC<TicketActionMenuProps> = ({ ticket }) =>
                     } 
                 }}
                 
-                onClick={() => router.push(`/uikit/ticket/${ticket.id}`)}
+                onClick={() => router.push(`/uikit/ticket-detail/${ticket.id}`)}
             />
         </div>
     );

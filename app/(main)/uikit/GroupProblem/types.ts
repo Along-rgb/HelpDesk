@@ -1,11 +1,12 @@
-// app/(main)/uikit/service-menu/types.ts
+// app/(main)/uikit/GroupProblem/types.ts
 
 export interface ServiceItem {
     id: number;
     title: string;
     description: string;
-    icon: string; 
+    icon: string;
     color: string;
-    path: string; 
-   
+    path: string;
+    /** ຈຳນວນລາຍການ Ticket ໃນຫມວດໝູ່ນີ້ */
+    ticketCount?: number;
 }

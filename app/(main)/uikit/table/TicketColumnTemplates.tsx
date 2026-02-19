@@ -8,7 +8,7 @@ import { ASSIGNEE_STATUS_MAP } from "./constants";
 // ... (TitleBody และ RequesterBody เหมือนเดิม ไม่ต้องแก้)
 export const TitleBody = (rowData: Ticket) => (
     <Link 
-        href={`/uikit/ticket/${rowData.id}`} 
+        href={`/uikit/ticket-detail/${rowData.id}`} 
         className="no-underline"
         style={{ color: 'inherit' }}
     >
@@ -24,13 +24,16 @@ export const TitleBody = (rowData: Ticket) => (
 );
 
 export const RequesterBody = (rowData: Ticket) => {
-    const firstName = rowData.firstname_req || rowData.requester || "";
+    const firstName = rowData.firstname_req || "";
     const lastName = rowData.lastname_req || "";
-    const fullName = lastName ? `${firstName} ${lastName}` : firstName;
+    const requesterFull = rowData.requester || "";
+    const fullName = (firstName && lastName)
+        ? `${firstName} ${lastName}`.trim()
+        : requesterFull || firstName || lastName;
 
     return (
         <span className="js-tooltip-target cursor-pointer text-700" data-pr-tooltip={fullName} data-pr-position="top" style={{ whiteSpace: 'nowrap' }}>
-            {firstName} 
+            {fullName}
         </span>
     );
 };

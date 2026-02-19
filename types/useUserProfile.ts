@@ -1,21 +1,16 @@
-import React from 'react'; // อย่าลืม import React ถ้ามีการใช้ useState/useEffect
+// =====================================================
+// useUserProfile Hook - สำหรับใช้ใน AppMenu
+// ดึงชื่อผู้ใช้จาก Profile Store
+// =====================================================
 
-// ⭐ เติม export ตรงนี้ เพื่อให้ไฟล์อื่นเรียกใช้ได้
+import { useDisplayName } from '@/app/store/user/userProfileStore';
+
+/**
+ * Hook สำหรับดึงชื่อผู้ใช้แสดงใน Menu
+ * ใช้ข้อมูลจาก userProfileStore
+ */
 export const useUserProfile = () => {
-    const [displayName, setDisplayName] = React.useState("User");
-
-    React.useEffect(() => {
-        try {
-            const storedData = localStorage.getItem('userData');
-            if (storedData) {
-                const user = JSON.parse(storedData);
-                const fullName = `${user.firstname || ''} ${user.name || user.lastname || ''}`;
-                if (fullName.trim()) setDisplayName(fullName);
-            }
-        } catch (error) {
-            console.error("Failed to load user profile:", error);
-        }
-    }, []);
+    const displayName = useDisplayName();
 
     return { displayName };
 };

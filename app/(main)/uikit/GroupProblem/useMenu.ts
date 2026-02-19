@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { ServiceItem } from './types';
+import { getTicketCountByCategory } from '../ticket/ticketData';
 
 const DB_SERVICES: ServiceItem[] = [
     {
@@ -9,8 +10,8 @@ const DB_SERVICES: ServiceItem[] = [
         description: "ກ່ຽວກັບການສື່ສານລະບົບໂທລະສັບພາຍໃນ ແລະ ພາຍນອກ",
         icon: "/layout/images/Communication.png",
         color: "bg-blue-100 text-blue-600",
-        // ส่ง code COM ไป
-        path: "/uikit/invalidstate?category=PHONE"
+        path: "/uikit/ticket?category=PHONE",
+        ticketCount: getTicketCountByCategory('PHONE'),
     },
     {
         id: 2,
@@ -18,8 +19,8 @@ const DB_SERVICES: ServiceItem[] = [
         description: "ການຕິດຕັ້ງ, ການນຳໃຊ້ ແລະ ການແກ້ໄຂບັນຫາຕ່າງໆ ທີ່ກ່ຽວຂ້ອງກັບການນຳໃຊ້ລະບົບ-ເນັດເວີກ",
         icon: "/layout/images/network.png",
         color: "bg-green-100 text-green-600",
-        // ส่ง code NET ไป
-        path: "/uikit/invalidstate?category=NET"
+        path: "/uikit/ticket?category=NET",
+        ticketCount: getTicketCountByCategory('NET'),
     },
     {
         id: 3,
@@ -27,8 +28,8 @@ const DB_SERVICES: ServiceItem[] = [
         description: "ການຕິດຕັ້ງ,ການນຳໃຊ້ ແລະ ການແກ້ໄຂບັນຫາທົ່ວໄປທີ່ອາດຈະພົບເຫັນໄດ້ ເພາະອຸປະກອນຮາດແວຄອມພີວເຕີ...",
         icon: "/layout/images/computer.png",
         color: "bg-orange-100 text-orange-600",
-        // ส่ง code IT ไป
-        path: "/uikit/invalidstate?category=IT" 
+        path: "/uikit/ticket?category=IT",
+        ticketCount: getTicketCountByCategory('IT'),
     }
 ];
 

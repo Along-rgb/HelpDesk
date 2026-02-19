@@ -1,6 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Toast } from 'primereact/toast';
-import axiosClientsHelpDesk from '../../../../../config/axiosClientsHelpDesk'; 
+import axiosClientsHelpDesk from '../../../../../config/axiosClientsHelpDesk';
+
+// แสดง toast ເຂົ້າໃໝ່ Server ແຕ່ຄັ້ງດຽວ ເພື່ອບໍ່ໃຫ້ຊ້ຳທຸກ tabIndex
+let serverErrorToastShown = false;
 
 export function useCoreApi<T, P>(
     endpoint: string,
@@ -27,9 +30,17 @@ export function useCoreApi<T, P>(
             } else {
                 setItems([]);
             }
-        } catch (error) {
-            console.error(`Failed to fetch ${endpoint}:`, error);
+        } catch {
             setItems([]);
+            if (!serverErrorToastShown) {
+                serverErrorToastShown = true;
+                toast.current?.show({
+                    severity: 'error',
+                    summary: 'Error',
+                    detail: 'Server ມີຂໍ້ຜິດພາດກະລຸນາລໍຖ້າ ຫຼື ລອງເຂົ້າໃໝ່ອີກຄັ້ງ',
+                    life: 2000
+                });
+            }
         } finally {
             setLoading(false);
         }
@@ -42,24 +53,25 @@ export function useCoreApi<T, P>(
     }, [fetchData, triggerFetch]);
 
     // 2. Save Data (Create / Update)
-    const saveData = async (payload: P, id?: number) => {
+    const saveData = async (payload: P, id?: number, options?: { noQueryParams?: boolean }) => {
         try {
-            // รวม params (เช่น type, role) เข้าไปกับ payload
-            const dataToSend = { ...payload, ...queryParams };
-
             if (id) {
-                await axiosClientsHelpDesk.put(`${endpoint}/${id}`, dataToSend);
+                await axiosClientsHelpDesk.put(`${endpoint}/${id}`, { ...payload });
                 toast.current?.show({ severity: 'success', summary: 'Success', detail: 'ແກ້ໄຂຂໍ້ມູນສຳເລັດ' });
             } else {
+                const dataToSend = options?.noQueryParams ? { ...payload } : { ...payload, ...queryParams };
                 await axiosClientsHelpDesk.post(endpoint, dataToSend);
                 toast.current?.show({ severity: 'success', summary: 'Success', detail: 'ເພີ່ມຂໍ້ມູນສຳເລັດ' });
             }
             
             await fetchData(); // โหลดข้อมูลใหม่ทันที
             return true;
-        } catch (error) {
-            console.error("Failed to save:", error);
-            toast.current?.show({ severity: 'error', summary: 'Error', detail: 'ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກ' });
+        } catch (error: unknown) {
+            const msg = error && typeof error === 'object' && 'response' in error
+                ? (error as { response?: { data?: { message?: string }; status?: number } }).response?.data?.message
+                : null;
+            const detail = msg && typeof msg === 'string' ? msg : 'ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກ';
+            toast.current?.show({ severity: 'error', summary: 'Error', detail, life: 4000 });
             return false;
         }
     };
@@ -70,9 +82,12 @@ export function useCoreApi<T, P>(
             await axiosClientsHelpDesk.delete(`${endpoint}/${id}`);
             toast.current?.show({ severity: 'success', summary: 'Success', detail: 'ລຶບຂໍ້ມູນສຳເລັດ' });
             await fetchData();
-        } catch (error) {
-            console.error("Failed to delete:", error);
-            toast.current?.show({ severity: 'error', summary: 'Error', detail: 'ລຶບຂໍ້ມູນບໍ່ສຳເລັດ' });
+        } catch (error: unknown) {
+            const msg = error && typeof error === 'object' && 'response' in error
+                ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+                : null;
+            const detail = msg && typeof msg === 'string' ? msg : 'ລຶບຂໍ້ມູນບໍ່ສຳເລັດ';
+            toast.current?.show({ severity: 'error', summary: 'Error', detail, life: 4000 });
         }
     };
 

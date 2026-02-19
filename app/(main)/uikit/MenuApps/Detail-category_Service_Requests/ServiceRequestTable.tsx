@@ -3,12 +3,10 @@ import React from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
-import { Tag } from 'primereact/tag';
 import { ServiceRequestData, ServiceRequestTabs } from '../types';
 
 interface Props {
     items: ServiceRequestData[];
-    loading: boolean;
     header: React.ReactNode;
     globalFilter: string;
     label: string;
@@ -18,7 +16,7 @@ interface Props {
     categoryMap: Map<string | number, string>; // Changed from Array to Map
 }
 
-export default function ServiceRequestTable({ items, loading, header, globalFilter, label, activeTab, onEdit, onDelete, categoryMap }: Props) {
+export default function ServiceRequestTable({ items, header, globalFilter, label, activeTab, onEdit, onDelete, categoryMap }: Props) {
     
     const isTopicTab = activeTab === ServiceRequestTabs.TOPIC;
 
@@ -30,12 +28,6 @@ export default function ServiceRequestTable({ items, loading, header, globalFilt
         }
         return '-';
     };
-
-    const statusTemplate = (row: ServiceRequestData) => (
-        <div className="flex justify-content-center">
-            <Tag value={row.status === 'ACTIVE' ? 'ໃຊ້ງານ' : 'ບໍ່ໃຊ້ງານ'} severity={row.status === 'ACTIVE' ? 'success' : 'danger'} />
-        </div>
-    );
 
     const actionTemplate = (row: ServiceRequestData) => (
         <div className="flex gap-2 justify-content-center">
@@ -52,8 +44,6 @@ export default function ServiceRequestTable({ items, loading, header, globalFilt
 
             <Column field="name" header={label} style={{ minWidth: '200px' }} />
             <Column field="description" header="ຄຳອະທິບາຍ" style={{ minWidth: '200px' }} />
-            <Column field="createdAt" header="ວັນທີສ້າງ" style={{ width: '150px' }} />
-            <Column header="ສະຖານະ" body={statusTemplate} className="text-center w-8rem" />
             <Column header="ດຳເນີນການ" body={actionTemplate} className="text-center w-8rem" />
         </DataTable>
     );

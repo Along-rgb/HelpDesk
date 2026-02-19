@@ -7,7 +7,7 @@ import { classNames } from 'primereact/utils';
 import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { authenStore } from '@/app/store/user/loginAuthStore';
-import { useUsersStore } from '@/app/store/user/usersStroe';
+import { useUsersStore } from '@/app/store/user/usersStore';
 import { Toast } from 'primereact/toast';
 import { useRouter } from 'next/navigation';
 export interface ILoginformProps {

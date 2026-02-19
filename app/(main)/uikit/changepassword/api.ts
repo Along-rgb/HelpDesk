@@ -1,8 +1,8 @@
 // api.ts
 import axios from 'axios';
+import { env, isConfigured } from '@/config/env';
 
-// ⚠️ สำคัญ: แก้ URL นี้ให้ตรงกับ Backend ของคุณ (เช่น http://localhost:8080/...)
-const API_URL = '#';
+const API_URL = env.changePasswordApiUrl;
 
 export const validateForm = (data: any) => {
   if (!data.currentPassword || !data.newPassword || !data.confirmPassword) {
@@ -18,9 +18,10 @@ export const validateForm = (data: any) => {
 };
 
 export const changePasswordAPI = async (data: any) => {
-  // 1. ดึง Token (ถ้า login แล้วเก็บใน localStorage)
-  // ถ้าเก็บที่อื่นให้แก้ตรงนี้ เช่น sessionStorage.getItem('token')
-  const token = localStorage.getItem('token'); 
+  if (!isConfigured('changePasswordApiUrl')) {
+    throw new Error('ລະບົບຍັງບໍ່ໄດ້ຕັ້ງຄ່າ API ປ່ຽນລະຫັດຜ່ານ — ກະລຸນາຕັ້ງ NEXT_PUBLIC_CHANGE_PASSWORD_API_URL ใน .env');
+  }
+  const token = localStorage.getItem('token');
 
   try {
     const response = await axios.post(API_URL, {

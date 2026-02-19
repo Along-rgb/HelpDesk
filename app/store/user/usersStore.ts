@@ -1,6 +1,7 @@
-import {create} from 'zustand';
+import { create } from 'zustand';
 import { initialState } from '@/config/constant-api';
 import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
+import { env } from '@/config/env';
 import { Users } from '@/global/types';
 
 
@@ -31,17 +32,28 @@ export const useUsersStore = create<UsersStore, []>((set, get) => ({
     loading: false,
     loginUser: async (userLogin) => {
         try {
-            const response = await axiosClientsHelpDesk.post('/auth/signin', userLogin);
+            const loginPath = env.helpdeskAuthLoginPath;
+            const u = userLogin?.username ?? '';
+            const p = userLogin?.password ?? '';
+            const payload = env.loginUsePascalCase
+                ? { userName: u, password: p }
+                : { username: u, password: p };
+            const response = await axiosClientsHelpDesk.post(loginPath, payload);
             return response;
-        } catch (error) {
-            console.log(error);
+        } catch (error: any) {
+            const msg =
+                error?.response?.data?.message
+                ?? error?.response?.data?.error
+                ?? (typeof error?.response?.data === 'string' ? error.response.data : null);
+            if (msg) console.warn('[Login API]', msg);
             throw error;
         }
     },
     getUsersData: async () => {
         set({ ...initialState, loading: true });
         try {
-            const response = await axiosClientsHelpDesk.get('/api/users');
+            // baseURL already includes "/api"
+            const response = await axiosClientsHelpDesk.get('users');
             console.log("api-data",response )
             set({ ...initialState, loading: false, success: true, dataUser: response.status === 200 ? response.data : [] });
         } catch (error) {

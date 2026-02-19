@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useId } from "react";
 import { Dropdown, DropdownProps } from "primereact/dropdown";
 
 // กำหนด Type: รับทุกอย่างที่ Dropdown รับได้ + label และ error (มีก็ได้ ไม่มีก็ได้)
@@ -8,14 +8,17 @@ interface CustomDropdownProps extends DropdownProps {
     error?: any;
 }
 
-export const FormDropdown = ({ label, error, className, ...props }: CustomDropdownProps) => {
+export const FormDropdown = ({ label, error, className, id: idProp, ...props }: CustomDropdownProps) => {
+    const generatedId = useId();
+    const inputId = idProp ?? generatedId;
     // className ที่ส่งมาจะไปอยู่ที่ Div ครอบ (เอาไว้จัด Layout เช่น col-4, mb-3)
     return (
         <div className={className}>
-            <label className="font-bold mb-2 block">
+            <label htmlFor={inputId} className="font-bold mb-2 block">
                 {label}
             </label>
             <Dropdown
+                id={inputId}
                 // w-full เพื่อให้ยืดเต็ม container ที่ครอบมันอยู่
                 className={`w-full ${error ? 'p-invalid' : ''}`}
                 optionLabel="name"

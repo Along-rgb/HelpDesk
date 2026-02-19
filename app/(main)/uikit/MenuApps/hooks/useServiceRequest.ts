@@ -1,4 +1,4 @@
-import { useCoreApi } from '../hooks/useCoreApi';
+import { useCoreApi } from './useCoreApi';
 import { ServiceRequestData, CreateServiceRequestPayload } from '../types';
 
 export function useServiceRequest(activeIndex: number) {

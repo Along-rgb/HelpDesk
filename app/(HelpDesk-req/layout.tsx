@@ -5,11 +5,15 @@ interface AppLayoutProps {
     children: React.ReactNode;
 }
 
+export const viewport = {
+    width: 'device-width',
+    initialScale: 1,
+};
+
 export const metadata: Metadata = {
     title: 'HelpDesk-action',
     description: 'HelpDesk Manage Action-Plan',
     robots: { index: false, follow: false },
-    viewport: { initialScale: 1, width: 'device-width' },
     metadataBase: new URL('https://edl.com.la'), 
     openGraph: {
         type: 'website',

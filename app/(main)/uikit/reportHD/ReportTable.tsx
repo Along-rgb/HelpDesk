@@ -17,9 +17,8 @@ export const ReportTable = ({ data, activeIndex }: Props) => {
     const groupConfig = useMemo(() => getGroupConfig(activeIndex), [activeIndex]);
     const viewConfig = useMemo(() => getViewConfig(activeIndex), [activeIndex]);
     
-    // ✅ State สำหรับควบคุม Paginator
     const [first, setFirst] = useState(0);
-    const [rows, setRows] = useState(10); // ค่าเริ่มต้น 10 แถว
+    const [rows, setRows] = useState(10);
     const [tooltipVersion, setTooltipVersion] = useState(0);
 
     const groupCounts = useMemo(() => {
@@ -173,33 +172,24 @@ export const ReportTable = ({ data, activeIndex }: Props) => {
                     border-bottom-color: #d32f2f !important;
                 }
 
-                /* ✅ CSS ปรับปรุง Paginator */
                 .p-paginator {
                     display: flex;
-                    justify-content: center !important; /* จัดกึ่งกลางหน้าจอ */
+                    justify-content: center !important;
                     align-items: center;
                     flex-wrap: wrap;
-                    gap: 1.5rem; /* ✅ ระยะห่างระหว่าง ข้อความ - ปุ่ม - Dropdown (ขยับให้ใกล้แต่ไม่ติด) */
+                    gap: 1.5rem;
                     padding: 0.5rem 1rem;
                 }
-
-                /* ส่วนข้อความ (เช่น แสดง 1 ถึง 10...) */
                 .p-paginator-current {
                     background: transparent;
                     color: #495057;
                     font-weight: bold;
                     margin: 0 !important;
                     padding: 0 !important;
-                    /* ไม่ต้องใช้ position absolute แล้ว */
                 }
-
-                /* ส่วน Dropdown เลือกจำนวนแถว */
                 .p-paginator-rpp-options {
                     margin: 0 !important;
-                    /* ไม่ต้องใช้ position absolute แล้ว */
                 }
-
-                /* Responsive สำหรับมือถือ */
                 @media (max-width: 768px) {
                     .p-paginator {
                         flex-direction: column;
@@ -220,7 +210,6 @@ export const ReportTable = ({ data, activeIndex }: Props) => {
             <DataTable
                 value={data}
                 headerColumnGroup={viewConfig.isDepartmentTab ? headerGroupDepartment : headerGroupGeneral}
-                
                 rowGroupMode="subheader"
                 groupRowsBy={groupConfig.field}
                 rowGroupHeaderTemplate={rowGroupHeaderTemplate}
@@ -229,14 +218,12 @@ export const ReportTable = ({ data, activeIndex }: Props) => {
                 sortOrder={1}
                 showGridlines
                 stripedRows
-                className="p-datatable-sm custom-large-table"  
-                scrollable 
-                scrollHeight="flex" 
+                className="p-datatable-sm custom-large-table"
+                scrollable
+                scrollHeight="flex"
                 style={{ minWidth: '100%' }}
-                tableStyle={{ minWidth: 'auto' }} 
+                tableStyle={{ minWidth: 'auto' }}
                 emptyMessage={<div className="text-center p-4">ບໍ່ພົບຂໍ້ມູນ</div>}
-
-                // ✅ เพิ่มส่วน Config Paginator
                 paginator
                 rows={rows}
                 first={first}
@@ -244,7 +231,7 @@ export const ReportTable = ({ data, activeIndex }: Props) => {
                     setFirst(e.first);
                     setRows(e.rows);
                 }}
-                rowsPerPageOptions={[10, 25, 50,100]}
+                rowsPerPageOptions={[10, 25, 50, 100]}
                 currentPageReportTemplate="ສະແດງ {first} ເຖິງ {last} ຈາກທັງໝົດ {totalRecords} ລາຍການ"
                 paginatorTemplate="CurrentPageReport FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
             >

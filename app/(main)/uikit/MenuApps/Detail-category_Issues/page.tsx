@@ -11,26 +11,19 @@ import IssuesTable from './IssuesTable';
 import IssuesCreateDialog from './IssuesCreateDialog';
 import { useIssues } from '../hooks/useIssues';
 import { IssueData, CreateIssuePayload } from '../types';
-import { createDataMap } from '../utils/dataMapping'; // Import Utility ใหม่
-
-const CUSTOM_TAB_CSS = `
-    .custom-tabmenu .p-menuitem-text { color: #6c757d !important; transition: color 0.2s; font-weight: 500; }
-    .custom-tabmenu .p-menuitem-link:hover .p-menuitem-text { color: var(--primary-color) !important; }
-    .custom-tabmenu .p-highlight .p-menuitem-text { color: var(--primary-color) !important; font-weight: bold; }
-    .custom-tabmenu .p-tabmenu-nav { border-bottom: 1px solid #dee2e6; }
-    .custom-tabmenu .p-tabmenuitem .p-menuitem-link { background: transparent !important; border: none !important; box-shadow: none !important; }
-    .custom-tabmenu .p-highlight .p-menuitem-link { border-bottom: 2px solid var(--primary-color) !important; border-radius: 0; }
-`;
+import { createDataMap } from '../utils/dataMapping';
+import { CUSTOM_TAB_CSS } from '../constants/tabStyles';
 
 export default function IssuesPage() {
     const searchParams = useSearchParams();
     const [activeIndex, setActiveIndex] = useState<number>(0);
 
     // Main Data
-    const { toast, items, loading, saveData, deleteData } = useIssues(activeIndex);
+    const { toast, items, saveData, deleteData } = useIssues(activeIndex);
     
     // [Microservices Strategy] ดึง Category (Tab 0) เตรียมไว้สำหรับ Join
-    const { items: categoryItems } = useIssues(0);
+    const { items: categoryItemsFromHook } = useIssues(0);
+    const categoryItems = activeIndex === 0 ? items : categoryItemsFromHook;
 
     // [Performance] 1. แปลง Array เป็น Map ทันที (O(N)) เพื่อให้ Table ดึงใช้ได้เลย (O(1))
     const categoryMap = useMemo(() => {
@@ -99,7 +92,7 @@ export default function IssuesPage() {
     return (
         <div className="card p-4 surface-card shadow-2 border-round">
                    <style>{CUSTOM_TAB_CSS}</style>
-            <Toast ref={toast} />
+            <Toast ref={toast} position="top-center" />
             <ConfirmDialog />
             <div className="mb-4">
                 <TabMenu model={tabItems} activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)} className="custom-tabmenu" />
@@ -107,7 +100,6 @@ export default function IssuesPage() {
 
             <IssuesTable 
                 items={items}
-                loading={loading}
                 header={renderHeader()}
                 globalFilter={globalFilter}
                 nameColumnHeader={columnNameHeader}

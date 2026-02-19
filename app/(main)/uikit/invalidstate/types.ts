@@ -11,6 +11,7 @@ export interface TicketForm {
     assetNumber?: string;
     topic: City | null;
     building: City | null;
+    route: City | null;
     level: City | null;
     roomNumber: City | null;
     description: string;
@@ -41,6 +42,7 @@ export interface Ticket {
 export interface MasterData {
     categories: City[];
     buildings: City[];
+    routes: City[];
     levels: City[];
     rooms: City[];
 }

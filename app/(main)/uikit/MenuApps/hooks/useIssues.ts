@@ -1,4 +1,4 @@
-import { useCoreApi } from '../hooks/useCoreApi'; // ปรับ path ตามจริง
+import { useCoreApi } from './useCoreApi';
 import { IssueData, CreateIssuePayload } from '../types';
 
 export function useIssues(activeIndex: number) {

@@ -6,14 +6,26 @@ import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { useTicketForm } from './useTicketForm';
 import { FormDropdown } from '../../../components/FormDropdown';
+import { useProfileData } from '@/app/store/user/userProfileStore';
 
 const RequestForm = () => {
     const {
-        form, masterData, availableTopics, isSubmitting, isCategoryLocked,
-        updateField, handleCategoryChange, handleBuildingChange, handleLevelChange,
+        form, masterData, isSubmitting,
+        updateField, handleBuildingChange, handleLevelChange,
         handleFileSelect, handleRemoveFile, handleImageSelect, handleRemoveImage,
         handleSubmit, handleReset, handleCancel, fileInputRef, imageInputRef
     } = useTicketForm();
+    const { profileData } = useProfileData();
+
+    const requestingPartyText = useMemo(() => {
+        if (!profileData) return '';
+        const parts = [
+            profileData.department_name?.trim(),
+            profileData.division_name?.trim(),
+            [profileData.first_name, profileData.last_name].filter(Boolean).join(' ').trim(),
+        ].filter(Boolean);
+        return parts.join(' | ');
+    }, [profileData]);
 
     const editorHeader = useMemo(() => (
         <span className="ql-formats">
@@ -32,25 +44,20 @@ const RequestForm = () => {
                     <i className="pi pi-id-card text-yellow-600 mr-2 text-xl"></i>
                     <div className="flex flex-wrap gap-2 text-800 font-bold">
                         <span>ພາກສ່ວນຮ້ອງຂໍ:</span>
-                        <span>ຝ່າຍພັດທະນາ-ຄຸ້ມຄອງ-ບຳລຸງຮັກສາ | ພະແນກສູນຂໍ້ມູນ | ທ. ດາລິສັກ ສິມສະໝຸດ</span>
+                        <span>{requestingPartyText || '—'}</span>
                     </div>
                 </div>
 
                 <div className="p-fluid p-4">
-                    {/* ... (ส่วน Category, Asset Number, Topic, Location คงเดิม) ... */}
                     <div className="formgrid grid mb-3">
                         <div className="field col-12 md:col-6">
-                            <label htmlFor="category" className="font-bold block mb-2">ໝວດໝູ່</label>
-                            <InputText id="category" value={form.category?.name || ''} onChange={(e) => handleCategoryChange({ name: e.target.value })} disabled={isCategoryLocked} className="w-full" style={grayFieldStyle} />
+                            <label htmlFor="topic" className="font-bold block mb-2">ຫົວຂໍ້</label>
+                            <InputText id="topic" value={form.topic?.name ?? ''} readOnly className="w-full" style={grayFieldStyle} />
                         </div>
                         <div className="field col-12 md:col-6">
                             <label htmlFor="assetNumber" className="font-bold block mb-2">ເລກ ຊຄທ</label>
                             <InputText id="assetNumber" value={form.assetNumber} onChange={(e) => updateField('assetNumber', e.target.value)} className="w-full" style={grayFieldStyle} placeholder="ກະລຸນາເພີ່ມເລກ ຊຄທ" />
                         </div>
-                    </div>
-
-                    <div className="field mb-3">
-                        <FormDropdown label="ຫົວຂໍ້*" value={form.topic} options={availableTopics} onChange={(e) => updateField('topic', e.value)} disabled={!form.category} placeholder={form.category ? "ເລືອກຫົວຂໍ້ບັນຫາ" : "ກະລຸນາເລືອກໝວດໝູ່ກ່ອນ"} />
                     </div>
 
                     <div className="formgrid grid mb-3">
@@ -59,20 +66,25 @@ const RequestForm = () => {
                         <FormDropdown className="field col-12 md:col-4" label="ໝາຍເລກຫ້ອງ (ວ່າງໄດ້)" value={form.roomNumber} options={masterData?.rooms || []} onChange={(e) => updateField('roomNumber', e.value)} disabled={!form.level} showClear />
                     </div>
 
+                    <div className="field mb-3">
+                        <FormDropdown label="ເສັ້ນທາງ" value={form.route} options={masterData?.routes || []} onChange={(e) => updateField('route', e.value)} placeholder="ກະລຸນາເລືອກເສັ້ນທາງ" showClear />
+                    </div>
+
                     <div className="field mb-4">
-                        <label className="font-bold mb-2 block">ລາຍລະອຽດເພີ່ມເຕີມ</label>
-                        <Editor value={form.description} onTextChange={(e) => updateField('description', e.htmlValue)} headerTemplate={editorHeader} style={{ height: '150px' }} />
+                        <label htmlFor="invalidstate-description" className="font-bold mb-2 block">ລາຍລະອຽດເພີ່ມເຕີມ</label>
+                        <Editor id="invalidstate-description" value={form.description} onTextChange={(e) => updateField('description', e.htmlValue)} headerTemplate={editorHeader} style={{ height: '150px' }} />
                     </div>
 
                     {/* 5. Attach File (PDF, DOCX, XLSX) */}
                     <div className="field mb-4">
-                        <label className="font-bold block mb-2"> <i className="pi pi-paperclip mr-2"></i> ແນບໄຟລ໌ </label>
+                        <label htmlFor="invalidstate-attachment" className="font-bold block mb-2"> <i className="pi pi-paperclip mr-2"></i> ແນບໄຟລ໌ </label>
                         <div className={`border-dashed border-1 border-300 border-round p-4 flex flex-column align-items-center justify-content-center cursor-pointer hover:surface-hover transition-colors
                              ${form.attachments.length >= 2 ? 'opacity-70' : ''}`} onClick={() => {
                                 if (form.attachments.length < 2)
                                     fileInputRef.current?.click()
                             }}>
                             <input
+                                id="invalidstate-attachment"
                                 type="file"
                                 ref={fileInputRef}
                                 className="hidden"
@@ -97,7 +109,7 @@ const RequestForm = () => {
                     {/* 6. Attach Images (PNG, JPEG, GIF) */}
                     <div className="field mb-5">
                         <div className="flex justify-content-between align-items-center mb-2">
-                            <label className="font-bold block m-0">
+                            <label htmlFor="invalidstate-images" className="font-bold block m-0">
                                 <i className="pi pi-images mr-2"></i> ແນບຮູບ 
                             </label>
                             <span className="text-sm font-medium text-600">
@@ -110,6 +122,7 @@ const RequestForm = () => {
                             onClick={() => { if (form.images.length < 6) imageInputRef.current?.click() }}
                         >
                             <input
+                                id="invalidstate-images"
                                 type="file"
                                 ref={imageInputRef}
                                 className="hidden"

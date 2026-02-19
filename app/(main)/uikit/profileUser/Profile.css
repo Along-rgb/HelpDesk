@@ -13,6 +13,17 @@
 
 /* 2. เติม .profile-container นำหน้าทุก Class เพื่อให้มีผลแค่ในหน้านี้ */
 
+/* Avatar size override */
+.profile-container .profile-avatar {
+  width: 100px !important;
+  height: 100px !important;
+}
+.profile-container .profile-avatar img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+}
+
 .profile-container .profile-header h2 {
   color: #3f51b5;
   margin-bottom: 25px;

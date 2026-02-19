@@ -73,7 +73,7 @@ const ChangePasswordPage = () => {
             ລະຫັດຜ່ານປະຈຸບັນ
           </label>
           <Password
-            id="currentPassword"
+            inputId="currentPassword"
             value={formData.currentPassword}
             onChange={(e) => setFormData(prev => ({ ...prev, currentPassword: e.target.value }))}
             feedback={false}
@@ -90,7 +90,7 @@ const ChangePasswordPage = () => {
             ລະຫັດຜ່ານໃໝ່
           </label>
           <Password
-            id="newPassword"
+            inputId="newPassword"
             value={formData.newPassword}
             onChange={(e) => setFormData(prev => ({ ...prev, newPassword: e.target.value }))}
             toggleMask
@@ -109,7 +109,7 @@ const ChangePasswordPage = () => {
             ຢືນຢັນລະຫັດຜ່ານໃໝ່
           </label>
           <Password
-            id="confirmPassword"
+            inputId="confirmPassword"
             value={formData.confirmPassword}
             onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
             feedback={false}

@@ -11,9 +11,14 @@ import { Tag } from 'primereact/tag';
 import { TicketActionMenu } from './TicketActionMenu';
 import { TitleColumn } from './TitleColumn'; // นำเข้า Component ใหม่
 import { STATUS_MAP } from './constants';
+import { useProfileData } from '@/app/store/user/userProfileStore';
 
 const PageUser = () => {
     const { services, handleNavigate, isLoading } = useMenu();
+    const { profileData } = useProfileData();
+    const displayName = profileData
+        ? [profileData.first_name, profileData.last_name].filter(Boolean).join(' ').trim() || '—'
+        : '—';
     const [activeTab, setActiveTab] = useState('processing');
     const [first, setFirst] = useState(0);
 
@@ -47,7 +52,7 @@ const PageUser = () => {
             </div>
 
             <div className="divider-container">
-                <span className="divider-text">ການຮ້ອງຂໍຂອງທ່ານ: ທັດສະນີ ມີໄຊບົວ</span>
+                <span className="divider-text">ການຮ້ອງຂໍຂອງທ່ານ: {displayName}</span>
             </div>
 
             {/* ส่วนของ Buttons */}

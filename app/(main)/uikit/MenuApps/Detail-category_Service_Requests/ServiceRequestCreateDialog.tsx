@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
-import { RadioButton } from 'primereact/radiobutton';
 import { Dropdown } from 'primereact/dropdown'; // [ເພີ່ມ]
 import { ServiceRequestData, CreateServiceRequestPayload } from '../types';
 
@@ -60,11 +59,8 @@ export default function ServiceRequestCreateDialog({
         setSubmitted(true);
         if (!name.trim()) return;
 
-        // [ເພີ່ມ] Validation: ຖ້າເປັນ Tab Topic ຕ້ອງເລືອກໝວດໝູ່ (ຖ້າຕ້ອງການບັງຄັບ)
-        if (isTopicTab && !parentId) {
-             // ຖ້າຕ້ອງການບັງຄັບໃຫ້ uncomment return;
-             // return; 
-        }
+        // Validation: ຖ້າເປັນ Tab Topic ຕ້ອງເລືອກໝວດໝູ່
+        if (isTopicTab && !parentId) return;
 
         onSave({ 
             name, 
@@ -151,20 +147,6 @@ export default function ServiceRequestCreateDialog({
                         onChange={(e) => setDescription(e.target.value)} 
                         className="w-full"
                     />
-                </div>
-
-                <div className="field">
-                    <label className="font-bold block mb-2">ສະຖານະ:</label>
-                    <div className="flex gap-4">
-                        <div className="flex align-items-center">
-                            <RadioButton inputId="statusActive" name="status" value="ACTIVE" onChange={(e) => setStatus(e.value)} checked={status === 'ACTIVE'} />
-                            <label htmlFor="statusActive" className="ml-2 cursor-pointer">ໃຊ້ງານ</label>
-                        </div>
-                        <div className="flex align-items-center">
-                            <RadioButton inputId="statusInactive" name="status" value="INACTIVE" onChange={(e) => setStatus(e.value)} checked={status === 'INACTIVE'} />
-                            <label htmlFor="statusInactive" className="ml-2 cursor-pointer">ບໍ່ໃຊ້ງານ</label>
-                        </div>
-                    </div>
                 </div>
             </div>
         </Dialog>

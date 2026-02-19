@@ -1,9 +1,9 @@
 // src/app/reports/service.ts
 import axios from 'axios';
+import { env } from '@/config/env';
 import { ReportItem, ReportFilter } from './types';
 
-// เปลี่ยน URL นี้ให้ตรงกับ Backend ของคุณ
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'; 
+const API_URL = env.reportsApiUrl; 
 
 export const ReportService = {
     // เพิ่ม parameter 'signal' (Optional) เพื่อรองรับการ Cancel Request

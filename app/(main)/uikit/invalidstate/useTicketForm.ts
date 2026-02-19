@@ -3,65 +3,74 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { TicketForm, MasterData, City } from './types';
 import { ticketService } from '../../../services/ticketService';
-import { CATEGORY_MAP } from './ticketData'; 
+import { CATEGORY_MAP } from './ticketData';
+import { getTicketById } from '../ticket/ticketData';
+import { useUserProfileStore } from '@/app/store/user/userProfileStore';
 
 const INITIAL_FORM: TicketForm = {
     category: null,
     assetNumber: "",
     topic: null,
     building: null,
+    route: null,
     level: null,
     roomNumber: null,
     description: "",
-    attachments: [], 
-    images: [], 
+    attachments: [],
+    images: [],
 };
+
+function getInitialFormFromParams(searchParams: ReturnType<typeof useSearchParams>): Partial<TicketForm> {
+    const categoryCode = searchParams.get('category');
+    const ticketId = searchParams.get('ticketId');
+    const category: City | null = categoryCode && CATEGORY_MAP[categoryCode]
+        ? { name: CATEGORY_MAP[categoryCode], code: categoryCode }
+        : null;
+    const ticket = ticketId ? getTicketById(ticketId) : undefined;
+    const topic: City | null = ticket ? { name: ticket.title } : null;
+    return { category, topic };
+}
 
 export const useTicketForm = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
-    
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const imageInputRef = useRef<HTMLInputElement>(null); 
 
-    const getInitialCategory = (): City | null => {
-        const code = searchParams.get('category');
-        if (code && CATEGORY_MAP[code]) {
-            return { name: CATEGORY_MAP[code], code };
-        }
-        return null;
-    };
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
+
+    const initialFromParams = getInitialFormFromParams(searchParams);
 
     const [form, setForm] = useState<TicketForm>({
         ...INITIAL_FORM,
-        category: getInitialCategory()
+        category: initialFromParams.category ?? null,
+        topic: initialFromParams.topic ?? null,
     });
-    
+
     const [masterData, setMasterData] = useState<MasterData | null>(null);
-    const [availableTopics, setAvailableTopics] = useState<City[]>([]);
-    const [isSubmitting, setIsSubmitting] = useState(false); 
-    const [isCategoryLocked, setIsCategoryLocked] = useState(!!getInitialCategory());
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        let isMounted = true; 
+        let isMounted = true;
         const initData = async () => {
             try {
                 const categoryCode = searchParams.get('category');
-                const masterDataPromise = ticketService.getMasterData();
-                const topicsPromise = categoryCode 
-                    ? ticketService.getTopicsByCategory(categoryCode) 
-                    : Promise.resolve([]);
-
-                const [data, topics] = await Promise.all([masterDataPromise, topicsPromise]);
+                const ticketId = searchParams.get('ticketId');
+                const data = await ticketService.getMasterData();
                 if (!isMounted) return;
 
                 setMasterData(data);
-                if (topics && topics.length > 0) setAvailableTopics(topics);
 
-                if (categoryCode && data.categories) {
-                    const realCategoryObj = data.categories.find(c => c.code === categoryCode);
-                    if (realCategoryObj) setForm(prev => ({ ...prev, category: realCategoryObj }));
-                }
+                const ticket = ticketId ? getTicketById(ticketId) : undefined;
+                const topic: City | null = ticket ? { name: ticket.title } : null;
+                const category = categoryCode && data.categories
+                    ? data.categories.find((c) => c.code === categoryCode) ?? (categoryCode && CATEGORY_MAP[categoryCode] ? { name: CATEGORY_MAP[categoryCode], code: categoryCode } : null)
+                    : null;
+
+                setForm((prev) => ({
+                    ...prev,
+                    ...(category && { category }),
+                    ...(topic && { topic }),
+                }));
             } catch (error) {
                 console.error("Failed to load data", error);
             }
@@ -72,15 +81,6 @@ export const useTicketForm = () => {
 
     const updateField = (field: keyof TicketForm, value: any) => {
         setForm(prev => ({ ...prev, [field]: value }));
-    };
-
-    const handleCategoryChange = async (category: City | null) => {
-        if (isCategoryLocked) return;
-        setForm(prev => ({ ...prev, category, topic: null })); 
-        if (category && category.code) {
-            const topics = await ticketService.getTopicsByCategory(category.code);
-            setAvailableTopics(topics);
-        }
     };
 
     const handleBuildingChange = (building: City | null) => {
@@ -179,12 +179,12 @@ export const useTicketForm = () => {
     };
 
     const handleReset = () => {
-        if (isCategoryLocked) {
-             setForm(prev => ({ ...INITIAL_FORM, category: prev.category }));
-        } else {
-            setForm(INITIAL_FORM);
-            setAvailableTopics([]);
-        }
+        const fromParams = getInitialFormFromParams(searchParams);
+        setForm({
+            ...INITIAL_FORM,
+            category: fromParams.category ?? null,
+            topic: fromParams.topic ?? null,
+        });
         if (fileInputRef.current) fileInputRef.current.value = "";
         if (imageInputRef.current) imageInputRef.current.value = "";
     };
@@ -194,7 +194,11 @@ export const useTicketForm = () => {
     const handleSubmit = async () => {
         setIsSubmitting(true);
         try {
-            const result = await ticketService.createTicket(form);
+            const profileData = useUserProfileStore.getState().profileData;
+            const firstName = profileData?.first_name ?? '';
+            const lastName = profileData?.last_name ?? '';
+            const requesterName = [firstName, lastName].filter(Boolean).join(' ').trim();
+            const result = await ticketService.createTicket(form, requesterName);
             if (result.success) {
                 alert(result.message); 
                 router.push("/uikit/table"); 
@@ -209,9 +213,20 @@ export const useTicketForm = () => {
     };
 
     return {
-        form, masterData, availableTopics, isSubmitting, isCategoryLocked,
-        updateField, handleCategoryChange, handleBuildingChange, handleLevelChange,
-        handleFileSelect, handleRemoveFile, handleImageSelect, handleRemoveImage, 
-        handleSubmit, handleReset, handleCancel, fileInputRef, imageInputRef      
+        form,
+        masterData,
+        isSubmitting,
+        updateField,
+        handleBuildingChange,
+        handleLevelChange,
+        handleFileSelect,
+        handleRemoveFile,
+        handleImageSelect,
+        handleRemoveImage,
+        handleSubmit,
+        handleReset,
+        handleCancel,
+        fileInputRef,
+        imageInputRef,
     };
 };

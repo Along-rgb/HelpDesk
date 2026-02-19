@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
-import { RadioButton } from 'primereact/radiobutton';
 import { Dropdown } from 'primereact/dropdown';       
 import { MultiSelect } from 'primereact/multiselect'; 
 import { SupportTeamData, CreateSupportTeamPayload, SupportTeamTabs } from '../types';
@@ -53,7 +52,7 @@ export default function SupportTeamCreateDialog({
 
     const [form, setForm] = useState<FormState>(initialFormState);
     const [submitted, setSubmitted] = useState(false);
-    const isSystemAdminTab = activeTab === SupportTeamTabs.SYSTEM_ADMIN;
+    const isSupportTeamTab = activeTab === SupportTeamTabs.SUPPORT_TEAM; // ທີມຄຸ້ມຄອງ
 
     useEffect(() => {
         if (visible) {
@@ -76,7 +75,7 @@ export default function SupportTeamCreateDialog({
         setSubmitted(true);
 
         // Validation
-        if (isSystemAdminTab) {
+        if (isSupportTeamTab) {
             if (!form.issueCategoryId || form.assignedAdminIds.length === 0) return;
         } else {
             if (!form.name.trim()) return;
@@ -84,7 +83,7 @@ export default function SupportTeamCreateDialog({
 
         const payload: CreateSupportTeamPayload = {
             ...form,
-            name: isSystemAdminTab ? '' : form.name,
+            name: isSupportTeamTab ? '' : form.name,
             issueCategoryId: form.issueCategoryId || undefined,
             assignedAdminIds: form.assignedAdminIds
         };
@@ -117,13 +116,14 @@ export default function SupportTeamCreateDialog({
         >
             <div className="flex flex-column gap-3">
                 
-                {isSystemAdminTab ? (
+                {isSupportTeamTab ? (
                     <>
                         <div className="field mb-0">
-                            <label className="font-bold block mb-2">
+                            <label htmlFor="supportteam-issueCategory" className="font-bold block mb-2">
                                 ໝວດບັນຫາ <span className="text-red-500">*</span>
                             </label>
                             <Dropdown 
+                                id="supportteam-issueCategory"
                                 value={form.issueCategoryId} 
                                 options={issueOptions} 
                                 onChange={(e) => updateField('issueCategoryId', e.value)} 
@@ -135,10 +135,11 @@ export default function SupportTeamCreateDialog({
                         </div>
 
                         <div className="field mb-0">
-                            <label className="font-bold block mb-2">
+                            <label htmlFor="supportteam-assignedAdmins" className="font-bold block mb-2">
                                 ເລືອກຜູ້ຈະຮັບຜິຊອບຫນ້າວຽກ <span className="text-red-500">*</span>
                             </label>
                             <MultiSelect 
+                                id="supportteam-assignedAdmins"
                                 value={form.assignedAdminIds} 
                                 options={userOptions} 
                                 onChange={(e) => updateField('assignedAdminIds', e.value)} 
@@ -171,20 +172,6 @@ export default function SupportTeamCreateDialog({
                 <div className="field mb-0">
                     <label htmlFor="description" className="font-bold block mb-2">ຄຳອະທິບາຍ (ວ່າງໄດ້)</label>
                     <InputText id="description" value={form.description} onChange={(e) => updateField('description', e.target.value)} className="w-full" />
-                </div>
-
-                <div className="field">
-                    <label className="font-bold block mb-2">ສະຖານະ:</label>
-                    <div className="flex gap-4">
-                        <div className="flex align-items-center">
-                            <RadioButton inputId="statusActive" name="status" value="ACTIVE" onChange={(e) => updateField('status', e.value)} checked={form.status === 'ACTIVE'} />
-                            <label htmlFor="statusActive" className="ml-2 cursor-pointer">ໃຊ້ງານ</label>
-                        </div>
-                        <div className="flex align-items-center">
-                            <RadioButton inputId="statusInactive" name="status" value="INACTIVE" onChange={(e) => updateField('status', e.value)} checked={form.status === 'INACTIVE'} />
-                            <label htmlFor="statusInactive" className="ml-2 cursor-pointer">ບໍ່ໃຊ້ງານ</label>
-                        </div>
-                    </div>
                 </div>
             </div>
         </Dialog>

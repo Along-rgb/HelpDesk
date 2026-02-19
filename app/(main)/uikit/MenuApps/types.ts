@@ -115,13 +115,7 @@ export enum ServiceRequestTabs {
 }
 
 export enum SupportTeamTabs {
-    TECHNICAL = 0,
-    SYSTEM_ADMIN = 1,
-    REQUESTER = 2
-}
-
-// --- Menu Types ---
-export interface SubMenuItem {
-    label: string;
-    tabIndex: number;
+    ISSUE_CATEGORY = 0,  // ໝວດບັນຫາ
+    TECHNICAL = 1,       // ວິຊາການ
+    SUPPORT_TEAM = 2     // ທີມຄຸ້ມຄອງ (ເກົ່າ SYSTEM_ADMIN)
 }

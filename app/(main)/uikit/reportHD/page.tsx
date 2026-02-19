@@ -1,7 +1,7 @@
 // src/app/reports/page.tsx
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { TabMenu } from 'primereact/tabmenu';
 import { Toast } from 'primereact/toast';
 import { Dialog } from 'primereact/dialog';
@@ -10,6 +10,9 @@ import { useReportData } from './hooks/useReportData';
 import { ReportHeaderControls } from './ReportHeaderControls';
 import { ReportTable } from './ReportTable';
 import { MENU_ITEMS } from './utils/reportConfig';
+import { ReportItem } from './types';
+import { saveAs } from 'file-saver';
+import ExcelJS from 'exceljs';
 
 export default function ReportHD() {
     // Mock User Data
@@ -24,63 +27,176 @@ export default function ReportHD() {
     const [dateRange, setDateRange] = useState<Date[] | any>(null);
     const [activeIndex, setActiveIndex] = useState(0);
     const [printDate, setPrintDate] = useState<Date>(new Date());
-    
+
     // State ສຳລັບເປີດ/ປິດ Dialog ທາງເລືອກ
     const [showExportDialog, setShowExportDialog] = useState(false);
     const toast = useRef<Toast>(null);
+    const printableAreaRef = useRef<HTMLDivElement>(null);
     const { data, error } = useReportData(activeIndex, dateRange);
 
     useEffect(() => {
         setPrintDate(new Date());
     }, []);
 
-    // Function: ກົດປຸ່ມສົ່ງອອກ (ຂັ້ນຕອນທີ 1: ກວດສອບຂໍ້ມູນກ່ອນ)
-    const handleExportClick = () => {
-        if (!data || data.length === 0) {
-            toast.current?.show({ 
-                severity: 'warn', 
-                summary: 'ແຈ້ງເຕືອນ', 
-                detail: 'ກະລຸນາເລືອກຂໍ້ມູນກ່ອນ', 
-                life: 1100 
-            });
-            return;
-        }
-        // ຖ້າມີຂໍ້ມູນ -> ເປີດ Dialog ໃຫ້ເລືອກ
-        setShowExportDialog(true);
-    };
-
-    // Function: ສັ່ງ Print ຫຼື PDF
-    const executePrint = (isPdfMode: boolean) => {
-        setShowExportDialog(false); // ປິດ Dialog
-        setPrintDate(new Date());   // ອັບເດດເວລາ
-
-        if (isPdfMode) {
-            toast.current?.show({
-                severity: 'info',
-                summary: 'ບັນທຶກເປັນ PDF',
-                detail: 'ກະລຸນາເລືອກປາຍທາງ (Destination) ເປັນ "Save as PDF"',
-                life: 5000
-            });
-        }
-
-        setTimeout(() => {
-            window.print();
-        }, 300);
-    };
-
     // Helper functions
     const formatDate = (d: Date | null) => d ? d.toLocaleDateString('lo-LA', { day: '2-digit', month: '2-digit', year: 'numeric' }) : "-";
     const formatTime = (d: Date) => d.toLocaleTimeString('lo-LA', { hour: '2-digit', minute: '2-digit' });
+
+    // Export to Excel (XLSX)
+    const exportToExcel = useCallback(async () => {
+        if (!data || data.length === 0) return;
+        setShowExportDialog(false);
+
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet('ລາຍງານ', { views: [{ showGridLines: true }] });
+
+        const headers = ['ລຳດັບ', 'ຫົວຂໍ້', 'ໝວດໝູ່', 'ຝ່າຍ', 'ວີຊາການ', 'ວັນທີແຈ້ງ'];
+        const headerRow = sheet.addRow(headers);
+
+        headerRow.eachCell((cell, colNumber) => {
+            cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FF2563EB' }
+            };
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.alignment = { wrapText: true, vertical: 'middle' };
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+        });
+        sheet.getRow(1).height = 22;
+
+        data.forEach((item: ReportItem, index: number) => {
+            const row = sheet.addRow([
+                index + 1,
+                item.topic ?? '-',
+                item.category ?? '-',
+                item.department_main ?? '-',
+                item.technician ?? '-',
+                item.date ?? '-'
+            ]);
+            row.eachCell((cell) => {
+                cell.alignment = { wrapText: true, vertical: 'middle' };
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+            });
+        });
+
+        sheet.columns = [
+            { width: 10 },
+            { width: 24 },
+            { width: 18 },
+            { width: 22 },
+            { width: 24 },
+            { width: 14 }
+        ];
+
+        const buf = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const fileName = `report_${formatDate(new Date()).replace(/\//g, '-')}.xlsx`;
+        saveAs(blob, fileName);
+
+        toast.current?.show({
+            severity: 'success',
+            summary: 'ສຳເລັດ',
+            detail: 'ດາວໂຫຼດໄຟລ໌ Excel ສຳເລັດແລ້ວ',
+            life: 2500
+        });
+    }, [data]);
+
+    // Export to PDF (dynamic import for SSR)
+    const exportToPDF = useCallback(async () => {
+        if (!data || data.length === 0) return;
+        setShowExportDialog(false);
+        setPrintDate(new Date());
+
+        const el = printableAreaRef.current;
+        if (!el) {
+            toast.current?.show({ severity: 'error', summary: 'ຜິດພາດ', detail: 'ບໍ່ພົບພື້ນທີ່ສຳລັບສ້າງ PDF', life: 3000 });
+            return;
+        }
+
+        const headerEls = el.querySelectorAll('.print-only-header');
+        const footerEls = el.querySelectorAll('.print-only-footer');
+        const noPrintEls = el.querySelectorAll('.no-print');
+
+        headerEls.forEach((node) => node.classList.remove('hidden'));
+        footerEls.forEach((node) => node.classList.remove('hidden'));
+        const noPrintDisplays: string[] = [];
+        noPrintEls.forEach((node) => {
+            const htmlEl = node as HTMLElement;
+            noPrintDisplays.push(htmlEl.style.display);
+            htmlEl.style.display = 'none';
+        });
+
+        try {
+            const html2pdf = (await import('html2pdf.js')).default;
+            const fileName = `report_${formatDate(new Date()).replace(/\//g, '-')}.pdf`;
+            await html2pdf()
+                .set({
+                    margin: 8,
+                    filename: fileName,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+                })
+                .from(el)
+                .save();
+            toast.current?.show({
+                severity: 'success',
+                summary: 'ສຳເລັດ',
+                detail: 'ດາວໂຫຼດໄຟລ໌ PDF ສຳເລັດແລ້ວ',
+                life: 2500
+            });
+        } catch (err) {
+            console.error(err);
+            toast.current?.show({
+                severity: 'error',
+                summary: 'ຜິດພາດ',
+                detail: 'ບັນທຶກ PDF ບໍ່ສຳເລັດ',
+                life: 3000
+            });
+        } finally {
+            headerEls.forEach((node) => node.classList.add('hidden'));
+            footerEls.forEach((node) => node.classList.add('hidden'));
+            noPrintEls.forEach((node, i) => {
+                const htmlEl = node as HTMLElement;
+                htmlEl.style.display = noPrintDisplays[i] ?? '';
+            });
+        }
+    }, [data]);
+
+    // ກົດປຸ່ມສົ່ງອອກ (ຂັ້ນຕອນທີ 1: ກວດສອບຂໍ້ມູນກ່ອນ)
+    const handleExportClick = () => {
+        if (!data || data.length === 0) {
+            toast.current?.show({
+                severity: 'warn',
+                summary: 'ແຈ້ງເຕືອນ',
+                detail: 'ກະລຸນາເລືອກຂໍ້ມູນກ່ອນ',
+                life: 1100
+            });
+            return;
+        }
+        setShowExportDialog(true);
+    };
 
     return (
         <div className="report-hd-view grid">
             <Toast ref={toast} position="top-center" />
 
-            {/* Dialog ໃຫ້ເລືອກ (Export Choice) */}
-            <Dialog 
-                header="ເລືອກຮູບແບບການສົ່ງອອກ" 
-                visible={showExportDialog} 
-                style={{ width: '400px' }} 
+            {/* Dialog ໃຫ້ເລືອກຮູບແບບດາວໂຫຼດ */}
+            <Dialog
+                header="ເລືອກຮູບແບບການສົ່ງອອກ"
+                visible={showExportDialog}
+                style={{ width: '400px' }}
                 onHide={() => setShowExportDialog(false)}
                 footer={
                     <div className="flex justify-content-end">
@@ -89,30 +205,30 @@ export default function ReportHD() {
                 }
             >
                 <div className="flex flex-column gap-3 pt-2">
-                    <p className="m-0 text-700">ກະລຸນາເລືອກຮູບແບບທີ່ທ່ານຕ້ອງການ:</p>
-                    
-                    {/* ປຸ່ມເລືອກ PDF */}
-                    <Button 
-                        label="ບັນທຶກເປັນ PDF" 
-                        icon="pi pi-file-pdf" 
-                        severity="danger" 
-                        outlined 
+                    <p className="m-0 text-700">ກະລຸນາເລືອກຮູບແບບທີ່ທ່ານຕ້ອງການດາວໂຫຼດ:</p>
+
+                    <Button
+                        label="ດາວໂຫຼດເປັນ Excel "
+                        icon="pi pi-file-excel"
+                        severity="success"
+                        outlined
                         className="w-full p-3 text-left justify-content-start"
-                        onClick={() => executePrint(true)} 
+                        onClick={() => exportToExcel()}
                     />
 
-                    {/* ປຸ່ມເລືອກ Print */}
-                    <Button 
-                        label="ພິມເອກະສານ (Print)" 
-                        icon="pi pi-print" 
+                    <Button
+                        label="ດາວໂຫຼດເປັນ PDF"
+                        icon="pi pi-file-pdf"
+                        severity="danger"
+                        outlined
                         className="w-full p-3 text-left justify-content-start"
-                        onClick={() => executePrint(false)} 
+                        onClick={() => exportToPDF()}
                     />
                 </div>
             </Dialog>
-            
+
             <div className="col-12">
-                <div className="card">
+                <div ref={printableAreaRef} id="printable-area" className="card">
                     {/* Print Header */}
                     <div className="print-only-header hidden">
                         <div className="text-center mb-4">
@@ -156,7 +272,7 @@ export default function ReportHD() {
                     {error && <div className="mb-3 p-3 bg-red-50 text-red-700 border-round">Error: {error}</div>}
 
                     <ReportTable data={data} activeIndex={activeIndex} />
-                    
+
                     {/* Print Footer */}
                     <div className="print-only-footer hidden mt-5">
                         <div className="flex justify-content-between px-5">
@@ -176,59 +292,35 @@ export default function ReportHD() {
 
             <style jsx global>{`
                 .hidden { display: none !important; }
-                
-                @media print {
-                    /* ✅ 1. ຕັ້ງຄ່າໜ້າເຈ້ຍເປັນ A4 ແນວນອນ (Landscape) */
-                    @page { 
-                        size: A4 landscape; 
-                        margin: 5mm; 
-                    }
 
-                    /* ຊ່ອນປຸ່ມ ແລະ ສ່ວນທີ່ບໍ່ກ່ຽວຂ້ອງ */
+                @media print {
+                    @page { size: A4 landscape; margin: 5mm; }
                     .no-print, .p-button, .p-tabmenu, .p-calendar, .layout-topbar, .layout-sidebar, .p-toast, .p-dialog-mask, .p-paginator, .p-component-overlay {
                         display: none !important;
                     }
-
-                    /* ສະແດງ Header/Footer ສະເພາະຕອນ Print */
                     .print-only-header, .print-only-footer { display: block !important; }
-                    
-                    /* Reset Layout ໃຫ້ເຕັມຈໍ */
                     .card { box-shadow: none !important; border: none !important; padding: 0 !important; }
                     .report-hd-view { margin: 0 !important; padding: 0 !important; background: white; }
-                    
-                    /* ✅ 2. Scale ຫຍໍ້ຂໍ້ມູນລົງ (75-80%) ເພື່ອໃຫ້ພໍດີກັບໜ້າເຈ້ຍ */
-                    body {
-                        zoom: 75%; 
-                        -webkit-print-color-adjust: exact;
-                    }
-
-                    /* ຈັດການ Grid ຂອງ Header */
+                    body { zoom: 75%; -webkit-print-color-adjust: exact; }
                     .grid { display: flex !important; flex-wrap: wrap !important; width: 100% !important; margin: 0 !important; }
                     .col-6 { width: 50% !important; flex: 0 0 auto !important; }
-
-                    /* ✅ 3. ປັບ Font ຕາຕະລາງໃຫ້ໜ້ອຍລົງ */
                     .p-datatable-thead > tr > th, .p-datatable-tbody > tr > td {
-                        font-size: 10px !important; 
+                        font-size: 10px !important;
                         padding: 4px 2px !important;
                         color: #000 !important;
                         border-color: #000 !important;
-                        vertical-align: top !important; /* ຈັດໃຫ້ຕົວໜັງສືຢູ່ດ້ານເທິງຂອງ cell */
+                        vertical-align: top !important;
                     }
-
-                    /* ✅ 4. ແກ້ໄຂບັນຫາຕົວໜັງສືຖືກຕັດ (...) -> ໃຫ້ປັດລົງແຖວໃໝ່ແທນ */
                     .custom-tooltip-target {
-                        white-space: normal !important; /* ໃຫ້ຕັດຄຳໄດ້ */
+                        white-space: normal !important;
                         overflow: visible !important;
                         text-overflow: clip !important;
-                        max-width: none !important; /* ຍົກເລີກການຈຳກັດຄວາມກວ້າງ */
+                        max-width: none !important;
                         width: auto !important;
                     }
-
-                    /* ຈັດ Text Alignment */
                     .text-right { text-align: right !important; }
                     .text-center { text-align: center !important; }
                     p, span, h2, h3, h4, h5 { color: #000 !important; }
-
                     ::-webkit-scrollbar { display: none; }
                 }
             `}</style>

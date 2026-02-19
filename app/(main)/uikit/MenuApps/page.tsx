@@ -19,7 +19,6 @@ const SettingsPage = () => {
         const destination = tabIndex !== undefined 
             ? `${mainPath}?tab=${tabIndex}` 
             : mainPath;
-        console.log(`Selected: ${uniqueKey}, Path: ${destination}`);
         router.push(destination); 
     };
 

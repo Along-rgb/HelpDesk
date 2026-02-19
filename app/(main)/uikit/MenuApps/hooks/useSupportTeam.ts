@@ -1,12 +1,13 @@
 // src/uikit/MenuApps/hooks/useSupportTeam.ts
-import { useCoreApi } from '../hooks/useCoreApi';
+import { useCoreApi } from './useCoreApi';
 // แก้ไข: เปลี่ยน CreatePayload เป็น CreateSupportTeamPayload
 import { SupportTeamData, CreateSupportTeamPayload } from '../types';
 
 export function useSupportTeam(activeIndex: number) {
+    // tabIndex=0 ໝວດບັນຫາ (ໃຊ້ useIssues ໃນໜ້າ), 1=ວິຊາການ=SUPPORT, 2=ທີມຄຸ້ມຄອງ=ADMIN
     const getRoleType = (index: number) => {
-        const roles = ['SUPPORT', 'ADMIN', 'TECHNICIAN', 'REQUESTER'];
-        return roles[index] || 'SUPPORT';
+        const roles: (string | undefined)[] = ['SUPPORT', 'SUPPORT', 'ADMIN'];
+        return roles[index] ?? 'SUPPORT';
     };
 
     const role = getRoleType(activeIndex);

@@ -931,6 +931,36 @@
       "level": "ຊັ້ນ 01",
       "room": "101",
       "description": "<p>fjdwyfgwu</p>"
+    },
+    {
+      "id": "2279",
+      "title": "ສຽງບໍ່ໄດ້ຍິນ",
+      "date": "13/02/2026 3:58 PM",
+      "requester": "ທັດສະດາພອນ ອິນທະປາກດີ",
+      "assignees": [],
+      "status": "ລໍຖ້າຮັບວຽກ",
+      "priority": "ບໍ່ລະບຸ",
+      "verified": false,
+      "category": "ການສື່ສານ (Communication)",
+      "building": "ຕຶກສຳນັກງານໃຫ່ຍ ຟຟລ",
+      "level": "ຊັ້ນ 01",
+      "room": "101",
+      "description": "-"
+    },
+    {
+      "id": "2280",
+      "title": "ເຊື່ອມຕໍ່ WiFi ບໍ່ໄດ້",
+      "date": "13/02/2026 4:00 PM",
+      "requester": "ເລມີ່ ສໍລາດຈຳປາ",
+      "assignees": [],
+      "status": "ລໍຖ້າຮັບວຽກ",
+      "priority": "ບໍ່ລະບຸ",
+      "verified": false,
+      "category": "ອິນເຕີເນັດ-ເນັດເວີກ (Internet-Network)",
+      "building": "ຕຶກສີສຸກ ຟຟລ",
+      "level": "ຊັ້ນ 02",
+      "room": "101",
+      "description": "-"
     }
   ]
 }

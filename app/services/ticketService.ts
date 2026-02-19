@@ -1,11 +1,17 @@
 import axios from 'axios';
-// ปรับ import ให้ตรงกับโครงสร้างไฟล์ของคุณ
+import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
+import { env } from '@/config/env';
 import { TicketForm, MasterData, City, Ticket } from '../../app/(main)/uikit/invalidstate/types';
-// *** Import ข้อมูลกลางมาใช้ ***
 import { STATIC_CATEGORIES } from '../../app/(main)/uikit/invalidstate/ticketData';
 import { getCurrentDateTimeString } from '../../utils/dateUtils';
 
-const API_URL = "http://localhost:3501";
+const TICKETS_BASE = env.ticketsApiUrl;
+
+// รูปแบบจาก API: { id: number, name: string }
+interface BuildingApiItem {
+    id: number;
+    name: string;
+}
 
 // --- Mock Data (Dropdown) ---
 // ใช้สำหรับ Dependent Dropdown (เลือกหมวดหมู่ -> แสดงหัวข้อ)
@@ -19,23 +25,37 @@ const DB_TOPICS: Record<string, City[]> = {
     "SerOTHER": [{ name: "ຂໍໂຕະໃໝ່" }, { name: "ຂໍເບີກເຄື່ອງໃຊ້ຫ້ອງການທົ່ວໄປ" }],
 };
 const DB_BUILDINGS: City[] = [{ name: "ຕືກ ສຳນັກງານໃຫຍ່" }, { name: "ຕືກ ສະຖາບັນ" }];
+const DB_ROUTES: City[] = [{ name: "ເສັ້ນທາງ 1" }, { name: "ເສັ້ນທາງ 2" }];
 const DB_LEVELS: City[] = [{ name: "ຊັ້ນ 01" }, { name: "ຊັ້ນ 02" }];
 const DB_ROOMS: City[] = [{ name: "101" }, { name: "102" }, { name: "103" }];
 
+// ดึงรายการຕຶກ/ອາຄານ จาก API /api/buildings (รูปแบบ: { id, name }[])
+async function fetchBuildings(): Promise<City[]> {
+    try {
+        const response = await axiosClientsHelpDesk.get<BuildingApiItem[] | { data: BuildingApiItem[] }>('/buildings');
+        const raw = response.data;
+        const list = Array.isArray(raw) ? raw : (raw as { data: BuildingApiItem[] })?.data ?? [];
+        return list.map((item) => ({ name: item.name, code: String(item.id) }));
+    } catch (error) {
+        console.error('Failed to fetch buildings', error);
+        return DB_BUILDINGS;
+    }
+}
+
 export const ticketService = {
+
+    getBuildings: fetchBuildings,
 
     // 1. Get Master Data (Dropdown)
     getMasterData: async (): Promise<MasterData> => {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                resolve({
-                    categories: STATIC_CATEGORIES, // ใช้ข้อมูลกลางจาก ticketData.ts
-                    buildings: DB_BUILDINGS,
-                    levels: DB_LEVELS,
-                    rooms: DB_ROOMS
-                });
-            }, 300);
-        });
+        const buildings = await fetchBuildings();
+        return {
+            categories: STATIC_CATEGORIES,
+            buildings,
+            routes: DB_ROUTES,
+            levels: DB_LEVELS,
+            rooms: DB_ROOMS
+        };
     },
 
     // 2. Get Topics (Dependent Dropdown)
@@ -49,15 +69,15 @@ export const ticketService = {
         });
     },
 
-    // 3. ✅ [EDITED] Create Ticket (Auto Increment ID)
-    createTicket: async (formData: TicketForm) => {
+    // 3. ✅ [EDITED] Create Ticket (Auto Increment ID) — requesterName = ชื่อผู้ขอ (firstName + lastName ของ user ที่ login)
+    createTicket: async (formData: TicketForm, requesterName?: string) => {
         try {
             if (!formData.category || !formData.topic) {
                 return { success: false, message: "ກະລຸນາປ້ອນຂໍ້ມູນທີ່ຈຳເປັນ (*)" };
             }
 
             // A. ดึงข้อมูล Tickets ทั้งหมดมาก่อน เพื่อหา ID ล่าสุด
-            const existingTickets = await axios.get<Ticket[]>(`${API_URL}/tickets`);
+            const existingTickets = await axios.get<Ticket[]>(`${TICKETS_BASE}/tickets`);
             const tickets = existingTickets.data;
 
             // B. คำนวณหา Max ID
@@ -74,12 +94,15 @@ export const ticketService = {
             // C. สร้าง ID ใหม่ (Max + 1)
             const nextId = maxId + 1;
 
+            // ຜູ້ຮ້ອງຂໍ = ชื่อ user ที่ login (firstName + lastName)
+            const requesterDisplay = (requesterName && requesterName.trim()) ? requesterName.trim() : "ທ ທັດສະນີ ມີໄຊບົວ";
+
             // D. สร้าง Object ข้อมูลเตรียมบันทึก
             const newTicket = {
                 id: nextId.toString(), // ✅ บังคับใส่ ID ที่เรียงลำดับแล้ว
                 title: formData.topic.name,
                 date: getCurrentDateTimeString(),
-                requester: "ທ ທັດສະນີ ມີໄຊບົວ",
+                requester: requesterDisplay,
                 assignees: [],
                 status: "ລໍຖ້າຮັບວຽກ",
                 priority: "ບໍ່ລະບຸ",
@@ -92,7 +115,7 @@ export const ticketService = {
             };
 
             // E. ส่งข้อมูลไปยัง API
-            const response = await axios.post(`${API_URL}/tickets`, newTicket);
+            const response = await axios.post(`${TICKETS_BASE}/tickets`, newTicket);
             return { success: true, message: `ບັນທຶກຂໍ້ມູນສຳເລັດ!` };
 
         } catch (error) {
@@ -104,7 +127,7 @@ export const ticketService = {
     // 4. Get Tickets
     getTickets: async (): Promise<Ticket[]> => {
         try {
-            const res = await axios.get<Ticket[]>(`${API_URL}/tickets`);
+            const res = await axios.get<Ticket[]>(`${TICKETS_BASE}/tickets`);
             return res.data;
         } catch (error) {
             console.error("Get tickets error:", error);
@@ -115,7 +138,7 @@ export const ticketService = {
     // 5. Update Ticket
     updateTicket: async (ticket: Ticket) => {
         try {
-            const response = await axios.put(`${API_URL}/tickets/${ticket.id}`, ticket);
+            const response = await axios.put(`${TICKETS_BASE}/tickets/${ticket.id}`, ticket);
             return response.data;
         } catch (error) {
             console.error(`Error updating ticket ID ${ticket.id}:`, error);

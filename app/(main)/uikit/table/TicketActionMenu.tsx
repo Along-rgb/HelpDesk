@@ -35,7 +35,7 @@ export const TicketActionMenu = ({ ticket }: Props) => {
                     style={{ height: '28px', fontSize: '12px' }} 
                     buttonProps={{ style: { padding: '0px 8px' } }} 
                     menuButtonProps={{ style: { width: '24px' } }}
-                    onClick={() => router.push(`/uikit/ticket/${ticket.id}`)}
+                    onClick={() => router.push(`/uikit/ticket-detail/${ticket.id}`)}
                     dropdownIcon="pi pi-chevron-down"
                 />
             </div>

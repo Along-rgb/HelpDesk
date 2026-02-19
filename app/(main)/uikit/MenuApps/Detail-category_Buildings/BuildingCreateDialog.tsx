@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
-import { RadioButton } from 'primereact/radiobutton';
 import { Dropdown } from 'primereact/dropdown';
 import axiosClientsHelpDesk from '../../../../../config/axiosClientsHelpDesk'; 
 import { BuildingData, CreateBuildingPayload, BuildingTabs } from '../types';
@@ -17,9 +16,10 @@ interface Props {
     buildingOptions: BuildingData[];
     isSaving: boolean;
     editData?: BuildingData | null;
+    saveButtonDisabled?: boolean;
 }
 
-export default function BuildingCreateDialog({ visible, onHide, onSave, itemNameLabel, activeTab, buildingOptions, isSaving, editData }: Props) {
+export default function BuildingCreateDialog({ visible, onHide, onSave, itemNameLabel, activeTab, buildingOptions, isSaving, editData, saveButtonDisabled = false }: Props) {
     const [name, setName] = useState('');
     const [code, setCode] = useState(''); 
     const [status, setStatus] = useState<string>('ACTIVE');
@@ -33,23 +33,20 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
     const isLevelTab = activeTab === BuildingTabs.LEVEL;
     const isRoomTab = activeTab === BuildingTabs.ROOM;
 
-    // Reset Form
+    // ເມື່ອເປີດ Dialog: ຖ້າແກ້ໄຂ ໃຫ້ດຶງຂໍ້ມູນຈາກ editData ມາໃສ່ຟອມ, ຖ້າເພີ່ມໃໝ່ ໃຫ້ລ້າງຟອມ
     useEffect(() => {
         if (visible) {
             setSubmitted(false);
             if (editData) {
-                setName(editData.name);
-                setCode(editData.code);
-                setStatus(editData.status);
+                setName(editData.name ?? '');
+                setCode(editData.code ?? '');
+                setStatus(editData.status ?? 'ACTIVE');
 
-                if (isLevelTab) { 
+                if (isLevelTab) {
                     const parent = buildingOptions.find(b => b.id === editData.parentId);
                     setSelectedBuilding(parent || null);
                 } else if (isRoomTab) {
-                    // TODO: ຖ້າຕ້ອງການໃຫ້ Auto Select Building ເວລາ Edit Room
-                    // ຕ້ອງມີ buildingId ໃນ editData ຫຼື API ຕ້ອງສົ່ງ hierarchy ມາ
-                    // ຕອນນີ້ໃຫ້ Reset ເພື່ອປ້ອງກັນຂໍ້ມູນຜິດພາດ
-                    setSelectedBuilding(null); 
+                    setSelectedBuilding(null);
                     setSelectedLevel(null);
                 }
             } else {
@@ -91,25 +88,28 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
         if (isLevelTab && !selectedBuilding) return;
         if (isRoomTab && (!selectedBuilding || !selectedLevel)) return;
 
-        let finalParentId = null;
+        let finalParentId: number | null = null;
         if (isLevelTab) {
-            finalParentId = selectedBuilding?.id;
+            finalParentId = selectedBuilding?.id ?? editData?.parentId ?? null;
         } else if (isRoomTab) {
-            finalParentId = selectedLevel?.id;
+            finalParentId = selectedLevel?.id ?? null;
         }
 
-        onSave({ 
-            name, 
-            code, 
-            status,
-            parentId: finalParentId || null
-        });
+        const payload: CreateBuildingPayload = {
+            name: name.trim(),
+            code: code?.trim() ?? '',
+            status: status || 'ACTIVE'
+        };
+        if (finalParentId != null) {
+            payload.parentId = finalParentId;
+        }
+        onSave(payload);
     };
 
     const renderFooter = () => (
         <div className="flex justify-content-end gap-2 pt-2">
             <Button label="ຍົກເລີກ" icon="pi pi-times" onClick={onHide} className="p-button-outlined p-button-secondary text-blue-600 border-blue-600 hover:bg-blue-50" disabled={isSaving} />
-            <Button label="ບັນທຶກ" icon="pi pi-check" onClick={handleSave} className="bg-indigo-600 border-indigo-600" loading={isSaving} />
+            <Button label="ບັນທຶກ" icon="pi pi-check" onClick={handleSave} className="bg-indigo-600 border-indigo-600" loading={isSaving} disabled={saveButtonDisabled} />
         </div>
     );
 
@@ -135,20 +135,40 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
         >
             <div className="flex flex-column gap-3">
                 
-                {(isLevelTab || isRoomTab) && (
+                {/* Tab ລະດັບຊັ້ນ (tabIndex=1): ຕຶກ/ອາຄານ ເປັນ Dropdown (ເລືອກຕຶກ) — ແກ້ໄຂ ເມື່ອເປີດຈະເລືອກຕຶກປັດຈຸບັນຂອງ floor */}
+                {isLevelTab && (
                     <div className="field mb-0">
                         <label htmlFor="parentBuilding" className="font-bold block mb-2">
                             ຕຶກ/ອາຄານ <span className="text-red-500">*</span>
                         </label>
-                        <Dropdown 
+                        <Dropdown
                             id="parentBuilding"
-                            value={selectedBuilding} 
-                            onChange={(e) => { setSelectedBuilding(e.value); setSelectedLevel(null); }} 
-                            options={buildingOptions} 
-                            optionLabel="name" 
-                            placeholder="ເລືອກຕຶກ/ອາຄານ" 
+                            value={selectedBuilding}
+                            onChange={(e) => { setSelectedBuilding(e.value); setSelectedLevel(null); }}
+                            options={buildingOptions}
+                            optionLabel="name"
+                            placeholder="ເລືອກຕຶກ/ອາຄານ"
                             className={submitted && !selectedBuilding ? 'p-invalid w-full' : 'w-full'}
-                            filter 
+                            filter
+                        />
+                        {submitted && !selectedBuilding && <small className="text-red-500">ກະລຸນາເລືອກຕຶກ/ອາຄານ</small>}
+                    </div>
+                )}
+
+                {isRoomTab && (
+                    <div className="field mb-0">
+                        <label htmlFor="parentBuilding" className="font-bold block mb-2">
+                            ຕຶກ/ອາຄານ <span className="text-red-500">*</span>
+                        </label>
+                        <Dropdown
+                            id="parentBuilding"
+                            value={selectedBuilding}
+                            onChange={(e) => { setSelectedBuilding(e.value); setSelectedLevel(null); }}
+                            options={buildingOptions}
+                            optionLabel="name"
+                            placeholder="ເລືອກຕຶກ/ອາຄານ"
+                            className={submitted && !selectedBuilding ? 'p-invalid w-full' : 'w-full'}
+                            filter
                         />
                         {submitted && !selectedBuilding && <small className="text-red-500">ກະລຸນາເລືອກຕຶກ/ອາຄານ</small>}
                     </div>
@@ -192,20 +212,6 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
                 <div className="field mb-0">
                     <label htmlFor="code" className="font-bold block mb-2">{descriptionLabel}</label>
                     <InputText id="code" value={code} onChange={(e) => setCode(e.target.value)} className="w-full" />
-                </div>
-
-                <div className="field">
-                    <label className="font-bold block mb-2">ສະຖານະ:</label>
-                    <div className="flex gap-4">
-                        <div className="flex align-items-center">
-                            <RadioButton inputId="statusActive" name="status" value="ACTIVE" onChange={(e) => setStatus(e.value)} checked={status === 'ACTIVE'} />
-                            <label htmlFor="statusActive" className="ml-2 cursor-pointer">ໃຊ້ງານ</label>
-                        </div>
-                        <div className="flex align-items-center">
-                            <RadioButton inputId="statusInactive" name="status" value="INACTIVE" onChange={(e) => setStatus(e.value)} checked={status === 'INACTIVE'} />
-                            <label htmlFor="statusInactive" className="ml-2 cursor-pointer">ບໍ່ໃຊ້ງານ</label>
-                        </div>
-                    </div>
                 </div>
             </div>
         </Dialog>

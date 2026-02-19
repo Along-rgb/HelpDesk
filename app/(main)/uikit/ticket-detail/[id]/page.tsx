@@ -224,7 +224,6 @@ export default function TicketDetailPage() {
                                                         <i className="pi pi-chevron-right text-sm text-500"></i>
                                                         <div className="flex flex-column">
                                                             <span className="text-700 text-base">
-                                                                {/* ✅ [SHOW] แสดงชื่อ และ เบอร์โทรที่บันทึกไว้ใน DB */}
                                                                 {assignee.name} {assignee.phone ? ` | ${assignee.phone}` : ''}
                                                             </span>
                                                         </div>

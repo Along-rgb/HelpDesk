@@ -85,9 +85,16 @@ export const MenuCard: React.FC<MenuCardProps> = ({ item }) => {
         </div>
 
         {/* Body Section */}
-        <div className="flex flex-column flex-grow-1 p-4 text-center mt-2">
+        <div className="flex flex-column flex-grow-1 p-4 text-center mt-2 w-full">
           <span className="text-xl font-bold text-900 mb-3">{item.title}</span>
           <p className="text-600 line-height-3 text-sm m-0">{item.description}</p>
+
+          {/* ຈຳນວນລາຍການ Ticket - ວາງດ້ານລຸ່ມກາງ */}
+          {item.ticketCount != null && (
+            <p className="text-500 mt-auto pt-3 mb-0 font-medium w-full flex justify-content-center" style={{ fontSize: '15px' }}>
+              {item.ticketCount} ລາຍການ
+            </p>
+          )}
         </div>
       </div>
     </div>

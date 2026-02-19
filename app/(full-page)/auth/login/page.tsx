@@ -12,7 +12,8 @@ import { Toast } from 'primereact/toast';
 import { classNames } from 'primereact/utils';
 
 import { authenStore } from '@/app/store/user/loginAuthStore';
-import { useUsersStore } from '@/app/store/user/usersStroe';
+import { useUsersStore } from '@/app/store/user/usersStore';
+import { useUserProfileStore } from '@/app/store/user/userProfileStore';
 import { useRouter } from 'next/navigation';
 
 export default function LoginForm() {
@@ -32,11 +33,12 @@ export default function LoginForm() {
         useForm<LoginInput>({
           resolver: zodResolver(LoginSchema),
         defaultValues: {
-            username: "", // ✅ กำหนดค่าเริ่มต้นเป็น text ว่าง
-            password: ""  // ✅ กำหนดค่าเริ่มต้นเป็น text ว่าง
+            username: "",
+            password: ""
         }
     });
-    // TOAST
+
+    // TOAST HELPER
     const showMessage = (
         severity: "success" | "info" | "warn" | "error",
         summary: string,
@@ -50,48 +52,95 @@ export default function LoginForm() {
         });
     };
 
-    // LOGIN API
-    // LOGIN API
+    // LOGIN SUBMIT HANDLER
     const onSubmit: SubmitHandler<LoginInput> = async (data) => {
         try {
             setLoading(true);
             const resp: any = await loginUser(data);
 
+            // ตรวจสอบ Status Code
             if (resp.status === 200 || resp.status === 201) {
-                // ดึงข้อมูล User ออกมาจาก Response
-                const userData = resp?.data?.data;
+                
+                const responseBody = resp.data || resp; // บางที axios คืนค่ามาใน data
+                const token = responseBody.token || responseBody.accessToken;
+                const userObj = responseBody.user || {};
+                const employeeObj = userObj.employee || {};
 
-                // จัดเตรียมชื่อที่จะแสดงผล (ดึงจาก field: firstname และ name ตามที่คุณระบุ)
-                const displayName = `${userData?.firstname || ''} ${userData?.name || userData?.lastname || ''}`;
+                if (token) {
+                    const displayName = `${employeeObj.first_name ?? ''} ${employeeObj.last_name ?? ''}`.trim();
 
-                // เปลี่ยนข้อความ Toast ให้ทักทายด้วยชื่อจริง
-                showMessage("success", "Login Successful", `ຍິນດີຕ້ອນຮັບທ່ານ ${displayName}`);
+                    console.log('✅ Login Success - Token:', token);
+                    console.log('👤 User from login response:', userObj);
 
-                localStorage.setItem('token', userData?.accessToken);
-                localStorage.setItem('lastTime', Date.now().toString());
+                    // 1. Toast ต้อนรับ
+                    showMessage(
+                        'success',
+                        'Login Successful',
+                        `ຍິນດີຕ້ອນຮັບທ່ານ ${displayName || data.username}`
+                    );
 
-                // *** เพิ่มบรรทัดนี้: บันทึกข้อมูลผู้ใช้ลง LocalStorage เพื่อให้หน้าอื่นดึงชื่อไปแสดงแทน "ທັດສະນີ" ได้ ***
-                localStorage.setItem('userData', JSON.stringify(userData));
+                    // 2. เก็บ token + employeeId ลง localStorage
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('tokenIssuedAt', Date.now().toString());
+                    const empId = userObj.employeeId ?? employeeObj.id;
+                    if (empId) {
+                        localStorage.setItem('employeeId', String(empId));
+                    }
 
-                setAuthData(userData);
+                    // 3. อัปเดต Auth Store
+                    setAuthData({
+                        tokenType: 'Bearer',
+                        accessToken: token
+                    });
 
-                setTimeout(() => {
-                    router.push('/uikit/MainBoard');
+                    // 4. เก็บ user เบื้องต้นจาก login (แสดงบางข้อมูลได้ก่อน)
+                    //    แล้วเรียก fetchUserProfile เพื่อดึงข้อมูล relations ครบ
+                    useUserProfileStore.getState().setCurrentUser(userObj);
+                    try {
+                        await useUserProfileStore.getState().fetchUserProfile();
+                    } catch (e) {
+                        console.error('Profile fetch after login:', e);
+                    }
+
+                    // 5. ไปหน้าถัดไป
+                    setTimeout(() => {
+                        router.push('/uikit/MainBoard');
+                        setLoading(false);
+                    }, 500);
+
+                } else {
+                    // กรณี Login ผ่านแต่หา Token ไม่เจอใน Response
+                    console.error("❌ Token Not Found in Response:", responseBody);
+                    showMessage("error", "Data Error", "Login สำเร็จแต่ไม่พบ Token (API Structure Mismatch)");
                     setLoading(false);
-                }, 800);
+                }
 
             } else {
+                // กรณี Status ไม่ใช่ 200/201
                 showMessage("error", "Login Failed", resp?.data?.message || "ໄອດີ ຫຼື ລະຫັດຜິດ");
                 setLoading(false);
             }
 
         } catch (error: any) {
-            showMessage("error", "Server Error", error?.message || "Server error");
+            console.error("🔥 Login Exception:", error);
+            const status = error?.response?.status;
+            const data = error?.response?.data;
+            const apiMessage =
+                (typeof data?.message === 'string' && data.message) ||
+                data?.error ||
+                (typeof data === 'string' && data) ||
+                (Array.isArray(data?.errors) && data.errors.map((e: any) => e?.message ?? e).filter(Boolean).join(', '));
+            const fallback =
+                status === 400 ? 'ຂໍ້ມູນບໍ່ຖືກຕ້ອງ (ກະລຸນາກວດສອບຊື່ຜູ້ໃຊ້ ແລະ ລະຫັດຜ່ານ)' :
+                status === 401 ? 'ໄອດີ ຫຼື ລະຫັດຜິດ' :
+                status === 404 ? 'ບໍ່ພົບຈຸດສົ່ງຂໍ້ມູນເຂົ້າລະບົບ' :
+                'ເກີດຂໍ້ຜິດພາດຈາກເຊີເວີ';
+            showMessage("error", "ເຂົ້າລະບົບບໍ່ສຳເລັດ", apiMessage || error?.message || fallback);
             setLoading(false);
         }
     };
-    return (
 
+    return (
         <div
             className="min-h-screen w-full flex align-items-center justify-content-center"
             style={{
@@ -101,17 +150,12 @@ export default function LoginForm() {
                 padding: "1rem"
             }}
         >
-
-            {/* TOAST */}
             <Toast ref={toast} />
 
-            {/* LOGIN CARD */}
             <div
                 className="surface-card p-5 border-round-3xl shadow-3 w-full sm:w-4 md:w-3"
                 style={{ background: "rgba(255,255,255,0.85)" }}
             >
-
-                {/* LOGO */}
                 <div className="text-center mb-4">
                     <img
                         src="/layout/images/logologin.png"
@@ -122,22 +166,16 @@ export default function LoginForm() {
                     <h2 className="m-0 text-2xl font-semibold">EDL-HelpDesk</h2>
                 </div>
 
-                {/* FORM */}
                 <form id="LoginForm" onSubmit={handleSubmit(onSubmit)}>
-
-                    {/* USERNAME */}
-                    <label htmlFor="username" className="text-lg font-medium">
-
-                    </label>
-
-                    {/* messge ແຈ້ງເຕືອນ ການປ້ອນລະຫັດ */}
+                    <label htmlFor="username" className="text-lg font-medium"></label>
                     {errors.username?.message && (
                         <small className="p-error">{errors.username.message}</small>
                     )}
-
                     <InputText
+                        id="username"
                         {...register('username')}
                         placeholder="Enter your ID"
+                        autoComplete="username"
                         className={classNames('w-full mb-3', { 'p-invalid': errors.username })}
                         style={{
                             padding: '1rem',
@@ -146,25 +184,20 @@ export default function LoginForm() {
                         }}
                     />
 
-
-                    {/* PASSWORD */}
-                    <label htmlFor="password" className="text-lg font-medium mt-3">
-
-                    </label>
-
-                    {/* messge ແຈ້ງເຕືອນ ການປ້ອນລະຫັດ */}
+                    <label htmlFor="password" className="text-lg font-medium mt-3"></label>
                     {errors.password?.message && (
                         <small className="p-error">ປ້ອນລະຫັດ</small>
                     )}
-
                     <Controller
                         name="password"
                         control={control}
                         render={({ field }) => (
                             <Password
+                                inputId="password"
                                 {...field}
                                 value={field.value || ""}
                                 placeholder="Password"
+                                autoComplete="current-password"
                                 toggleMask
                                 className={classNames('w-full mb-3', { 'p-invalid': errors.password })}
                                 inputStyle={{ borderRadius: '10px', height: "2.5rem" }}
@@ -173,8 +206,6 @@ export default function LoginForm() {
                         )}
                     />
 
-
-                    {/* REMEMBER + FORGOT */}
                     <div className="flex justify-content-between align-items-center mb-4 mt-2">
                         <div className="flex align-items-center gap-2">
                             <Checkbox
@@ -193,7 +224,6 @@ export default function LoginForm() {
                         </a>
                     </div>
 
-                    {/* BUTTON */}
                     <Button
                         loading={isLoading}
                         label="ເຂົ້າລະບົບ"
@@ -201,10 +231,7 @@ export default function LoginForm() {
                         className="w-full p-3 text-xl"
                     />
                 </form>
-
             </div>
-
         </div>
     );
-
 }

@@ -8,9 +8,9 @@ export const MENU_ITEMS: MenuItem[] = [
         icon: 'pi pi-users',
         path: '/uikit/MenuApps/Detail-category_SupportTeam',
         subMenus: [
-            { label: 'ວິຊາການ', tabIndex: 0 }, 
-            { label: 'ຜູ້ຄຸ້ມຄອງລະບົບ', tabIndex: 1 },
-            { label: 'ຜູ້ຮ້ອງຂໍ', tabIndex: 2 }
+            { label: 'ໝວດບັນຫາ', tabIndex: 0 },
+            { label: 'ວິຊາການ', tabIndex: 1 },
+            { label: 'ທີມຄຸ້ມຄອງ', tabIndex: 2 }
         ]
     },
     {

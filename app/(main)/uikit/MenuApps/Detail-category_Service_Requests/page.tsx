@@ -12,24 +12,17 @@ import ServiceRequestTable from './ServiceRequestTable';
 import { useServiceRequest } from '../hooks/useServiceRequest';
 import { ServiceRequestData, CreateServiceRequestPayload, ServiceRequestTabs } from '../types';
 import { createDataMap } from '../utils/dataMapping';
-
-const CUSTOM_TAB_CSS = `
-    .custom-tabmenu .p-menuitem-text { color: #6c757d !important; transition: color 0.2s; font-weight: 500; }
-    .custom-tabmenu .p-menuitem-link:hover .p-menuitem-text { color: var(--primary-color) !important; }
-    .custom-tabmenu .p-highlight .p-menuitem-text { color: var(--primary-color) !important; font-weight: bold; }
-    .custom-tabmenu .p-tabmenu-nav { border-bottom: 1px solid #dee2e6; }
-    .custom-tabmenu .p-tabmenuitem .p-menuitem-link { background: transparent !important; border: none !important; box-shadow: none !important; }
-    .custom-tabmenu .p-highlight .p-menuitem-link { border-bottom: 2px solid var(--primary-color) !important; border-radius: 0; }
-`;
+import { CUSTOM_TAB_CSS } from '../constants/tabStyles';
 
 export default function ServiceRequestsPage() {
     const searchParams = useSearchParams();
     const [activeIndex, setActiveIndex] = useState(ServiceRequestTabs.CATEGORY);
 
-    const { toast, items, loading, saveData, deleteData } = useServiceRequest(activeIndex);
+    const { toast, items, saveData, deleteData } = useServiceRequest(activeIndex);
     
     // Fetch categories for lookup
-    const { items: categoryItems } = useServiceRequest(ServiceRequestTabs.CATEGORY);
+    const { items: categoryItemsFromHook } = useServiceRequest(ServiceRequestTabs.CATEGORY);
+    const categoryItems = activeIndex === ServiceRequestTabs.CATEGORY ? items : categoryItemsFromHook;
 
     // [Optimization] Create Map for O(1) Lookup
     const categoryMap = useMemo(() => {
@@ -97,7 +90,7 @@ export default function ServiceRequestsPage() {
     return (
         <div className="card p-4 surface-card shadow-2 border-round">
               <style>{CUSTOM_TAB_CSS}</style>
-            <Toast ref={toast} />
+            <Toast ref={toast} position="top-center" />
             <ConfirmDialog />
             <div className="mb-4">
                 <TabMenu model={tabItems} activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)} className="custom-tabmenu" />
@@ -105,7 +98,6 @@ export default function ServiceRequestsPage() {
 
             <ServiceRequestTable
                 items={items}
-                loading={loading}
                 header={renderHeader()}
                 globalFilter={globalFilter}
                 label={config.label}
