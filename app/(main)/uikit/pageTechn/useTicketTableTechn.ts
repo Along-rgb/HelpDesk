@@ -23,20 +23,54 @@ function matchesStatusFilter(ticket: Ticket, statusFilter: StatusFilterOption): 
 }
 
 /** แปลง response จาก API ให้ตรงกับ Ticket (pageTechn) ถ้าขาดฟิลด์ใส่ default */
-function normalizeTicket(raw: Record<string, unknown>): Ticket {
+function normalizeAssignee(a: unknown): Assignee | null {
+  if (a == null || typeof a !== "object") return null;
+  const o = a as Record<string, unknown>;
+  const status = o.status as string | undefined;
+  const validStatus: Assignee["status"] =
+    status === "doing" || status === "done" || status === "waiting" ? status : "waiting";
   return {
-    id: (raw.id as string | number) ?? "",
+    id: (o.id as number | string) ?? "",
+    name: String(o.name ?? ""),
+    image: o.image != null ? String(o.image) : undefined,
+    phone: o.phone != null ? String(o.phone) : undefined,
+    status: validStatus,
+  };
+}
+
+function normalizeTicket(raw: Record<string, unknown>): Ticket {
+  const assigneesRaw = raw.assignees;
+  const assignees: Assignee[] | undefined = Array.isArray(assigneesRaw)
+    ? assigneesRaw.map((a) => normalizeAssignee(a)).filter((a): a is Assignee => a !== null)
+    : undefined;
+
+  const id = raw.id;
+  const ticketId: string | number =
+    typeof id === "number" || typeof id === "string" ? id : String(raw.id ?? "");
+
+  return {
+    id: ticketId,
     title: String(raw.title ?? ""),
     date: String(raw.date ?? ""),
     firstname_req: raw.firstname_req != null ? String(raw.firstname_req) : undefined,
     requester: raw.requester != null ? String(raw.requester) : undefined,
     assignTo: raw.assignTo != null ? String(raw.assignTo) : undefined,
-    assignees: raw.assignees as Assignee[] | undefined,
+    assignees,
     assignDate: raw.assignDate != null ? String(raw.assignDate) : undefined,
     status: String(raw.status ?? ""),
     priority: String(raw.priority ?? ""),
     verified: Boolean(raw.verified),
-    ...(raw as Partial<Ticket>),
+    lastname_req: raw.lastname_req != null ? String(raw.lastname_req) : undefined,
+    employeeId: raw.employeeId != null ? (typeof raw.employeeId === "number" ? raw.employeeId : String(raw.employeeId)) : undefined,
+    description: raw.description != null ? String(raw.description) : undefined,
+    category: raw.category != null ? String(raw.category) : undefined,
+    building: raw.building != null ? String(raw.building) : undefined,
+    level: raw.level != null ? String(raw.level) : undefined,
+    room: raw.room != null ? String(raw.room) : undefined,
+    division: raw.division != null ? String(raw.division) : undefined,
+    department: raw.department != null ? String(raw.department) : undefined,
+    contactPhone: raw.contactPhone != null ? String(raw.contactPhone) : undefined,
+    email: raw.email != null ? String(raw.email) : undefined,
   };
 }
 
