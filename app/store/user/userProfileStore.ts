@@ -118,10 +118,13 @@ function normalizeUserResponse(raw: unknown): UserProfile.UserLoginResponse | nu
     posId: posId ?? 0,
     departmentId: departmentId ?? 0,
     divisionId: divisionId ?? 0,
-    officeId: (employee.officeId ?? employee.office_id) ?? null,
-    unitId: (employee.unitId ?? employee.unit_id) ?? 0,
-    createdAt: (employee.createdAt ?? employee.created_at ?? '') as string,
-    updatedAt: (employee.updatedAt ?? employee.updated_at ?? '') as string,
+    officeId: (() => {
+      const v = employee.officeId ?? employee.office_id;
+      return typeof v === 'number' ? v : null;
+    })(),
+    unitId: Number(employee.unitId ?? employee.unit_id ?? 0),
+    createdAt: String(employee.createdAt ?? employee.created_at ?? ''),
+    updatedAt: String(employee.updatedAt ?? employee.updated_at ?? ''),
     department: (employee.department as UserProfile.Department) ?? ({} as UserProfile.Department),
     division: (employee.division as UserProfile.Division) ?? ({} as UserProfile.Division),
     office: (employee.office as UserProfile.Office | null) ?? null,
