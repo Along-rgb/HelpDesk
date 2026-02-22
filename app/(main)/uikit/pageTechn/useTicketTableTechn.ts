@@ -56,7 +56,7 @@ export const useTicketTableTechn = () => {
       .then((data) => {
         if (cancelled) return;
         const list = Array.isArray(data) ? data : [];
-        setTickets(list.map((item) => normalizeTicket(item as Record<string, unknown>)));
+        setTickets(list.map((item) => normalizeTicket(item as unknown as Record<string, unknown>)));
       })
       .catch(() => {
         if (!cancelled) setTickets([]);
