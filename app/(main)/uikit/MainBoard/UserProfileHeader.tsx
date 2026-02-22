@@ -29,7 +29,7 @@ export function UserProfileHeader({ fullName, role, avatarUrl }: UserProfileHead
           size="xlarge"
           shape="circle"
           className="profile-avatar shadow-2"
-          alt=""
+          
         />
         <div>
           <h2 className="m-0">{fullName || 'User'}</h2>
