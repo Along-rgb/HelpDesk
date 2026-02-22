@@ -25,7 +25,7 @@ function matchesStatusFilter(ticket: Ticket, statusFilter: StatusFilterOption): 
 /** แปลง response จาก API ให้ตรงกับ Ticket (pageTechn) ถ้าขาดฟิลด์ใส่ default */
 function normalizeTicket(raw: Record<string, unknown>): Ticket {
   return {
-    id: raw.id ?? "",
+    id: (raw.id as string | number) ?? "",
     title: String(raw.title ?? ""),
     date: String(raw.date ?? ""),
     firstname_req: raw.firstname_req != null ? String(raw.firstname_req) : undefined,
