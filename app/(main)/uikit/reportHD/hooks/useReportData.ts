@@ -1,7 +1,7 @@
 // src/app/reports/hooks/useReportData.ts
 import { useState, useEffect } from 'react';
-import { ReportService } from '../test';
-import { ReportItem } from '../types';
+import { ReportService } from '@/app/(main)/uikit/reportHD/service';
+import { ReportItem } from '@/app/(main)/uikit/reportHD/types';
 
 export function useReportData(activeIndex: number, dateRange: Date[] | any) {
     const [loading, setLoading] = useState(false);

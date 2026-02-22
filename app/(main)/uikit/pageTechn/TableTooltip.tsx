@@ -1,0 +1,29 @@
+"use client";
+import React, { useState, useEffect } from "react";
+import { Tooltip } from "primereact/tooltip";
+
+interface Props {
+    target: string;
+    dependencies: any[];
+}
+
+export const TableTooltip = ({ target, dependencies }: Props) => {
+    const [version, setVersion] = useState(0);
+
+    useEffect(() => {
+        setVersion((prev) => prev + 1);
+    }, dependencies); // eslint-disable-line react-hooks/exhaustive-deps
+
+    return (
+        <Tooltip
+            key={version}
+            target={target}
+            className="custom-red-tooltip"
+            showDelay={200}
+            hideDelay={100}
+            autoZIndex={true}
+            mouseTrack={false}
+            mouseTrackLeft={10}
+        />
+    );
+};

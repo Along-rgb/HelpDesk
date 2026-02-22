@@ -6,8 +6,7 @@ import { TabMenu } from 'primereact/tabmenu';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
-import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
-import ManagementTable from './ManagementTable';
+import ManagementTable, { getCascadeDeleteMessage } from './ManagementTable';
 import BuildingCreateDialog from './BuildingCreateDialog';
 import { useBuilding } from '../hooks/useBuilding';
 import { BuildingData, CreateBuildingPayload, BuildingTabs } from '../types';
@@ -18,7 +17,7 @@ export default function BuildingsPage() {
     const searchParams = useSearchParams();
     const [activeIndex, setActiveIndex] = useState<number>(BuildingTabs.BUILDING);
     
-    const { toast, items, buildingOptions, saveData, deleteData } = useBuilding(activeIndex);
+    const { toast, items, buildingOptions, saveData, deleteData, deleteBuildingCascade } = useBuilding(activeIndex);
 
     // [Optimization] ສ້າງ Map ຂອງ Building ເພື່ອສົ່ງໃຫ້ Table lookup (O(1))
     const buildingMap = useMemo(() => {
@@ -121,14 +120,12 @@ export default function BuildingsPage() {
         setSaving(false);
     };
 
-    const confirmDelete = (item: BuildingData) => {
-        confirmDialog({
-            message: `ທ່ານຕ້ອງການລຶບ "${item.name}" ແທ້ບໍ່?`,
-            header: 'ຢືນຢັນການລຶບ',
-            icon: 'pi pi-exclamation-triangle',
-            acceptLabel: 'ຕົກລົງ', rejectLabel: 'ຍົກເລີກ', acceptClassName: 'p-button-danger',
-            accept: () => deleteData(item)
-        });
+    const onDelete = (item: BuildingData) => {
+        if (activeIndex === BuildingTabs.BUILDING) {
+            deleteBuildingCascade(item.id);
+        } else {
+            deleteData(item);
+        }
     };
 
     const renderHeader = () => (
@@ -148,7 +145,6 @@ export default function BuildingsPage() {
         <div className="card p-4 surface-card shadow-2 border-round">
              <style>{CUSTOM_TAB_CSS}</style>
             <Toast ref={toast} position="top-center" />
-            <ConfirmDialog />
             <div className="mb-4">
                 <TabMenu model={tabItems} activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)} className="custom-tabmenu" />
             </div>
@@ -160,9 +156,10 @@ export default function BuildingsPage() {
                 nameColumnHeader={columnNameHeader}
                 activeTab={activeIndex}
                 onEdit={openEdit}
-                onDelete={confirmDelete}
+                onDelete={onDelete}
                 buildingMap={buildingMap}
                 buildingOptions={buildingOptions}
+                deleteConfirmMessage={activeIndex === BuildingTabs.BUILDING ? getCascadeDeleteMessage : undefined}
             />
 
             <BuildingCreateDialog 

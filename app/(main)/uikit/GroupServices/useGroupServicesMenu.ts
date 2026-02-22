@@ -1,4 +1,4 @@
-// app/(main)/uikit/GroupServices/useMenuu.ts
+// app/(main)/uikit/GroupServices/useGroupServicesMenu.ts
 'use client';
 import { useState } from 'react';
 import { ServiceItem } from './types';
@@ -35,7 +35,6 @@ const DB_SERVICES: ServiceItem[] = [
 ];
 
 export const useMenu = () => {
-    // ໃຊ້ຂໍ້ມູນ DB_SERVICES ຂອງໄຟລ໌ນີ້
     const [services] = useState<ServiceItem[]>(DB_SERVICES);
     const [isLoading] = useState(false);
 

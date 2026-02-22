@@ -1,32 +1,29 @@
 'use client';
 
-import React from 'react';
+/**
+ * หน้า Profile — แสดงข้อมูลของคนที่ login เท่านั้น (read-only).
+ * ຕຳແໜ່ງ, ຝ່າຍ, ພະແນກ/ສູນ/ສາຂາ, ໜ່ວຍງານ ดึงจาก profileData (GET /users/:id) เท่านั้น ไม่เรียก endpoint อื่น.
+ */
+import React, { useEffect } from 'react';
 import './Profile.css';
 import FormInput from './components/FormInput';
-import FormDropdown from './components/FormDropdown';
 import { useProfile } from './hooks/useProfile';
-import { Avatar } from 'primereact/avatar';
 import { Card } from 'primereact/card';
+import { UserProfileHeader } from '../MainBoard/UserProfileHeader';
+
+const LOG = (msg: string, data?: unknown) => {
+  console.log('[profileUser]', msg, data !== undefined ? data : '');
+};
 
 const ProfilePage = () => {
-  const {
-    loading,
-    error,
-    isSaving,
-    isEditing,
-    formData,
-    profileData,
-    masterData,
-    handleChange,
-    handleDropdownChange,
-    handleToggleEdit,
-    handleSave,
-  } = useProfile();
+  const { loading, error, profileData } = useProfile();
 
-  // =========================================
-  // Loading & Error States
-  // =========================================
+  useEffect(() => {
+    LOG('page state', { loading, error: error ?? null, hasProfileData: !!profileData });
+  }, [loading, error, profileData]);
+
   if (loading) {
+    LOG('render: loading');
     return (
       <div className="profile-container">
         <div className="text-center py-8">
@@ -38,6 +35,7 @@ const ProfilePage = () => {
   }
 
   if (error) {
+    console.warn('[profileUser] render: error', error);
     return (
       <div className="profile-container">
         <div style={{ color: 'red', textAlign: 'center', padding: '2rem' }}>
@@ -48,28 +46,14 @@ const ProfilePage = () => {
     );
   }
 
-  // =========================================
-  // Profile Display
-  // =========================================
   return (
     <div className="profile-container">
-      {/* Header with Avatar */}
-      <div className="profile-header">
-        <div className="flex align-items-center gap-4">
-          <Avatar
-            image={profileData?.empimg || '/layout/images/avatar-default.png'}
-            size="xlarge"
-            shape="circle"
-            className="profile-avatar shadow-2"
-          />
-          <div>
-            <h2 className="m-0">{profileData?.fullName || 'User'}</h2>
-            <p className="text-500 mt-1">{profileData?.pos_name}</p>
-          </div>
-        </div>
-      </div>
+      <UserProfileHeader
+        fullName={profileData?.fullName ?? 'User'}
+        role={profileData?.pos_name}
+        avatarUrl={profileData?.empimg}
+      />
 
-      {/* Info Card */}
       <Card className="mb-4">
         <h3 className="mb-3">
           <i className="pi pi-info-circle mr-2"></i>
@@ -77,144 +61,88 @@ const ProfilePage = () => {
         </h3>
 
         <div className="profile-form">
-          {/* Row 1: Basic Info */}
           <div className="form-row three-cols">
             <FormInput
               label="ລະຫັດພະນັກງານ "
               value={profileData?.emp_code || ''}
-              disabled={true}
-              readOnly={true}
+              disabled
+              readOnly
             />
             <FormInput
               label="ຊື່ແທ້ "
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleChange}
-              disabled={!isEditing}
+              value={profileData?.first_name || ''}
+              disabled
+              readOnly
             />
             <FormInput
               label="ນາມສະກຸນ "
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleChange}
-              disabled={!isEditing}
+              value={profileData?.last_name || ''}
+              disabled
+              readOnly
             />
           </div>
 
-          {/* Row 2: Organization Info - ຝ່າຍ, ພະແນກ (Dropdown + search + clear) */}
           <div className="form-row two-cols">
-            <FormDropdown
+            <FormInput
               label="ຝ່າຍ "
-              name="departmentId"
-              value={formData.departmentId ?? undefined}
-              options={masterData.departmentOptions}
-              onChange={handleDropdownChange}
-              disabled={!isEditing}
-              showClear
-              filter
+              value={profileData?.department_name || ''}
+              disabled
+              readOnly
             />
-            <FormDropdown
+            <FormInput
               label="ພະແນກ/ສູນ/ສາຂາ "
-              name="divisionId"
-              value={formData.divisionId ?? undefined}
-              options={masterData.divisionOptions}
-              onChange={handleDropdownChange}
-              disabled={!isEditing}
-              showClear
-              filter
+              value={profileData?.division_name || ''}
+              disabled
+              readOnly
             />
           </div>
 
-          {/* Row 3: Position & Unit - ຕຳແໜ່ງ (Dropdown [pos_code_name]-pos_name) */}
           <div className="form-row two-cols">
-            <FormDropdown
+            <FormInput
               label="ຕຳແໜ່ງ "
-              name="posId"
-              value={formData.posId ?? undefined}
-              options={masterData.positionOptions}
-              onChange={handleDropdownChange}
-              disabled={!isEditing}
-              showClear
-              filter
+              value={profileData?.pos_name || ''}
+              disabled
+              readOnly
             />
             <FormInput
               label="ໜ່ວຍງານ "
               value={profileData?.unit_name || ''}
-              disabled={true}
-              readOnly={true}
+              disabled
+              readOnly
             />
           </div>
 
-          {/* Row 4: Contact Info */}
           <div className="form-row two-cols">
             <FormInput
               label="ເບີໂທຕິດຕໍ່"
-              name="contactPhone"
-              value={formData.contactPhone}
-              onChange={handleChange}
-              disabled={!isEditing}
+              value={profileData?.tel || ''}
+              disabled
+              readOnly
             />
             <FormInput
               label="ອີເມວ "
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              disabled={!isEditing}
+              value={profileData?.email || ''}
+              disabled
+              readOnly
             />
           </div>
 
-          {/* Additional Info */}
           <div className="form-row two-cols">
             <FormInput
               label="ເພດ"
               value={profileData?.gender || ''}
-              disabled={true}
-              readOnly={true}
+              disabled
+              readOnly
             />
             <FormInput
               label="ສະຖານະ"
               value={profileData?.status === 'A' ? 'ປົກກະຕິ' : profileData?.status || ''}
-              disabled={true}
-              readOnly={true}
+              disabled
+              readOnly
             />
           </div>
         </div>
       </Card>
-
-      {/* Action Buttons */}
-      <div className="profile-footer">
-        <button
-          className="btn-edit"
-          onClick={handleToggleEdit}
-          disabled={isSaving}
-          style={isEditing ? { borderColor: '#d32f2f', color: '#d32f2f' } : {}}
-        >
-          <i
-            className={`pi ${isEditing ? 'pi-times' : 'pi-pencil'}`}
-            style={{ marginRight: '5px' }}
-          ></i>
-          {isEditing ? 'ຍົກເລີກ' : 'ແກ້ໄຂ'}
-        </button>
-
-        <button
-          className="btn-save"
-          onClick={handleSave}
-          disabled={!isEditing || isSaving}
-        >
-          {isSaving ? (
-            <>
-              <i className="pi pi-spin pi-spinner" style={{ marginRight: '5px' }}></i>
-              ກຳລັງບັນທຶກ...
-            </>
-          ) : (
-            <>
-              <i className="pi pi-check" style={{ marginRight: '5px' }}></i>
-              ບັນທືກ
-            </>
-          )}
-        </button>
-      </div>
     </div>
   );
 };

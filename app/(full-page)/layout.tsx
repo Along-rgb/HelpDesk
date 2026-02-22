@@ -6,7 +6,10 @@ interface SimpleLayoutProps {
     children: React.ReactNode;
 }
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3500';
+
 export const metadata: Metadata = {
+    metadataBase: new URL(appUrl),
     title: 'ICT-HelpDesk',
     description: 'The ultimate collection of design-agnostic, flexible and accessible React UI Components.'
 };

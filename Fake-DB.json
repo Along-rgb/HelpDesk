@@ -961,6 +961,21 @@
       "level": "ຊັ້ນ 02",
       "room": "101",
       "description": "-"
+    },
+    {
+      "id": "2281",
+      "title": "ບໍລິການຄອມພີວເຕີທົ່ວໄປ",
+      "date": "20/02/2026 4:48 PM",
+      "requester": "ທັດສະນີ ມີໄຊບົວ",
+      "assignees": [],
+      "status": "ລໍຖ້າຮັບວຽກ",
+      "priority": "ບໍ່ລະບຸ",
+      "verified": false,
+      "category": "ຂໍບໍລິການກ່ຽວກັບຄອມພີວເຕີທົ່ວໄປ (computer)",
+      "building": "ຕຶກສຳນັກງານໃຫຍ່ ຟຟລ",
+      "level": "ຊັ້ນ 01",
+      "room": "101",
+      "description": "-"
     }
   ]
 }

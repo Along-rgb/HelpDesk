@@ -1,27 +1,26 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Toast } from 'primereact/toast';
-import axiosClientsHelpDesk from '../../../../../config/axiosClientsHelpDesk';
-
-// แสดง toast ເຂົ້າໃໝ່ Server ແຕ່ຄັ້ງດຽວ ເພື່ອບໍ່ໃຫ້ຊ້ຳທຸກ tabIndex
-let serverErrorToastShown = false;
+import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
 
 export function useCoreApi<T, P>(
     endpoint: string,
-    queryParams: Record<string, any> = {},
-    triggerFetch: any = null // ตัวแปรที่จะกระตุ้นให้โหลดใหม่ (เช่น activeIndex)
+    queryParams: Record<string, unknown> = {},
+    triggerFetch: unknown = null
 ) {
     const toast = useRef<Toast>(null);
+    const queryParamsRef = useRef(queryParams);
+    const serverErrorShownRef = useRef(false);
+    queryParamsRef.current = queryParams;
+
     const [items, setItems] = useState<T[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // 1. Fetch Data
     const fetchData = useCallback(async () => {
         if (!endpoint) return;
+        const params = queryParamsRef.current;
         setLoading(true);
         try {
-            const response = await axiosClientsHelpDesk.get(endpoint, {
-                params: queryParams
-            });
+            const response = await axiosClientsHelpDesk.get(endpoint, { params });
 
             if (Array.isArray(response.data)) {
                 setItems(response.data);
@@ -32,8 +31,8 @@ export function useCoreApi<T, P>(
             }
         } catch {
             setItems([]);
-            if (!serverErrorToastShown) {
-                serverErrorToastShown = true;
+            if (!serverErrorShownRef.current) {
+                serverErrorShownRef.current = true;
                 toast.current?.show({
                     severity: 'error',
                     summary: 'Error',
@@ -44,10 +43,8 @@ export function useCoreApi<T, P>(
         } finally {
             setLoading(false);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [endpoint, JSON.stringify(queryParams)]);
+    }, [endpoint]);
 
-    // Trigger Fetch เมื่อค่า triggerFetch เปลี่ยน (เช่น เปลี่ยน Tab)
     useEffect(() => {
         fetchData();
     }, [fetchData, triggerFetch]);
@@ -59,7 +56,7 @@ export function useCoreApi<T, P>(
                 await axiosClientsHelpDesk.put(`${endpoint}/${id}`, { ...payload });
                 toast.current?.show({ severity: 'success', summary: 'Success', detail: 'ແກ້ໄຂຂໍ້ມູນສຳເລັດ' });
             } else {
-                const dataToSend = options?.noQueryParams ? { ...payload } : { ...payload, ...queryParams };
+                const dataToSend = options?.noQueryParams ? { ...payload } : { ...payload, ...queryParamsRef.current };
                 await axiosClientsHelpDesk.post(endpoint, dataToSend);
                 toast.current?.show({ severity: 'success', summary: 'Success', detail: 'ເພີ່ມຂໍ້ມູນສຳເລັດ' });
             }

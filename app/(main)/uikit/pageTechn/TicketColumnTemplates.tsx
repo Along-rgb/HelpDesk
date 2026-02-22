@@ -1,0 +1,111 @@
+"use client";
+import React from "react";
+import Link from "next/link";
+import { Ticket, Assignee } from "./types";
+import { ASSIGNEE_STATUS_MAP } from "./constants";
+
+/** แปลงชื่อสำหรับแสดง (ตัดคำนำหน้า/เอาแค่ส่วนที่ใช้แสดง) */
+function getDisplayName(user: Assignee): string {
+    let displayName = user.name || "";
+    if (displayName) {
+        const cleanName = displayName.trim();
+        const parts = cleanName.split(" ");
+        const isTitle =
+            parts[0] === "ທ." || parts[0] === "ນ." || (parts[0] && parts[0].includes("."));
+        if (parts.length > 1 && isTitle) {
+            return `${parts[0]} ${parts[1]}`;
+        }
+        return parts[0] || displayName;
+    }
+    return displayName;
+}
+
+export const TitleBody = (rowData: Ticket) => (
+    <Link
+        href={`/uikit/ticket-detail/${rowData.id}`}
+        className="no-underline"
+        style={{ color: "inherit" }}
+    >
+        <span
+            className="js-tooltip-target cursor-pointer text-900 font-medium hover:text-blue-600 transition-colors transition-duration-200"
+            data-pr-tooltip={rowData.title || ""}
+            data-pr-position="top"
+            style={{
+                display: "block",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+            }}
+        >
+            {rowData.title}
+        </span>
+    </Link>
+);
+
+export const RequesterBody = (rowData: Ticket) => {
+    const firstName = rowData.firstname_req || "";
+    const lastName = rowData.lastname_req || "";
+    const requesterFull = rowData.requester || "";
+    const fullName =
+        firstName && lastName
+            ? `${firstName} ${lastName}`.trim()
+            : requesterFull || firstName || lastName;
+
+    return (
+        <span
+            className="js-tooltip-target cursor-pointer text-700"
+            data-pr-tooltip={fullName}
+            data-pr-position="top"
+            style={{ whiteSpace: "nowrap" }}
+        >
+            {fullName}
+        </span>
+    );
+};
+
+export const AssigneeBody = (rowData: Ticket, action: (data: Assignee[]) => void) => {
+    let displayData = rowData.assignees || [];
+
+    if (displayData.length === 0 && rowData.assignTo) {
+        displayData = [{ id: rowData.id, name: rowData.assignTo, status: "doing" } as Assignee];
+    }
+
+    if (displayData.length === 0)
+        return <span className="text-500 text-sm italic">ຍັງບໍ່ໄດ້ມອບໝາຍ</span>;
+
+    const statusInfoFirst =
+        ASSIGNEE_STATUS_MAP[displayData[0].status] || ASSIGNEE_STATUS_MAP["default"];
+    let textColor = "text-700";
+    if (statusInfoFirst.severity === "info") textColor = "text-blue-500";
+    else if (statusInfoFirst.severity === "success") textColor = "text-green-500";
+    else if (statusInfoFirst.severity === "warning") textColor = "text-orange-500";
+
+    // Tooltip: รายชื่อทั้งหมด พร้อมสถานะ (name | status)
+    const tooltipText =
+        displayData.length === 1
+            ? `${displayData[0].name} | ${statusInfoFirst.label}`
+            : displayData
+                  .map(
+                      (u) =>
+                          `${u.name} | ${(ASSIGNEE_STATUS_MAP[u.status] || ASSIGNEE_STATUS_MAP["default"]).label}`
+                  )
+                  .join(" • ");
+
+    // แสดงเป็นรายชื่อ (ไม่ใช้ AvatarGroup)
+    const nameList =
+        displayData.length === 1
+            ? getDisplayName(displayData[0])
+            : displayData.map((u) => getDisplayName(u)).join(", ");
+
+    return (
+        <div
+            className={`js-tooltip-target ${textColor} font-bold cursor-pointer text-sm`}
+            onClick={() => action(displayData)}
+            style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+            data-pr-tooltip={tooltipText}
+            data-pr-position="bottom"
+        >
+            {nameList}
+        </div>
+    );
+};

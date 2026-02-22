@@ -4,7 +4,7 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
-import axiosClientsHelpDesk from '../../../../../config/axiosClientsHelpDesk'; 
+import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk'; 
 import { BuildingData, CreateBuildingPayload, BuildingTabs } from '../types';
 
 interface Props {

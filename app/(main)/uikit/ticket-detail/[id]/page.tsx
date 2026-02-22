@@ -6,9 +6,9 @@ import { Panel } from "primereact/panel";
 import { Tag } from "primereact/tag";
 import { Dropdown } from "primereact/dropdown";
 import { TabView, TabPanel } from "primereact/tabview";
-import { Ticket } from "../../table/types";
-import { ticketService } from "../../../../services/ticketService";
-import { STATUS_MAP } from "../../table/constants";
+import { Ticket } from "@/app/(main)/uikit/table/types";
+import { ticketService } from "@/app/services/ticketService";
+import { STATUS_MAP } from "@/app/(main)/uikit/table/constants";
 
 export default function TicketDetailPage() {
     const params = useParams();

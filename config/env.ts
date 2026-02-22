@@ -18,9 +18,10 @@ const getEnv = (key: string, fallback: string): string => {
 /** ค่า env ที่ใช้ในแอป (หลาย Backend) */
 export const env = {
   // ----- HelpDesk API (users, auth, departments, ... ທັງໝົດຢູ່ under /helpdesk/api) -----
+  /** baseURL ລວມ /api ແລ້ວ — ບໍ່ໃສ່ /api/ ຊ້ຳໃນ path ອື່ນ */
   helpdeskApiUrl:
     getEnv('NEXT_PUBLIC_HELPDESK_API_BASE_URL', 'https://api-test.edl.com.la/helpdesk/api'),
-  /** Path สำหรับ login (ต่อกับ helpdeskApiUrl) */
+  /** Path สำหรับ login (ต่อกับ helpdeskApiUrl, ເຊັ່ນ auth/login → .../helpdesk/api/auth/login) */
   helpdeskAuthLoginPath:
     getEnv('NEXT_PUBLIC_HELPDESK_AUTH_LOGIN_PATH', 'auth/login'),
   /** ถ้า backend ใช้ userName (PascalCase) แทน username ให้ตั้งเป็น 'true' */

@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useTicketTable } from "./useTicketTable"; 
 import { Ticket } from "./types";
 import { STATUS_MAP, CUSTOM_TOOLTIP_CSS } from "./constants"; 
-import { TicketActionMenu } from "./TicketActionMenu";
+import { TicketActionMenu } from "@/app/components/TicketActionMenu";
 import { PrioritySelector } from "./PrioritySelector";
 import { TicketHeader } from "./TicketHeader";
 import { AssigneeDialog } from "./AssigneeDialog";

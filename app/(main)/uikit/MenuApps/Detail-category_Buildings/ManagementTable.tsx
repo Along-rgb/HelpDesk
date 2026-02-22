@@ -3,10 +3,17 @@ import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { BuildingData, BuildingTabs } from '../types';
 
 const LEVEL_TABLE_COL_COUNT = 4;
 const STICKY_HEADER_STYLE: React.CSSProperties = { position: 'sticky', top: 0, zIndex: 10 };
+
+/** ສ້າງຂໍ້ຄວາມຢືນຢັນລຶບຕຶກແບບ Cascade ພ້ອມຊື່ຂໍ້ມູນ */
+export function getCascadeDeleteMessage(item: BuildingData): string {
+    const name = item?.name ?? 'ຂໍ້ມູນນີ້';
+    return `${name} ມີຊຸດຂໍ້ມູນຢູ່ກະລຸນາຍືນຍັນຖ້າຕ້ອງການລົບ`;
+}
 
 interface Props {
     items: BuildingData[];
@@ -18,6 +25,8 @@ interface Props {
     onDelete: (item: BuildingData) => void;
     buildingMap: Map<string | number, string>;
     buildingOptions?: BuildingData[];
+    /** ຖ້າສ่งມາ ໃຊ້ຂໍ້ຄວາມນີ້ໃນ Confirm ລຶບ — ຮອງຮັບທີ່ຈະເປັນ string ຫຼື ຟັງຊັນ (item) => string ເພື່ອດຶງຊື່ຂໍ້ມູນຂຶ້ນມາ */
+    deleteConfirmMessage?: string | ((item: BuildingData) => string);
 }
 
 export default function ManagementTable({ 
@@ -29,12 +38,12 @@ export default function ManagementTable({
     onEdit, 
     onDelete, 
     buildingMap,
-    buildingOptions = []
+    buildingOptions = [],
+    deleteConfirmMessage
 }: Props) {
 
     const isRoomTab = activeTab === BuildingTabs.ROOM;
     const isLevelTab = activeTab === BuildingTabs.LEVEL;
-
     const tableWrapperRef = useRef<HTMLDivElement>(null);
     const [stickyHeaderHeight, setStickyHeaderHeight] = useState(44);
 
@@ -44,28 +53,57 @@ export default function ManagementTable({
         return '-';
     }, [buildingMap]);
 
+    const handleDeleteClick = useCallback(
+        (row: BuildingData) => {
+            const message =
+                typeof deleteConfirmMessage === 'function'
+                    ? deleteConfirmMessage(row)
+                    : deleteConfirmMessage ?? `ທ່ານຕ້ອງການລົບ "${row.name}" ແທ້ບໍ່?`;
+            confirmDialog({
+                message,
+                header: 'ຢືນຢັນການລົບ',
+                icon: 'pi pi-exclamation-triangle',
+                acceptLabel: 'ຕົກລົງ',
+                rejectLabel: 'ຍົກເລີກ',
+                acceptClassName: 'p-button-danger',
+                accept: () => onDelete(row),
+            });
+        },
+        [onDelete, deleteConfirmMessage]
+    );
+
     const actionTemplate = useCallback((row: BuildingData) => (
         <div className="flex gap-2 justify-content-center align-items-center w-full">
             <Button icon="pi pi-pencil" rounded text className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-none" tooltip="ແກ້ໄຂ" onClick={() => onEdit(row)} />
-            <Button icon="pi pi-trash" rounded text className="bg-red-100 text-red-700 hover:bg-red-200 border-none" tooltip="ລຶບ" onClick={() => onDelete(row)} />
+            <Button icon="pi pi-trash" rounded text className="bg-red-100 text-red-700 hover:bg-red-200 border-none" tooltip="ລຶບ" onClick={() => handleDeleteClick(row)} />
         </div>
-    ), [onEdit, onDelete]);
+    ), [onEdit, handleDeleteClick]);
 
     const safeItems = Array.isArray(items) ? items.filter((row): row is BuildingData => row != null && typeof row === 'object') : [];
     const safeHeader = header ?? null;
-    const safeGlobalFilter = globalFilter ?? '';
+    const safeGlobalFilter = (globalFilter ?? '').trim();
 
-    const globalFilterFields = isLevelTab ? ['name', 'parentName'] : isRoomTab ? ['code', 'name', 'levelName', 'parentName'] : ['name', 'code'];
+    // ຊ່ອຍຄົ້ນຫາຕາມ ຊື່ຕຶກ/ອາຄານ (name), ລະຫັດ, ຊື່ພໍ່ ແລະ ອື່ນໆ ຕາມ tab
+    const matchesFilter = (row: BuildingData) => {
+        if (!safeGlobalFilter) return true;
+        const q = safeGlobalFilter.toLowerCase();
+        const name = (row.name ?? '').toLowerCase();
+        const code = (row.code ?? '').toLowerCase();
+        const parentName = (row.parentName ?? buildingMap?.get(row.parentId!) ?? '').toString().toLowerCase();
+        const levelName = (row.levelName ?? '').toLowerCase();
+        if (isRoomTab) return name.includes(q) || code.includes(q) || levelName.includes(q) || parentName.includes(q);
+        if (isLevelTab) return name.includes(q) || parentName.includes(q);
+        // Tab ຕຶກ/ອາຄານ: ຄົ້ນຫາຕາມຊື່ (name) ຫຼື ຄຳອະທິບາຍ (code)
+        return name.includes(q) || code.includes(q);
+    };
 
     const useLevelGrouped = isLevelTab && Array.isArray(buildingOptions) && buildingOptions.length > 0;
 
-    const matchesFilter = (row: BuildingData) => {
-        if (!safeGlobalFilter.trim()) return true;
-        const q = safeGlobalFilter.toLowerCase();
-        const name = (row.name ?? '').toLowerCase();
-        const parentName = (row.parentName ?? buildingMap?.get(row.parentId!) ?? '').toString().toLowerCase();
-        return name.includes(q) || parentName.includes(q);
-    };
+    // ໃຊ້ຂໍ້ມູນທີ່ກັ່ນແລ້ວສຳລັບ DataTable ເພື່ອໃຫ້ຄົ້ນຫາຕາມຊື່ຕຶກ/ອາຄານ (name) ໄດ້
+    const filteredItems = useMemo(() => {
+        if (useLevelGrouped) return safeItems; // ລະດັບຊັ້ນໃຊ້ matchesFilter ໃນ levelTableRows ແລ້ວ
+        return safeItems.filter(matchesFilter);
+    }, [safeItems, safeGlobalFilter, useLevelGrouped, isLevelTab, isRoomTab, buildingMap]);
 
     type LevelTableRow = { type: 'section'; name: string; buildingId: number } | { type: 'data'; row: BuildingData };
     const levelTableRows: LevelTableRow[] = useLevelGrouped
@@ -110,6 +148,7 @@ export default function ManagementTable({
     if (useLevelGrouped) {
         return (
             <>
+                <ConfirmDialog />
                 {safeHeader}
                 <div className="p-datatable p-datatable-sm p-datatable-striped mt-3 border-1 surface-border border-round overflow-hidden">
                     <div ref={tableWrapperRef} className="p-datatable-wrapper" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
@@ -159,19 +198,19 @@ export default function ManagementTable({
     }
 
     return (
-        <DataTable 
-            value={safeItems} 
-            header={safeHeader} 
-            globalFilter={safeGlobalFilter} 
-            globalFilterFields={globalFilterFields} 
-            emptyMessage={<div className="text-center p-4 text-gray-500">ບໍ່ພົບຂໍ້ມູນ</div>} 
-            className="p-datatable-sm" 
-            stripedRows 
-            paginator 
-            rows={10}
-            scrollable 
-            scrollHeight="60vh" // เพิ่มความสามารถ scroll ให้ Tab อื่นๆ ด้วย
-        >
+        <>
+            <ConfirmDialog />
+            <DataTable 
+                value={filteredItems} 
+                header={safeHeader} 
+                emptyMessage={<div className="text-center p-4 text-gray-500">ບໍ່ພົບຂໍ້ມູນ</div>} 
+                className="p-datatable-sm" 
+                stripedRows 
+                paginator 
+                rows={10}
+                scrollable 
+                scrollHeight="60vh"
+            >
             <Column header="#" body={(d, opts) => opts.rowIndex + 1} className="text-center w-4rem" alignHeader="center" bodyStyle={{ textAlign: 'center' }} frozen alignFrozen="left" />
 
             {isRoomTab && <Column field="code" header="ລະຫັດຫ້ອງ" style={{ minWidth: '150px' }} />}
@@ -185,6 +224,7 @@ export default function ManagementTable({
             {!isRoomTab && !isLevelTab && <Column field="name" header={nameColumnHeader} style={{ minWidth: '200px' }} />}
             {!isRoomTab && !isLevelTab && <Column field="code" header="ຄຳອະທິບາຍ" style={{ minWidth: '200px' }} />}
             {!isRoomTab && !isLevelTab && <Column header="ດຳເນີນການ" body={actionTemplate} alignHeader="center" bodyStyle={{ textAlign: 'center' }} className="text-center w-8rem" />}
-        </DataTable>
+            </DataTable>
+        </>
     );
 }

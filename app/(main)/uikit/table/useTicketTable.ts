@@ -1,7 +1,7 @@
 // table/useTicketTable.ts
 import { useState, useEffect, useCallback } from "react";
 import { Ticket, Assignee } from "./types";
-import { ticketService } from "../../../services/ticketService";
+import { ticketService } from "@/app/services/ticketService";
 import { ASSIGNMENT_GROUPS } from "./constants";
 
 export const useTicketTable = () => {

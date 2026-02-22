@@ -1,30 +1,50 @@
 // invalidstate/page.tsx
 "use client";
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import { Editor } from "primereact/editor";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { useTicketForm } from './useTicketForm';
-import { FormDropdown } from '../../../components/FormDropdown';
+import { FormDropdown } from '@/app/components/FormDropdown';
 import { useProfileData } from '@/app/store/user/userProfileStore';
+
+const LOG = (msg: string, data?: unknown) => {
+    console.log('[invalidstate]', msg, data !== undefined ? data : '');
+};
 
 const RequestForm = () => {
     const {
-        form, masterData, isSubmitting,
+        form, masterData, levelOptions, loadingMaster, isSubmitting,
         updateField, handleBuildingChange, handleLevelChange,
         handleFileSelect, handleRemoveFile, handleImageSelect, handleRemoveImage,
         handleSubmit, handleReset, handleCancel, fileInputRef, imageInputRef
     } = useTicketForm();
-    const { profileData } = useProfileData();
+    const { profileData, loading: profileLoading, error: profileError } = useProfileData();
+
+    useEffect(() => {
+        LOG('page state', {
+            loadingMaster,
+            isSubmitting,
+            hasProfileData: !!profileData,
+            profileLoading,
+            profileError: profileError ?? null,
+            masterDataKeys: masterData ? { buildings: masterData.buildings?.length, categories: masterData.categories?.length } : null,
+        });
+    }, [loadingMaster, isSubmitting, profileData, profileLoading, profileError, masterData]);
 
     const requestingPartyText = useMemo(() => {
-        if (!profileData) return '';
+        if (!profileData) {
+            LOG('requestingPartyText empty (no profileData)');
+            return '';
+        }
         const parts = [
             profileData.department_name?.trim(),
             profileData.division_name?.trim(),
             [profileData.first_name, profileData.last_name].filter(Boolean).join(' ').trim(),
         ].filter(Boolean);
-        return parts.join(' | ');
+        const text = parts.join(' | ');
+        if (!text) LOG('requestingPartyText empty (parts empty)', { department_name: profileData.department_name, division_name: profileData.division_name, first_name: profileData.first_name, last_name: profileData.last_name });
+        return text;
     }, [profileData]);
 
     const editorHeader = useMemo(() => (
@@ -49,6 +69,12 @@ const RequestForm = () => {
                 </div>
 
                 <div className="p-fluid p-4">
+                    {loadingMaster && (
+                        <div className="flex align-items-center gap-2 text-500 mb-3">
+                            <i className="pi pi-spin pi-spinner" />
+                            <span>ກຳລັງໂຫລດຂໍ້ມູນ...</span>
+                        </div>
+                    )}
                     <div className="formgrid grid mb-3">
                         <div className="field col-12 md:col-6">
                             <label htmlFor="topic" className="font-bold block mb-2">ຫົວຂໍ້</label>
@@ -62,7 +88,7 @@ const RequestForm = () => {
 
                     <div className="formgrid grid mb-3">
                         <FormDropdown className="field col-12 md:col-4" label="ຕຶກ/ອາຄານ*" value={form.building} options={masterData?.buildings || []} onChange={(e) => handleBuildingChange(e.value)} />
-                        <FormDropdown className="field col-12 md:col-4" label="ລະດັບຊັ້ນ*" value={form.level} options={masterData?.levels || []} onChange={(e) => handleLevelChange(e.value)} disabled={!form.building} />
+                        <FormDropdown className="field col-12 md:col-4" label="ລະດັບຊັ້ນ*" value={form.level} options={levelOptions} onChange={(e) => handleLevelChange(e.value)} disabled={!form.building} />
                         <FormDropdown className="field col-12 md:col-4" label="ໝາຍເລກຫ້ອງ (ວ່າງໄດ້)" value={form.roomNumber} options={masterData?.rooms || []} onChange={(e) => updateField('roomNumber', e.value)} disabled={!form.level} showClear />
                     </div>
 

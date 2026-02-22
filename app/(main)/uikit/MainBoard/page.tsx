@@ -1,26 +1,39 @@
 'use client';
+
 import React from 'react';
 import { Button } from 'primereact/button';
 import { StatItem } from './StatItem';
 import { EmptyStateCard } from './EmptyStateCard';
+import { DashboardSectionTitle } from './DashboardSectionTitle';
+import { useAdminRouteGuard } from '@/app/hooks/useAdminRouteGuard';
 
-// ตัวอย่าง Mock Data สำหรับรูปภาพ (ในโปรเจกต์จริง เปลี่ยน string นี้เป็น path ของไฟล์คุณ)
 const svgs = {
-    emptyWork: '/layout/images/Board.svg',        // รูปคนถือกระดาษ
-    emptyApprove: '/layout/images/ture.svg',  // รูปเครื่องหมายถูก
-    emptyNews: '/layout/images/Tphone.svg',        // รูปโทรโข่ง
-    emptyNotify: '/layout/images/time.svg'     // รูปนาฬิกา
+  emptyWork: '/layout/images/Board.svg',
+  emptyApprove: '/layout/images/ture.svg',
+  emptyNews: '/layout/images/Tphone.svg',
+  emptyNotify: '/layout/images/time.svg',
 };
 
 const MainBoard = () => {
+  const { loading, allowed } = useAdminRouteGuard('/uikit/profileUser');
+
+  if (loading) {
     return (
-        <div className="grid">
-            <div className="col-12">
-                <h4 className="text-900 font-bold flex align-items-center gap-2">
-                    <i className="pi pi-th-large"></i> 
-                    ສິດ ແລະ ສະຖານະຜູ້ໃຊ້: ຜູ້ເບິ່ງແຍງລະບົບ
-                </h4>
-            </div>
+      <div className="flex align-items-center justify-content-center p-8">
+        <i className="pi pi-spin pi-spinner" style={{ fontSize: '2rem' }}></i>
+      </div>
+    );
+  }
+  if (!allowed) {
+    return null;
+  }
+
+  return (
+    <div className="grid">
+      <DashboardSectionTitle
+        title="ສິດ ແລະ ສະຖານະຜູ້ໃຊ້: ຜູ້ເບິ່ງແຍງລະບົບ"
+        icon="pi pi-th-large"
+      />
 
             {/* Row 1 */}
             <div className="col-12 lg:col-4">

@@ -1,5 +1,6 @@
+/* ใช้ $colorRequestAccent, $colorRequestAccentAlt จาก _variables (โหลดใน layout.scss) */
 .request-card {
-    border: 4px solid orange !important;
+    border: 4px solid $colorRequestAccent !important;
 }
 .request-buttons {
     display: flex !important;
@@ -10,5 +11,5 @@
     margin-bottom: 0.5rem !important;
 }
 .request-cardd {
-    border: 4px solid rgb(46, 21, 107) !important;
+    border: 4px solid $colorRequestAccentAlt !important;
 }

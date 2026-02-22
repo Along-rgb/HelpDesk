@@ -1,9 +1,16 @@
+import type { AxiosResponse } from 'axios';
 import { create } from 'zustand';
 import { initialState } from '@/config/constant-api';
 import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
 import { env } from '@/config/env';
+import type { LoginApiResponse } from '@/global/types/api';
 import { Users } from '@/global/types';
 
+/** พารามิเตอร์สำหรับเรียก login (ตรงกับฟอร์ม Login) */
+export interface LoginCredentials {
+  username?: string;
+  password?: string;
+}
 
 // create interface for the store
 type UsersStore = {
@@ -16,7 +23,7 @@ type UsersStore = {
     loading: boolean;
     dataUser: Users.User[];
     userLogin: Users.UserLogin;
-    loginUser: (userLogin: any) => Promise<void>;
+    loginUser: (userLogin: LoginCredentials) => Promise<AxiosResponse<LoginApiResponse>>;
     getUsersData: () => Promise<void>;
     getUserByUserId: (UserId: number) => Promise<void>;
     getUserById: (UserId: number) => any;
@@ -31,30 +38,20 @@ export const useUsersStore = create<UsersStore, []>((set, get) => ({
     dataUser: [],
     loading: false,
     loginUser: async (userLogin) => {
-        try {
-            const loginPath = env.helpdeskAuthLoginPath;
-            const u = userLogin?.username ?? '';
-            const p = userLogin?.password ?? '';
-            const payload = env.loginUsePascalCase
-                ? { userName: u, password: p }
-                : { username: u, password: p };
-            const response = await axiosClientsHelpDesk.post(loginPath, payload);
-            return response;
-        } catch (error: any) {
-            const msg =
-                error?.response?.data?.message
-                ?? error?.response?.data?.error
-                ?? (typeof error?.response?.data === 'string' ? error.response.data : null);
-            if (msg) console.warn('[Login API]', msg);
-            throw error;
-        }
+        const loginPath = env.helpdeskAuthLoginPath;
+        const u = userLogin?.username ?? '';
+        const p = userLogin?.password ?? '';
+        const payload = env.loginUsePascalCase
+            ? { userName: u, password: p }
+            : { username: u, password: p };
+        const response = await axiosClientsHelpDesk.post<LoginApiResponse>(loginPath, payload);
+        return response;
     },
     getUsersData: async () => {
         set({ ...initialState, loading: true });
         try {
             // baseURL already includes "/api"
             const response = await axiosClientsHelpDesk.get('users');
-            console.log("api-data",response )
             set({ ...initialState, loading: false, success: true, dataUser: response.status === 200 ? response.data : [] });
         } catch (error) {
             console.error('Error fetching data:', error);

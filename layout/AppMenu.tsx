@@ -1,27 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import AppMenuitem from './AppMenuitem';
 import { MenuProvider } from './context/menucontext';
 import { AppMenuItem } from '@/types';
-import { useUserProfile } from '../types/useUserProfile'; 
+import { useUserProfile } from '../types/useUserProfile';
 
-const MENU_MODEL: AppMenuItem[] = [
-    { label: 'ຫນ້າຫຼັກ', icon: 'pi pi-fw pi-home', to: '/uikit/MainBoard' },
-    { label: 'ລາຍງານ', icon: 'pi pi-fw pi-th-large', to: '/uikit/reportHD' },
-    { label: 'ການຮ້ອງຂໍ', icon: 'pi pi-fw pi-ticket', to: '/uikit/table' },
-    { label: 'ການຕັ້ງຄ່າ ແລະ ຈັດການຂໍ້ມູນ', icon: 'pi pi-fw pi-wrench', to: '/uikit/MenuApps' },
+/** Role ID ตาม API /api/roles: 1=SuperAdmin (ເຮັດໄດ້ທຸກຢ່າງ ເຫັນທຸກຢ່າງ ເຂົ້າໄດ້ທຸກຢ່າງ), 2=Admin, 3=Staff, 4=User */
+const ROLE_ID = { SuperAdmin: 1, Admin: 2, Staff: 3, User: 4 } as const;
+
+type MenuItemWithRole = AppMenuItem & { allowedRoles?: number[] };
+
+const MENU_MODEL: MenuItemWithRole[] = [
+    { label: 'ຫນ້າຫຼັກ', icon: 'pi pi-fw pi-home', to: '/uikit/MainBoard', allowedRoles: [ROLE_ID.SuperAdmin, ROLE_ID.Admin] },
+    { label: 'ລາຍງານ', icon: 'pi pi-fw pi-th-large', to: '/uikit/reportHD', allowedRoles: [ROLE_ID.SuperAdmin, ROLE_ID.Admin, ROLE_ID.Staff] },
+    { label: 'ການຮ້ອງຂໍ', icon: 'pi pi-fw pi-ticket', to: '/uikit/table', allowedRoles: [ROLE_ID.SuperAdmin, ROLE_ID.Admin] },
+    { label: 'ການຕັ້ງຄ່າ ແລະ ຈັດການຂໍ້ມູນ', icon: 'pi pi-fw pi-wrench', to: '/uikit/MenuApps', allowedRoles: [ROLE_ID.SuperAdmin, ROLE_ID.Admin] },
     { label: 'ກ່ຽວກັບລະບົບ', icon: 'pi pi-fw pi-info-circle', to: '/uikit/Aboutsystem' }
 ];
 
-// ⭐ สร้าง Config สำหรับเมนู User (Clean Code)
-const USER_MENU_ITEMS = [
-    { label: 'ຂໍ້ມູນສ່ວນຕົວ', icon: 'pi pi-fw pi-user', to: '/uikit/profileUser' },
+/** เมนูสำหรับ Role User (id: 4) เท่านั้น — ເຫັນແຕ່ ຫນ້າຫຼັກ (pageUser) ແລະ ກ່ຽວກັບລະບົບ */
+const USER_ROLE_MENU: MenuItemWithRole[] = [
+    { label: 'ຫນ້າຫຼັກ', icon: 'pi pi-fw pi-home', to: '/uikit/pageUser' },
+    { label: 'ກ່ຽວກັບລະບົບ', icon: 'pi pi-fw pi-info-circle', to: '/uikit/Aboutsystem' }
+];
+
+// เมนู User — ຂໍ້ມູນສ່ວນຕົວ (profileUser) ເປີດໃຫ້ທຸກ Role (1,2,3,4) ເພື່ອທົດສອບ; ປ່ຽນລະຫັດຜ່ານ ໃຫ້ທຸກ Role
+const USER_MENU_ITEMS: { label: string; icon: string; to: string; allowedRoles?: number[] }[] = [
+    { label: 'ຂໍ້ມູນສ່ວນຕົວ', icon: 'pi pi-fw pi-user', to: '/uikit/profileUser', allowedRoles: [ROLE_ID.SuperAdmin, ROLE_ID.Admin, ROLE_ID.Staff, ROLE_ID.User] },
     { label: 'ປ່ຽນລະຫັດຜ່ານ', icon: 'pi pi-fw pi-key', to: '/uikit/changepassword' },
 ];
 
 const AppMenu = () => {
     const [isUserOpen, setIsUserOpen] = useState(false);
-    const { displayName } = useUserProfile();
+    const { displayName, roleId } = useUserProfile();
+
+    const visibleMenuItems = useMemo(() => {
+        if (roleId == null) return MENU_MODEL;
+        if (roleId === ROLE_ID.SuperAdmin) return MENU_MODEL;
+        if (roleId === ROLE_ID.User) return USER_ROLE_MENU;
+        return MENU_MODEL.filter((item) => !item.allowedRoles || item.allowedRoles.includes(roleId));
+    }, [roleId]);
+
+    const visibleUserMenuItems = useMemo(() => {
+        if (roleId == null) return USER_MENU_ITEMS;
+        if (roleId === ROLE_ID.SuperAdmin) return USER_MENU_ITEMS;
+        return USER_MENU_ITEMS.filter((item) => !item.allowedRoles || item.allowedRoles.includes(roleId));
+    }, [roleId]);
 
     const toggleUserMenu = () => setIsUserOpen(prev => !prev);
 
@@ -42,8 +66,7 @@ const AppMenu = () => {
 
                     {isUserOpen && (
                         <ul className="pl-4">
-                            {/* ⭐ Loop เมนูย่อยแทนการ Hardcode */}
-                            {USER_MENU_ITEMS.map((item) => (
+                            {visibleUserMenuItems.map((item) => (
                                 <li key={item.to}>
                                     <Link href={item.to} className="flex align-items-center p-3 cursor-pointer text-color hover:surface-100 border-round transition-duration-150 transition-colors w-full">
                                         <i className={`${item.icon} layout-menuitem-icon mr-2`}></i>
@@ -65,8 +88,8 @@ const AppMenu = () => {
 
                 <div className="menu-separator-container"><hr /></div>
 
-                {MENU_MODEL.map((item, i) => (
-                    !item?.seperator ? <AppMenuitem item={item} root={true} index={i} key={item.label} /> : null
+                {visibleMenuItems.map((item, i) => (
+                    !item?.seperator ? <AppMenuitem item={item} root={true} index={i} key={`${item.label}-${item.to}`} /> : null
                 ))}
             </ul>
         </MenuProvider>

@@ -2,7 +2,7 @@
 'use client';
 import React from 'react';
 import Link from 'next/link';
-import { useMenu } from './useMenuu';
+import { useMenu } from './useGroupServicesMenu';
 import { MenuCard } from './MenuCardd';
 
 const ServiceGroupPage = () => {

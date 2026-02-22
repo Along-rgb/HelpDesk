@@ -1,3 +1,56 @@
 /* General */
-$borderRadius:12px;             /* border radius of layout element e.g. card, sidebar */ 
-$transitionDuration:.2s;        /* transition duration of layout elements e.g. sidebar, overlay menus */ 
+$borderRadius: 12px;
+$transitionDuration: 0.2s;
+
+/* Colors — single source for theme & profile */
+$colorPrimary: #3f51b5;
+$colorPrimaryDark: #303f9f;
+$colorPrimaryLight: #9fa8da;
+$colorPrimaryBgHover: #f0f4ff;
+$colorTextMuted: #6c757d;
+$colorBorder: #dee2e6;
+$colorBgDisabled: #f8f9fa;
+$colorBorderDisabled: #e9ecef;
+$colorBgReadonly: #f1f3f5;
+$colorWhite: #fff;
+$colorRequestAccent: orange;
+$colorRequestAccentAlt: rgb(46, 21, 107);
+
+/* Spacing */
+$spacingXs: 8px;
+$spacingSm: 12px;
+$spacingMd: 20px;
+$spacingLg: 30px;
+$spacingXl: 40px;
+
+/* Sizing */
+$avatarSize: 100px;
+$fontSizeBase: 1rem;
+$fontSizeMd: 0.95rem;
+$fontSizeLg: 1.5rem;
+
+/* Export as CSS custom properties for use in plain CSS (Profile.css, inline styles, tabStyles) */
+:root {
+  --hd-primary-color: #{$colorPrimary};
+  --hd-primary-dark: #{$colorPrimaryDark};
+  --hd-primary-light: #{$colorPrimaryLight};
+  --hd-primary-bg-hover: #{$colorPrimaryBgHover};
+  --hd-text-muted: #{$colorTextMuted};
+  --hd-border: #{$colorBorder};
+  --hd-bg-disabled: #{$colorBgDisabled};
+  --hd-border-disabled: #{$colorBorderDisabled};
+  --hd-bg-readonly: #{$colorBgReadonly};
+  --hd-radius: #{$borderRadius};
+  --hd-radius-sm: 6px;
+  --hd-transition: #{$transitionDuration};
+  --hd-spacing-xs: #{$spacingXs};
+  --hd-spacing-sm: #{$spacingSm};
+  --hd-spacing-md: #{$spacingMd};
+  --hd-spacing-lg: #{$spacingLg};
+  --hd-spacing-xl: #{$spacingXl};
+  --hd-avatar-size: #{$avatarSize};
+  --hd-font-size-base: #{$fontSizeBase};
+  --hd-font-size-md: #{$fontSizeMd};
+  --hd-font-size-lg: #{$fontSizeLg};
+  --hd-surface: #{$colorWhite};
+}

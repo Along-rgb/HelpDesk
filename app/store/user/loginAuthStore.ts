@@ -1,45 +1,40 @@
 import { create } from 'zustand';
 import { persist, devtools } from 'zustand/middleware';
-
-type User = {
-  user_id: number
-  username: string
-  fullname: string
-  position_name: string
-  department_id: number
-  department_name: string
-  division_id: number
-  division_name: string
-  location: number
-  role: string
-}
+import { AUTH_KEYS } from '@/utils/authHelper';
 
 type Auth = {
-  tokenType: string
-  accessToken: string
-}
+  tokenType: string;
+  accessToken: string;
+  /** Client-side issued-at timestamp for token expiry check (Axios interceptor). */
+  issuedAt?: number;
+  /** ใช้ดึง profile เมื่อ currentUser ใน profile store ยังไม่มี (เช่น refresh หน้า) */
+  employeeId?: number | string;
+  /** User id จาก API (id ใน response /api/users/) ใช้เรียก GET /api/users/:id */
+  userId?: number | string;
+};
 
 type Store = {
-    authData: Auth | null; // User data, initially null
-    setAuthData: (data: Auth) => void; // Method to update auth data
-    clearAuthData: () => void; // Method to clear auth data
+  authData: Auth | null;
+  setAuthData: (data: Auth) => void;
+  clearAuthData: () => void;
 };
 
 export const authenStore = create<Store>()(
-    devtools(
-        persist(
-            (set) => ({
-                authData: null,
-                setAuthData: (data) => {
-                    set(() => ({ authData: data })); // Update auth data with new values
-                },
-                clearAuthData: () => {
-                    set(() => ({
-                        authData: null // Clear the state
-                    }));
-                }
-            }),
-            { name: 'authStore' } // Persist store with the name 'authStore'
-        )
+  devtools(
+    persist(
+      (set) => ({
+        authData: null,
+        setAuthData: (data) => {
+          set(() => ({
+            authData: {
+              ...data,
+              issuedAt: data.issuedAt ?? Date.now(),
+            },
+          }));
+        },
+        clearAuthData: () => set(() => ({ authData: null })),
+      }),
+      { name: AUTH_KEYS.AUTH_STORE }
     )
+  )
 );

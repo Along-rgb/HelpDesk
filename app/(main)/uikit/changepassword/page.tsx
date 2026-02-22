@@ -1,5 +1,8 @@
 'use client';
 
+/**
+ * ຕັ້ງຄ່າລະຫັດຜ່ານ — เข้าได้ทุก Role (SuperAdmin, Admin, Staff, User).
+ */
 import React, { useState, useRef } from 'react';
 import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';

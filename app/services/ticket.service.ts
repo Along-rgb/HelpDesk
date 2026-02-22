@@ -1,17 +1,20 @@
-import axios from "axios";
-import { env } from "@/config/env";
-import { Ticket } from "../(main)/uikit/invalidstate/types";
+import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
+import { env } from '@/config/env';
+import { Ticket } from '@/app/(main)/uikit/invalidstate/types';
 
-const TICKETS_BASE = env.ticketsApiUrl;
-
+/** ใช้ client ที่มี Interceptor แนบ Bearer Token แล้ว baseURL override ไปที่ Tickets API */
 export const TicketService = {
-    async getTickets(): Promise<Ticket[]> {
-        try {
-            const res = await axios.get<Ticket[]>(`${TICKETS_BASE}/tickets`);
-            return res.data;
-        } catch (error) {
-            console.error("Get tickets error:", error);
-            throw error;
-        }
+  async getTickets(): Promise<Ticket[]> {
+    try {
+      const res = await axiosClientsHelpDesk.get<Ticket[]>('/tickets', {
+        baseURL: env.ticketsApiUrl,
+      });
+      return res.data;
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Get tickets error:', error);
+      }
+      throw error;
     }
+  },
 };

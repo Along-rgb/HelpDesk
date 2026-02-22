@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { TicketForm, MasterData, City } from './types';
-import { ticketService } from '../../../services/ticketService';
+import { ticketService } from '@/app/services/ticketService';
 import { CATEGORY_MAP } from './ticketData';
 import { getTicketById } from '../ticket/ticketData';
 import { useUserProfileStore } from '@/app/store/user/userProfileStore';
@@ -20,6 +20,10 @@ const INITIAL_FORM: TicketForm = {
     images: [],
 };
 
+const LOG = (msg: string, data?: unknown) => {
+    console.log('[invalidstate]', msg, data !== undefined ? data : '');
+};
+
 function getInitialFormFromParams(searchParams: ReturnType<typeof useSearchParams>): Partial<TicketForm> {
     const categoryCode = searchParams.get('category');
     const ticketId = searchParams.get('ticketId');
@@ -28,6 +32,7 @@ function getInitialFormFromParams(searchParams: ReturnType<typeof useSearchParam
         : null;
     const ticket = ticketId ? getTicketById(ticketId) : undefined;
     const topic: City | null = ticket ? { name: ticket.title } : null;
+    LOG('getInitialFormFromParams', { categoryCode, ticketId, category, topic, ticketFound: !!ticket });
     return { category, topic };
 }
 
@@ -47,17 +52,32 @@ export const useTicketForm = () => {
     });
 
     const [masterData, setMasterData] = useState<MasterData | null>(null);
+    const [levelOptions, setLevelOptions] = useState<City[]>([]);
+    const [loadingMaster, setLoadingMaster] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const categoryCode = searchParams.get('category');
+    const ticketId = searchParams.get('ticketId');
+
+    LOG('useTicketForm render', { categoryCode, ticketId, initialCategory: initialFromParams.category?.name, initialTopic: initialFromParams.topic?.name });
 
     useEffect(() => {
         let isMounted = true;
+        setLoadingMaster(true);
+        LOG('initData start', { categoryCode, ticketId });
         const initData = async () => {
             try {
-                const categoryCode = searchParams.get('category');
-                const ticketId = searchParams.get('ticketId');
                 const data = await ticketService.getMasterData();
-                if (!isMounted) return;
-
+                if (!isMounted) {
+                    LOG('initData skip (unmounted)');
+                    return;
+                }
+                LOG('getMasterData ok', {
+                    buildingsCount: data?.buildings?.length ?? 0,
+                    categoriesCount: data?.categories?.length ?? 0,
+                    levelsCount: data?.levels?.length ?? 0,
+                    roomsCount: data?.rooms?.length ?? 0,
+                });
                 setMasterData(data);
 
                 const ticket = ticketId ? getTicketById(ticketId) : undefined;
@@ -65,6 +85,7 @@ export const useTicketForm = () => {
                 const category = categoryCode && data.categories
                     ? data.categories.find((c) => c.code === categoryCode) ?? (categoryCode && CATEGORY_MAP[categoryCode] ? { name: CATEGORY_MAP[categoryCode], code: categoryCode } : null)
                     : null;
+                LOG('form resolve', { category: category?.name, topic: topic?.name });
 
                 setForm((prev) => ({
                     ...prev,
@@ -72,12 +93,45 @@ export const useTicketForm = () => {
                     ...(topic && { topic }),
                 }));
             } catch (error) {
-                console.error("Failed to load data", error);
+                const err = error as { message?: string; response?: { status?: number; data?: unknown } };
+                console.error('[invalidstate] initData error', {
+                    message: err?.message,
+                    status: err?.response?.status,
+                    data: err?.response?.data,
+                    error: err,
+                });
+                if (isMounted) {
+                    const category = categoryCode && CATEGORY_MAP[categoryCode] ? { name: CATEGORY_MAP[categoryCode], code: categoryCode } : null;
+                    const ticket = ticketId ? getTicketById(ticketId) : undefined;
+                    const topic: City | null = ticket ? { name: ticket.title } : null;
+                    setForm((prev) => ({
+                        ...prev,
+                        ...(category && { category }),
+                        ...(topic && { topic }),
+                    }));
+                    LOG('fallback form set from URL', { category: category?.name, topic: topic?.name });
+                }
+            } finally {
+                if (isMounted) setLoadingMaster(false);
             }
         };
         initData();
         return () => { isMounted = false; };
-    }, [searchParams]); 
+    }, [categoryCode, ticketId]);
+
+    // โหลดລະດັບຊັ້ນ (floors) ຕາມ building ທີ່ເລືອກ — API floors/selectfloor?buildingId=...
+    useEffect(() => {
+        const buildingId = form.building?.code;
+        if (!buildingId) {
+            setLevelOptions([]);
+            return;
+        }
+        let cancelled = false;
+        ticketService.getFloorsByBuilding(buildingId).then((list) => {
+            if (!cancelled) setLevelOptions(list);
+        });
+        return () => { cancelled = true; };
+    }, [form.building?.code]);
 
     const updateField = (field: keyof TicketForm, value: any) => {
         setForm(prev => ({ ...prev, [field]: value }));
@@ -104,8 +158,8 @@ export const useTicketForm = () => {
             ];
 
             const hasInvalidFile = newFiles.some(file => !allowedDocTypes.includes(file.type));
-
             if (hasInvalidFile) {
+                LOG('file reject: invalid type', newFiles.map(f => ({ name: f.name, type: f.type })));
                 alert("อนุญาตเฉพาะไฟล์ PDF, DOCX และ XLSX เท่านั้น");
                 if (fileInputRef.current) fileInputRef.current.value = "";
                 return;
@@ -152,6 +206,7 @@ export const useTicketForm = () => {
             const hasInvalidImage = newFiles.some(file => !allowedImageTypes.includes(file.type));
             
             if (hasInvalidImage) {
+                LOG('image reject: invalid type', newFiles.map(f => ({ name: f.name, type: f.type })));
                 alert("อนุญาตเฉพาะรูปภาพประเภท PNG, JPEG และ GIF เท่านั้น");
                 if (imageInputRef.current) imageInputRef.current.value = "";
                 return;
@@ -192,20 +247,38 @@ export const useTicketForm = () => {
     const handleCancel = () => router.back();
 
     const handleSubmit = async () => {
+        LOG('handleSubmit start', {
+            category: form.category?.name,
+            topic: form.topic?.name,
+            building: form.building?.name,
+            hasDescription: !!form.description?.replace(/<[^>]*>/g, '').trim(),
+            attachmentsCount: form.attachments.length,
+            imagesCount: form.images.length,
+        });
         setIsSubmitting(true);
         try {
             const profileData = useUserProfileStore.getState().profileData;
             const firstName = profileData?.first_name ?? '';
             const lastName = profileData?.last_name ?? '';
             const requesterName = [firstName, lastName].filter(Boolean).join(' ').trim();
+            LOG('requester', { profileData: !!profileData, requesterName: requesterName || '(empty)' });
             const result = await ticketService.createTicket(form, requesterName);
+            LOG('createTicket result', result);
             if (result.success) {
-                alert(result.message); 
-                router.push("/uikit/table"); 
+                alert(result.message);
+                router.push("/uikit/pageTechn");
             } else {
+                console.warn('[invalidstate] createTicket not success', result.message);
                 alert("Error: " + result.message);
             }
         } catch (error) {
+            const err = error as { message?: string; response?: { status?: number; data?: unknown } };
+            console.error('[invalidstate] handleSubmit error', {
+                message: err?.message,
+                status: err?.response?.status,
+                data: err?.response?.data,
+                error: err,
+            });
             alert("เกิดข้อผิดพลาดในการเชื่อมต่อระบบ");
         } finally {
             setIsSubmitting(false);
@@ -215,6 +288,8 @@ export const useTicketForm = () => {
     return {
         form,
         masterData,
+        levelOptions,
+        loadingMaster,
         isSubmitting,
         updateField,
         handleBuildingChange,

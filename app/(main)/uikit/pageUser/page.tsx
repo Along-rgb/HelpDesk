@@ -8,7 +8,7 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
 
-import { TicketActionMenu } from './TicketActionMenu';
+import { TicketActionMenu } from '@/app/components/TicketActionMenu';
 import { TitleColumn } from './TitleColumn'; // นำเข้า Component ใหม่
 import { STATUS_MAP } from './constants';
 import { useProfileData } from '@/app/store/user/userProfileStore';
@@ -104,7 +104,7 @@ const PageUser = () => {
                     />
                     <Column
                         header="ດຳເນີນການ"
-                        body={(rowData) => <TicketActionMenu ticket={rowData} />}
+                        body={(rowData) => <TicketActionMenu ticket={rowData} variant="user" />}
                         style={{ width: '150px' }}
                         align="center"
                     />
