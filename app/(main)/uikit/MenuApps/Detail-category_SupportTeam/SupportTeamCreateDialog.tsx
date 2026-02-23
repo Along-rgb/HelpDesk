@@ -1,11 +1,12 @@
 // src/uikit/MenuApps/Detail-category_SupportTeam/SupportTeamCreateDialog.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
-import { Dropdown } from 'primereact/dropdown';       
-import { MultiSelect } from 'primereact/multiselect'; 
+import { Dropdown } from 'primereact/dropdown';
+import { MultiSelect } from 'primereact/multiselect';
 import { SupportTeamData, CreateSupportTeamPayload, SupportTeamTabs } from '../types';
+import type { HeadCategorySelectItem, AdminAssignUser } from '../types';
 
 interface Props {
     visible: boolean;
@@ -16,8 +17,15 @@ interface Props {
     isSaving: boolean;
     editData?: SupportTeamData | null;
     activeTab: number;
-    issueOptions?: { label: string, value: any }[];
-    userOptions?: { label: string, value: any }[];
+    /** Tab ວິຊາການ: ตัวเลือก "ເລືອກທີມຊ່ວຍເຫຼືອ" จาก headCategorySelectItems เท่านั้น (GET /api/headcategorys/selectheadcategory). Role 2 ได้รับรายการที่กรอง divisionId ตรงกับ user แล้ว */
+    headCategoryTeamOptions?: { label: string; value: number }[];
+    /** ข้อมูล head category จาก selectheadcategory สำหรับดึง divisionId กรองວິຊາການ */
+    headCategorySelectItems?: HeadCategorySelectItem[];
+    /** รายชื่อจาก users/admin สำหรับຊື່ວິຊາການ (first_name + last_name), กรองตาม divisionId */
+    adminUsers?: AdminAssignUser[];
+    /** fallback: ตัวเลือกທີມ (tab อื่น) */
+    issueOptions?: { label: string; value: unknown }[];
+    userOptions?: { label: string; value: unknown }[];
 }
 
 interface FormState {
@@ -37,6 +45,9 @@ export default function SupportTeamCreateDialog({
     isSaving, 
     editData, 
     activeTab, 
+    headCategoryTeamOptions = [],
+    headCategorySelectItems = [],
+    adminUsers = [],
     issueOptions = [], 
     userOptions = [] 
 }: Props) {
@@ -52,7 +63,6 @@ export default function SupportTeamCreateDialog({
 
     const [form, setForm] = useState<FormState>(initialFormState);
     const [submitted, setSubmitted] = useState(false);
-    const isSupportTeamTab = activeTab === SupportTeamTabs.SUPPORT_TEAM; // ທີມຄຸ້ມຄອງ
 
     useEffect(() => {
         if (visible) {
@@ -73,17 +83,20 @@ export default function SupportTeamCreateDialog({
 
     const handleSave = () => {
         setSubmitted(true);
-
-        // Validation
-        if (isSupportTeamTab) {
-            if (!form.issueCategoryId || form.assignedAdminIds.length === 0) return;
+        const isTechnicalTab = activeTab === SupportTeamTabs.TECHNICAL;
+        if (isTechnicalTab) {
+            if (!form.issueCategoryId) return;
+            if (!form.assignedAdminIds?.length) return;
         } else {
             if (!form.name.trim()) return;
         }
 
+        const nameLabel = isTechnicalTab && form.assignedAdminIds?.length
+            ? form.assignedAdminIds.map(id => technicalUserOptions.find(o => o.value === id)?.label ?? userOptions.find((o: { value: unknown }) => o.value === id)?.label ?? String(id)).join(', ')
+            : form.name;
         const payload: CreateSupportTeamPayload = {
             ...form,
-            name: isSupportTeamTab ? '' : form.name,
+            name: nameLabel,
             issueCategoryId: form.issueCategoryId || undefined,
             assignedAdminIds: form.assignedAdminIds
         };
@@ -93,7 +106,27 @@ export default function SupportTeamCreateDialog({
 
     const updateField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
         setForm(prev => ({ ...prev, [key]: value }));
+        if (key === 'issueCategoryId') setForm(prev => ({ ...prev, assignedAdminIds: [] }));
     };
+
+    const isTechnicalTab = activeTab === SupportTeamTabs.TECHNICAL;
+    /** Tab ວິຊາການ: ใช้เฉพาะ headCategoryTeamOptions (จาก selectheadcategory; Role 2 เห็นเฉพาะ division เดียวกัน) */
+    const teamOptionsForTechnical = headCategoryTeamOptions.length > 0 ? headCategoryTeamOptions : issueOptions.map(o => ({ label: o.label, value: o.value as number }));
+
+    /** Tab ວິຊາການ: ໃຊ້ departmentId เปรียบเทียบ head category ກັບ users จาก /api/users/admin */
+    const technicalUserOptions = useMemo(() => {
+        if (!isTechnicalTab || !form.issueCategoryId || !Array.isArray(adminUsers) || adminUsers.length === 0) return [];
+        const head = headCategorySelectItems.find((h) => h.id === form.issueCategoryId);
+        const departmentId = head?.departmentId;
+        if (departmentId == null) return [];
+        return adminUsers
+            .filter((u) => (u.employee?.departmentId ?? u.employee?.department?.id) === departmentId)
+            .map((u) => {
+                const first = u.employee?.first_name ?? '';
+                const last = u.employee?.last_name ?? '';
+                return { label: `${first} ${last}`.trim() || u.username || String(u.id), value: u.id };
+            });
+    }, [isTechnicalTab, form.issueCategoryId, headCategorySelectItems, adminUsers]);
 
     const renderFooter = () => (
         <div className="flex justify-content-end gap-2 pt-2">
@@ -116,57 +149,61 @@ export default function SupportTeamCreateDialog({
         >
             <div className="flex flex-column gap-3">
                 
-                {isSupportTeamTab ? (
+                {activeTab === SupportTeamTabs.TECHNICAL && (
                     <>
                         <div className="field mb-0">
-                            <label htmlFor="supportteam-issueCategory" className="font-bold block mb-2">
-                                ໝວດບັນຫາ <span className="text-red-500">*</span>
-                            </label>
-                            <Dropdown 
-                                id="supportteam-issueCategory"
-                                value={form.issueCategoryId} 
-                                options={issueOptions} 
-                                onChange={(e) => updateField('issueCategoryId', e.value)} 
-                                placeholder="ເລືອກໝວດບັນຫາ"
-                                className={submitted && !form.issueCategoryId ? 'p-invalid' : ''}
-                                appendTo={typeof document !== 'undefined' ? document.body : 'self'}
+                            <label htmlFor="supportTeamId" className="font-bold block mb-2">ເລືອກທີມຊ່ວຍເຫຼືອ <span className="text-red-500">*</span></label>
+                            <Dropdown
+                                id="supportTeamId"
+                                value={form.issueCategoryId}
+                                options={teamOptionsForTechnical}
+                                onChange={(e) => updateField('issueCategoryId', e.value)}
+                                optionLabel="label"
+                                optionValue="value"
+                                placeholder="ເລືອກທີມຊ່ວຍເຫຼືອ"
+                                className={(submitted && form.issueCategoryId == null) ? 'p-invalid w-full' : 'w-full'}
+                                filter
+                                showClear
                             />
-                            {submitted && !form.issueCategoryId && <small className="text-red-500">ກະລຸນາເລືອກໝວດບັນຫາ</small>}
+                            {submitted && form.issueCategoryId == null && <small className="text-red-500">ກະລຸນາເລືອກທີມຊ່ວຍເຫຼືອ</small>}
                         </div>
-
                         <div className="field mb-0">
-                            <label htmlFor="supportteam-assignedAdmins" className="font-bold block mb-2">
-                                ເລືອກຜູ້ຈະຮັບຜິຊອບຫນ້າວຽກ <span className="text-red-500">*</span>
+                            <label htmlFor="assignedAdminIds" className="font-bold block mb-2">
+                                {inputLabel} <span className="text-red-500">*</span>
                             </label>
-                            <MultiSelect 
-                                id="supportteam-assignedAdmins"
-                                value={form.assignedAdminIds} 
-                                options={userOptions} 
-                                onChange={(e) => updateField('assignedAdminIds', e.value)} 
-                                placeholder="ເລືອກຜູ້ປະຕິບັດວຽກງານ" 
+                            <MultiSelect
+                                id="assignedAdminIds"
+                                value={form.assignedAdminIds}
+                                options={technicalUserOptions}
+                                onChange={(e) => updateField('assignedAdminIds', e.value ?? [])}
+                                optionLabel="label"
+                                optionValue="value"
+                                placeholder="ເລືອກວິຊາການ"
+                                className={(submitted && !form.assignedAdminIds?.length) ? 'p-invalid w-full' : 'w-full'}
+                                filter
                                 display="chip"
-                                filter 
-                                emptyMessage="ບໍ່ພົບຂໍ້ມູນ"
-                                className={submitted && form.assignedAdminIds.length === 0 ? 'p-invalid' : ''}
-                                appendTo={typeof document !== 'undefined' ? document.body : 'self'}
+                                disabled={!form.issueCategoryId}
                             />
-                            {submitted && form.assignedAdminIds.length === 0 && <small className="text-red-500">ກະລຸນາເລືອກຜູ້ຮັບຜິດຊອບ</small>}
+                            {!form.issueCategoryId && <small className="text-gray-500 block mt-1">ກະລຸນາເລືອກທີມຊ່ວຍເຫຼືອກ່ອນ</small>}
+                            {submitted && !form.assignedAdminIds?.length && <small className="text-red-500">ກະລຸນາເລືອກວິຊາການຢ່າງໜ້ອຍ 1 ລາຍການ</small>}
                         </div>
                     </>
-                ) : (
-                    <div className="field mb-0">
-                        <label htmlFor="name" className="font-bold block mb-2">
-                            {inputLabel} <span className="text-red-500">*</span>
-                        </label>
-                        <InputText 
-                            id="name" 
-                            value={form.name} 
-                            onChange={(e) => updateField('name', e.target.value)} 
-                            className={submitted && !form.name.trim() ? 'p-invalid w-full' : 'w-full'}
-                            autoFocus 
-                        />
-                        {submitted && !form.name.trim() && <small className="text-red-500">ກະລຸນາປ້ອນ {inputLabel}</small>}
-                    </div>
+                )}
+
+                {activeTab !== SupportTeamTabs.TECHNICAL && (
+                <div className="field mb-0">
+                    <label htmlFor="name" className="font-bold block mb-2">
+                        {inputLabel} <span className="text-red-500">*</span>
+                    </label>
+                    <InputText 
+                        id="name" 
+                        value={form.name} 
+                        onChange={(e) => updateField('name', e.target.value)} 
+                        className={submitted && !form.name.trim() ? 'p-invalid w-full' : 'w-full'}
+                        autoFocus 
+                    />
+                    {submitted && !form.name.trim() && <small className="text-red-500">ກະລຸນາປ້ອນ {inputLabel}</small>}
+                </div>
                 )}
 
                 <div className="field mb-0">

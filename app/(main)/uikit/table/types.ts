@@ -18,6 +18,7 @@ export interface Ticket {
     requester?: string;  
     assignTo?: string; 
     assignees?: Assignee[]; 
+    assignDate?: string; // ວັນທີມອບໝາຍ (เมื่อ Role 1,2 ມອບໝາຍວຽກ)
     status: string;
     priority: string;
     verified: boolean;

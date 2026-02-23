@@ -3,20 +3,21 @@ import { useCoreApi } from './useCoreApi';
 // แก้ไข: เปลี่ยน CreatePayload เป็น CreateSupportTeamPayload
 import { SupportTeamData, CreateSupportTeamPayload } from '../types';
 
-export function useSupportTeam(activeIndex: number) {
-    // tabIndex=0 ໝວດບັນຫາ (ໃຊ້ useIssues ໃນໜ້າ), 1=ວິຊາການ=SUPPORT, 2=ທີມຄຸ້ມຄອງ=ADMIN
+/** enabled=false: ไม่เรียก /support-teams (Role 1 ເຂົ້າໃຊ້ແຕ່ headcategorys) */
+export function useSupportTeam(activeIndex: number, enabled: boolean = true) {
+    // tabIndex=0 ທິມສະໜັບສະໜູນ (ໃຊ້ useIssues ໃນໜ້າ), 1=ວິຊາການ=SUPPORT
     const getRoleType = (index: number) => {
-        const roles: (string | undefined)[] = ['SUPPORT', 'SUPPORT', 'ADMIN'];
+        const roles: (string | undefined)[] = ['SUPPORT', 'SUPPORT'];
         return roles[index] ?? 'SUPPORT';
     };
 
     const role = getRoleType(activeIndex);
 
-    // แก้ไข: ส่ง Generic Type ที่ถูกต้องเข้าไป
     const { toast, items, loading, saveData, deleteData, fetchData } = useCoreApi<SupportTeamData, CreateSupportTeamPayload>(
         '/support-teams',
         { role },
-        activeIndex
+        activeIndex,
+        enabled
     );
 
     return { 

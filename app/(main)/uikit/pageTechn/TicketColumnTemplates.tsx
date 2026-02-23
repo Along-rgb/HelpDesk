@@ -63,6 +63,21 @@ export const RequesterBody = (rowData: Ticket) => {
     );
 };
 
+/** แสดงชื่อ assignee เดียว (สำหรับแถวที่ขยายแล้ว role 3,4) */
+export const AssigneeSingleBody = (assignee: Assignee) => {
+    const displayName = getDisplayName(assignee);
+    const statusInfo = ASSIGNEE_STATUS_MAP[assignee.status] || ASSIGNEE_STATUS_MAP["default"];
+    let textColor = "text-700";
+    if (statusInfo.severity === "info") textColor = "text-blue-500";
+    else if (statusInfo.severity === "success") textColor = "text-green-500";
+    else if (statusInfo.severity === "warning") textColor = "text-orange-500";
+    return (
+        <span className={`${textColor} font-bold text-sm`} style={{ whiteSpace: "nowrap" }}>
+            {displayName || assignee.name}
+        </span>
+    );
+};
+
 export const AssigneeBody = (rowData: Ticket, action: (data: Assignee[]) => void) => {
     let displayData = rowData.assignees || [];
 

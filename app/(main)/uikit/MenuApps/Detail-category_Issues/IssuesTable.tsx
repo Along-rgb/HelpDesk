@@ -15,6 +15,10 @@ interface Props {
     onDelete: (item: IssueData) => void;
     // [Clean Code] เปลี่ยนจาก Array เป็น Map
     categoryMap: Map<string | number, string>;
+    /** Tab 0: map supportTeamId -> name */
+    supportTeamMap?: Map<string | number, string>;
+    /** Tab 0: map iconId -> iconUrl */
+    iconMap?: Map<string | number, string>;
 }
 
 export default function IssuesTable({ 
@@ -25,10 +29,25 @@ export default function IssuesTable({
     activeTab, 
     onEdit, 
     onDelete, 
-    categoryMap 
+    categoryMap,
+    supportTeamMap = new Map(),
+    iconMap = new Map()
 }: Props) {
 
+    const isCategoryTab = activeTab === 0;
     const isTopicTab = activeTab === 1;
+
+    const supportTeamNameTemplate = (row: IssueData) => {
+        if (row.supportTeamName) return row.supportTeamName;
+        if (row.supportTeamId != null) return supportTeamMap.get(row.supportTeamId) || '-';
+        return '-';
+    };
+
+    const iconTemplate = (row: IssueData) => {
+        const url = row.iconUrl || (row.iconId != null ? iconMap.get(row.iconId) : null);
+        if (url) return <img src={url} alt="" className="w-2rem h-2rem object-contain border-round" />;
+        return <span className="text-500">-</span>;
+    };
 
     // [Fast Join] ดึงข้อมูลจาก Map (O(1)) เร็วมาก ไม่ต้อง Loop
     const parentNameTemplate = (row: IssueData) => {
@@ -59,11 +78,15 @@ export default function IssuesTable({
         >
             <Column header="#" body={(d, opts) => opts.rowIndex + 1} className="text-center w-4rem" />
             
-            {/* Column นี้จะทำงานเร็วขึ้นมาก */}
-            {isTopicTab && <Column header="ໝວດໝູ່" style={{ minWidth: '150px' }} body={parentNameTemplate} />}
+            {isCategoryTab && <Column header="ທີມຊ່ວຍເຫຼືອ" body={supportTeamNameTemplate} style={{ minWidth: '150px' }} />}
+            {isCategoryTab && <Column field="title" header="ຊື່ໝວດໝູ່" style={{ minWidth: '200px' }} />}
+            {isCategoryTab && <Column header="ຮູບໄອຄອນ" body={iconTemplate} style={{ minWidth: '80px' }} className="text-center" />}
+            {isCategoryTab && <Column field="description" header="ຄຳອະທິບາຍ" style={{ minWidth: '250px' }} />}
 
-            <Column field="title" header={nameColumnHeader} style={{ minWidth: '200px' }} />
-            <Column field="description" header="ຄຳອະທິບາຍ" style={{ minWidth: '250px' }} />
+            {isTopicTab && <Column header="ໝວດໝູ່" style={{ minWidth: '150px' }} body={parentNameTemplate} />}
+            {isTopicTab && <Column field="title" header={nameColumnHeader} style={{ minWidth: '200px' }} />}
+            {isTopicTab && <Column field="description" header="ຄຳອະທິບາຍ" style={{ minWidth: '250px' }} />}
+
             <Column header="ດຳເນີນການ" body={actionTemplate} className="text-center w-8rem" />
         </DataTable>
     );

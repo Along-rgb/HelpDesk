@@ -8,9 +8,8 @@ export const MENU_ITEMS: MenuItem[] = [
         icon: 'pi pi-users',
         path: '/uikit/MenuApps/Detail-category_SupportTeam',
         subMenus: [
-            { label: 'ໝວດບັນຫາ', tabIndex: 0 },
-            { label: 'ວິຊາການ', tabIndex: 1 },
-            { label: 'ທີມຄຸ້ມຄອງ', tabIndex: 2 }
+            { label: 'ທິມສະໜັບສະໜູນ', tabIndex: 0 },
+            { label: 'ວິຊາການ', tabIndex: 1 }
         ]
     },
     {
@@ -20,8 +19,7 @@ export const MENU_ITEMS: MenuItem[] = [
         path: '/uikit/MenuApps/Detail-category_Buildings',
         subMenus: [
             { label: 'ຕຶກ/ອາຄານ', tabIndex: 0 },
-            { label: 'ລະດັບຊັ້ນ', tabIndex: 1 },
-            { label: 'ຫ້ອງ', tabIndex: 2 }
+            { label: 'ລະດັບຊັ້ນ', tabIndex: 1 }
         ]
     },
     {
@@ -31,7 +29,8 @@ export const MENU_ITEMS: MenuItem[] = [
         path: '/uikit/MenuApps/Detail-category_Issues',
         subMenus: [
             { label: 'ໝວດໝູ່', tabIndex: 0 },
-            { label: 'ລາຍການຫົວຂໍ້', tabIndex: 1 }
+            { label: 'ລາຍການຫົວຂໍ້', tabIndex: 1 },
+            { label: 'ເພີ່ມໄອຄອນ', tabIndex: 2 }
         ]
     },
     {
@@ -41,7 +40,8 @@ export const MENU_ITEMS: MenuItem[] = [
         path: '/uikit/MenuApps/Detail-category_Service_Requests',
         subMenus: [
             { label: 'ໝວດໝູ່', tabIndex: 0 },
-            { label: 'ລາຍການຫົວຂໍ້', tabIndex: 1 }
+            { label: 'ລາຍການຫົວຂໍ້', tabIndex: 1 },
+            { label: 'ເພີ່ມໄອຄອນ', tabIndex: 2 }
         ]
     } 
 ];

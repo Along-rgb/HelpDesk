@@ -2,10 +2,12 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Toast } from 'primereact/toast';
 import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
 
+/** enabled=false: ไม่เรียก API (สำหรับ Role 1 หลีกเลี่ยง Forbidden ໃນ endpoint ที่ຫ້າມ) */
 export function useCoreApi<T, P>(
     endpoint: string,
     queryParams: Record<string, unknown> = {},
-    triggerFetch: unknown = null
+    triggerFetch: unknown = null,
+    enabled: boolean = true
 ) {
     const toast = useRef<Toast>(null);
     const queryParamsRef = useRef(queryParams);
@@ -13,10 +15,10 @@ export function useCoreApi<T, P>(
     queryParamsRef.current = queryParams;
 
     const [items, setItems] = useState<T[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
 
     const fetchData = useCallback(async () => {
-        if (!endpoint) return;
+        if (!endpoint || !enabled) return;
         const params = queryParamsRef.current;
         setLoading(true);
         try {
@@ -29,9 +31,13 @@ export function useCoreApi<T, P>(
             } else {
                 setItems([]);
             }
-        } catch {
+            serverErrorShownRef.current = false;
+        } catch (error: unknown) {
             setItems([]);
-            if (!serverErrorShownRef.current) {
+            const status = error && typeof error === 'object' && 'response' in error
+                ? (error as { response?: { status?: number } }).response?.status
+                : undefined;
+            if (status !== 403 && !serverErrorShownRef.current) {
                 serverErrorShownRef.current = true;
                 toast.current?.show({
                     severity: 'error',
@@ -43,11 +49,12 @@ export function useCoreApi<T, P>(
         } finally {
             setLoading(false);
         }
-    }, [endpoint]);
+    }, [endpoint, enabled]);
 
     useEffect(() => {
-        fetchData();
-    }, [fetchData, triggerFetch]);
+        if (enabled) fetchData();
+        else setItems([]);
+    }, [fetchData, triggerFetch, enabled]);
 
     // 2. Save Data (Create / Update)
     const saveData = async (payload: P, id?: number, options?: { noQueryParams?: boolean }) => {

@@ -42,7 +42,6 @@ export default function ManagementTable({
     deleteConfirmMessage
 }: Props) {
 
-    const isRoomTab = activeTab === BuildingTabs.ROOM;
     const isLevelTab = activeTab === BuildingTabs.LEVEL;
     const tableWrapperRef = useRef<HTMLDivElement>(null);
     const [stickyHeaderHeight, setStickyHeaderHeight] = useState(44);
@@ -90,8 +89,6 @@ export default function ManagementTable({
         const name = (row.name ?? '').toLowerCase();
         const code = (row.code ?? '').toLowerCase();
         const parentName = (row.parentName ?? buildingMap?.get(row.parentId!) ?? '').toString().toLowerCase();
-        const levelName = (row.levelName ?? '').toLowerCase();
-        if (isRoomTab) return name.includes(q) || code.includes(q) || levelName.includes(q) || parentName.includes(q);
         if (isLevelTab) return name.includes(q) || parentName.includes(q);
         // Tab ຕຶກ/ອາຄານ: ຄົ້ນຫາຕາມຊື່ (name) ຫຼື ຄຳອະທິບາຍ (code)
         return name.includes(q) || code.includes(q);
@@ -103,7 +100,7 @@ export default function ManagementTable({
     const filteredItems = useMemo(() => {
         if (useLevelGrouped) return safeItems; // ລະດັບຊັ້ນໃຊ້ matchesFilter ໃນ levelTableRows ແລ້ວ
         return safeItems.filter(matchesFilter);
-    }, [safeItems, safeGlobalFilter, useLevelGrouped, isLevelTab, isRoomTab, buildingMap]);
+    }, [safeItems, safeGlobalFilter, useLevelGrouped, isLevelTab, buildingMap]);
 
     type LevelTableRow = { type: 'section'; name: string; buildingId: number } | { type: 'data'; row: BuildingData };
     const levelTableRows: LevelTableRow[] = useLevelGrouped
@@ -213,17 +210,12 @@ export default function ManagementTable({
             >
             <Column header="#" body={(d, opts) => opts.rowIndex + 1} className="text-center w-4rem" alignHeader="center" bodyStyle={{ textAlign: 'center' }} frozen alignFrozen="left" />
 
-            {isRoomTab && <Column field="code" header="ລະຫັດຫ້ອງ" style={{ minWidth: '150px' }} />}
-            {isRoomTab && <Column header="ຕຶກ/ອາຄານ" style={{ minWidth: '150px' }} body={parentNameTemplate} alignHeader="center" bodyStyle={{ textAlign: 'center' }} />}
-            {isRoomTab && <Column field="levelName" header="ລະດັບຊັ້ນ" style={{ minWidth: '150px' }} body={(row) => row.levelName || '-'} />}
-            {isRoomTab && <Column field="name" header="ຄຳອະທິບາຍ" style={{ minWidth: '200px' }} />}
-            {isRoomTab && <Column header="ດຳເນີນການ" body={actionTemplate} alignHeader="center" bodyStyle={{ textAlign: 'center' }} className="text-center w-8rem" />}
             {isLevelTab && <Column field="name" header="ລະດັບຊັ້ນ" style={{ minWidth: '200px' }} />}
             {isLevelTab && <Column header="ຕຶກ/ອາຄານ" style={{ minWidth: '150px' }} body={parentNameTemplate} alignHeader="center" bodyStyle={{ textAlign: 'center' }} />}
             {isLevelTab && <Column header="ດຳເນີນການ" body={actionTemplate} alignHeader="center" bodyStyle={{ textAlign: 'center' }} className="text-center w-8rem" />}
-            {!isRoomTab && !isLevelTab && <Column field="name" header={nameColumnHeader} style={{ minWidth: '200px' }} />}
-            {!isRoomTab && !isLevelTab && <Column field="code" header="ຄຳອະທິບາຍ" style={{ minWidth: '200px' }} />}
-            {!isRoomTab && !isLevelTab && <Column header="ດຳເນີນການ" body={actionTemplate} alignHeader="center" bodyStyle={{ textAlign: 'center' }} className="text-center w-8rem" />}
+            {!isLevelTab && <Column field="name" header={nameColumnHeader} style={{ minWidth: '200px' }} />}
+            {!isLevelTab && <Column field="code" header="ຄຳອະທິບາຍ" style={{ minWidth: '200px' }} />}
+            {!isLevelTab && <Column header="ດຳເນີນການ" body={actionTemplate} alignHeader="center" bodyStyle={{ textAlign: 'center' }} className="text-center w-8rem" />}
             </DataTable>
         </>
     );

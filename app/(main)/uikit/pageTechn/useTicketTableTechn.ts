@@ -1,8 +1,9 @@
 // pageTechn/useTicketTableTechn.ts
 // โหลดข้อมูลจาก API ผ่าน TicketService แล้วกรองด้วย globalFilter + statusFilter (useMemo)
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Ticket, Assignee } from "./types";
+import { Ticket, TicketRow, Assignee } from "./types";
 import { TicketService } from "@/app/services/ticket.service";
+import { useUserProfileStore } from "@/app/store/user/userProfileStore";
 
 type StatusFilterOption = { label: string; value: string; icon?: string } | null;
 
@@ -20,6 +21,24 @@ function matchesGlobalFilter(ticket: Ticket, query: string): boolean {
 function matchesStatusFilter(ticket: Ticket, statusFilter: StatusFilterOption): boolean {
   if (!statusFilter || statusFilter.value === "Allin") return true;
   return (ticket.status ?? "") === statusFilter.value;
+}
+
+/** แปลง assignTo string "A, B, C" เป็น Assignee[] */
+function assignToToAssignees(assignTo: string, ticketId: string | number): Assignee[] {
+  if (!assignTo?.trim()) return [];
+  return assignTo.split(",").map((name, i) => ({
+    id: `${ticketId}-${i}`,
+    name: name.trim(),
+    status: "waiting" as const,
+  }));
+}
+
+/** เช็คว่าชื่อปัจจุบันตรงกับ assignee หรือไม่ (trim, เปรียบเทียบหรือส่วนหนึ่งตรงกัน) */
+function isCurrentUserAssignee(assigneeName: string, currentUserDisplayName: string): boolean {
+  const a = (assigneeName ?? "").trim();
+  const u = (currentUserDisplayName ?? "").trim();
+  if (!a || !u) return false;
+  return a === u || a.includes(u) || u.includes(a);
 }
 
 /** แปลง response จาก API ให้ตรงกับ Ticket (pageTechn) ถ้าขาดฟิลด์ใส่ default */
@@ -56,7 +75,10 @@ function normalizeTicket(raw: Record<string, unknown>): Ticket {
     requester: raw.requester != null ? String(raw.requester) : undefined,
     assignTo: raw.assignTo != null ? String(raw.assignTo) : undefined,
     assignees,
-    assignDate: raw.assignDate != null ? String(raw.assignDate) : undefined,
+    assignDate:
+      raw.assignDate != null
+        ? String(raw.assignDate)
+        : (raw.assign_date != null ? String(raw.assign_date) : undefined),
     status: String(raw.status ?? ""),
     priority: String(raw.priority ?? ""),
     verified: Boolean(raw.verified),
@@ -83,6 +105,16 @@ export const useTicketTableTechn = () => {
   const [dialogVisible, setDialogVisible] = useState(false);
   const [currentAssignees, setCurrentAssignees] = useState<Assignee[]>([]);
 
+  const roleId = useUserProfileStore((s) => s.currentUser?.roleId ?? 0);
+  const profileData = useUserProfileStore((s) => s.profileData);
+  const currentUserDisplayName = useMemo(
+    () =>
+      [profileData?.first_name, profileData?.last_name].filter(Boolean).join(" ").trim() ||
+      profileData?.fullName ||
+      "",
+    [profileData]
+  );
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -104,17 +136,73 @@ export const useTicketTableTechn = () => {
   }, []);
 
   const filteredTickets = useMemo(() => {
-    return tickets.filter(
-      (t) => matchesGlobalFilter(t, globalFilter) && matchesStatusFilter(t, statusFilter)
-    );
+    return tickets
+      .filter(
+        (t) => matchesGlobalFilter(t, globalFilter) && matchesStatusFilter(t, statusFilter)
+      )
+      .sort((a, b) => {
+        const na = Number(a.id);
+        const nb = Number(b.id);
+        if (!Number.isNaN(na) && !Number.isNaN(nb)) return nb - na;
+        return String(b.id).localeCompare(String(a.id));
+      });
   }, [tickets, globalFilter, statusFilter]);
 
-  const onCheckboxChange = useCallback((e: { checked?: boolean }, rowData: Ticket) => {
-    setSelectedTickets((prev) => {
-      if (e.checked) return [...prev, rowData];
-      return prev.filter((t) => t.id !== rowData.id);
-    });
+  const displayRows = useMemo((): TicketRow[] => {
+    const isRole12 = roleId === 1 || roleId === 2;
+    if (isRole12) {
+      return filteredTickets.map((t) => ({ ...t, rowId: String(t.id) }));
+    }
+    const rows: TicketRow[] = [];
+    for (const t of filteredTickets) {
+      let assignees: Assignee[] = t.assignees ?? [];
+      if (assignees.length === 0 && t.assignTo) {
+        assignees = assignToToAssignees(t.assignTo, t.id);
+      }
+      if (assignees.length === 0) {
+        rows.push({ ...t, rowId: String(t.id) });
+      } else {
+        assignees.forEach((a, i) => {
+          rows.push({ ...t, rowId: `${t.id}-${a.id}-${i}`, rowAssignee: a });
+        });
+      }
+    }
+    return rows;
+  }, [filteredTickets, roleId]);
+
+  const showCheckbox = useCallback(
+    (row: TicketRow): boolean => {
+      if (roleId === 1 || roleId === 2) return true;
+      if (!row.rowAssignee) return false;
+      return isCurrentUserAssignee(row.rowAssignee.name, currentUserDisplayName);
+    },
+    [roleId, currentUserDisplayName]
+  );
+
+  const showAction = useCallback(
+    (row: TicketRow): boolean => {
+      if (roleId === 1 || roleId === 2) return true;
+      if (!row.rowAssignee) return false;
+      return isCurrentUserAssignee(row.rowAssignee.name, currentUserDisplayName);
+    },
+    [roleId, currentUserDisplayName]
+  );
+
+  const getTicketFromRow = useCallback((row: TicketRow): Ticket => {
+    const { rowId, rowAssignee, ...ticket } = row;
+    return ticket as Ticket;
   }, []);
+
+  const onCheckboxChange = useCallback(
+    (e: { checked?: boolean }, rowData: TicketRow) => {
+      const ticket = getTicketFromRow(rowData);
+      setSelectedTickets((prev) => {
+        if (e.checked) return [...prev, ticket];
+        return prev.filter((t) => t.id !== ticket.id);
+      });
+    },
+    [getTicketFromRow]
+  );
 
   const onGlobalFilterChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setGlobalFilter(e.target.value);
@@ -136,7 +224,7 @@ export const useTicketTableTechn = () => {
   }, []);
 
   return {
-    tickets: filteredTickets,
+    displayRows,
     loading,
     selectedTickets,
     globalFilter,
@@ -149,5 +237,8 @@ export const useTicketTableTechn = () => {
     currentAssignees,
     openAssigneeDialog,
     closeDialog,
+    showCheckbox,
+    showAction,
+    getTicketFromRow,
   };
 };

@@ -976,6 +976,58 @@
       "level": "ຊັ້ນ 01",
       "room": "101",
       "description": "-"
+    },
+    {
+      "id": "2282",
+      "title": "ລະບົບໂທລະສັບບໍ່ໄດ້",
+      "date": "22/02/2026 9:08 PM",
+      "requester": "ທັດສະນີ ມີໄຊບົວ",
+      "assignees": [],
+      "status": "ລໍຖ້າຮັບວຽກ",
+      "priority": "ບໍ່ລະບຸ",
+      "verified": false,
+      "category": "ການສື່ສານ (Communication)",
+      "building": "ຕຶກສະຖາບັນ ຟຟລ",
+      "level": "ຊັ້ນ-02",
+      "room": "101",
+      "description": "-"
+    },
+    {
+      "id": "2283",
+      "title": "ຂໍເບີກອຸປະກອນໄອທີ",
+      "date": "22/02/2026 9:17 PM",
+      "requester": "ທັດສະນີ ມີໄຊບົວ",
+      "assignees": [
+        {
+          "id": "1002",
+          "name": " ແສງປີຊາ ທຳມະວົງ",
+          "status": "waiting",
+          "image": "",
+          "phone": "020 51735702"
+        },
+        {
+          "id": "1001",
+          "name": "ທະນູຄຳ ວັນລາສີ",
+          "status": "waiting",
+          "image": "",
+          "phone": "020 55422254"
+        },
+        {
+          "id": "1003",
+          "name": "ສອນປະດິດ ສີຫາວົງ",
+          "status": "waiting",
+          "image": "",
+          "phone": "020 55518311"
+        }
+      ],
+      "status": "ລໍຖ້າຮັບວຽກ",
+      "priority": "ບໍ່ລະບຸ",
+      "verified": false,
+      "category": "ຄອມພີວເຕີທົ່ວໄປ (computer)",
+      "building": "ຕຶກສຳນັກງານໃຫຍ່ ຟຟລ",
+      "level": "ຊັ້ນ-01",
+      "room": "101",
+      "description": "-"
     }
   ]
 }

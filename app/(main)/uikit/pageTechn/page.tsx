@@ -6,19 +6,18 @@ import { Tag } from "primereact/tag";
 import { Checkbox } from "primereact/checkbox";
 import { useRouter } from "next/navigation";
 import { useTicketTableTechn } from "./useTicketTableTechn";
-import { Ticket } from "./types";
-import { STATUS_MAP, CUSTOM_TOOLTIP_CSS } from "./constants";
+import { TicketRow } from "./types";
+import { STATUS_MAP, CUSTOM_TOOLTIP_CSS, PRIORITY_MAP } from "./constants";
 import { TicketActionMenu } from "@/app/components/TicketActionMenu";
-import { PrioritySelector } from "./PrioritySelector";
 import { TicketHeaderTechn } from "./TicketHeaderTechn";
 import { AssigneeDialog } from "./AssigneeDialog";
 import { TableTooltip } from "./TableTooltip";
-import { TitleBody, RequesterBody, AssigneeBody } from "./TicketColumnTemplates";
+import { TitleBody, RequesterBody, AssigneeBody, AssigneeSingleBody } from "./TicketColumnTemplates";
 
 export default function PageTechnDemo() {
     const router = useRouter();
     const {
-        tickets,
+        displayRows,
         loading,
         selectedTickets,
         globalFilter,
@@ -26,11 +25,13 @@ export default function PageTechnDemo() {
         statusFilter,
         setStatusFilter,
         onCheckboxChange,
-        onPriorityChange,
         dialogVisible,
         currentAssignees,
         openAssigneeDialog,
         closeDialog,
+        showCheckbox,
+        showAction,
+        getTicketFromRow,
     } = useTicketTableTechn();
 
     const [first, setFirst] = useState(0);
@@ -43,7 +44,7 @@ export default function PageTechnDemo() {
 
             <div className="col-12">
                 <div className="card">
-                    <TableTooltip target=".js-tooltip-target" dependencies={[tickets, first]} />
+                    <TableTooltip target=".js-tooltip-target" dependencies={[displayRows, first]} />
                     <AssigneeDialog
                         visible={dialogVisible}
                         onHide={closeDialog}
@@ -60,11 +61,11 @@ export default function PageTechnDemo() {
                         onNewService={() => router.push("/uikit/GroupServices")}
                     />
                     <DataTable
-                        value={tickets}
+                        value={displayRows}
                         loading={loading}
                         paginator
                         rows={10}
-                        dataKey="id"
+                        dataKey="rowId"
                         size="small"
                         scrollable
                         scrollHeight="flex"
@@ -78,14 +79,18 @@ export default function PageTechnDemo() {
                             headerStyle={{ width: "3rem" }}
                             style={{ maxWidth: "3rem" }}
                             {...centerProps}
-                            body={(rowData: Ticket) => (
-                                <div className="flex justify-content-center">
-                                    <Checkbox
-                                        checked={selectedTickets.some((t) => t.id === rowData.id)}
-                                        onChange={(e) => onCheckboxChange(e, rowData)}
-                                    />
-                                </div>
-                            )}
+                            body={(rowData: TicketRow) =>
+                                showCheckbox(rowData) ? (
+                                    <div className="flex justify-content-center">
+                                        <Checkbox
+                                            checked={selectedTickets.some(
+                                                (t) => t.id === getTicketFromRow(rowData).id
+                                            )}
+                                            onChange={(e) => onCheckboxChange(e, rowData)}
+                                        />
+                                    </div>
+                                ) : null
+                            }
                         />
 
                         <Column
@@ -106,8 +111,10 @@ export default function PageTechnDemo() {
                             header="ມອບໝາຍໃຫ້"
                             style={{ minWidth: "140px" }}
                             {...centerProps}
-                            body={(rowData: Ticket) =>
-                                AssigneeBody(rowData, openAssigneeDialog)
+                            body={(rowData: TicketRow) =>
+                                rowData.rowAssignee
+                                    ? AssigneeSingleBody(rowData.rowAssignee)
+                                    : AssigneeBody(rowData, openAssigneeDialog)
                             }
                         />
 
@@ -116,7 +123,7 @@ export default function PageTechnDemo() {
                             header="ວັນທີມອບໝາຍ"
                             style={{ minWidth: "120px" }}
                             {...centerProps}
-                            body={(rowData: Ticket) =>
+                            body={(rowData: TicketRow) =>
                                 rowData.assignDate || (
                                     <span className="text-500 text-sm">-</span>
                                 )
@@ -143,7 +150,7 @@ export default function PageTechnDemo() {
                             header="ສະຖານະ"
                             style={{ minWidth: "100px" }}
                             {...centerProps}
-                            body={(rowData) => (
+                            body={(rowData: TicketRow) => (
                                 <Tag
                                     value={rowData.status}
                                     severity={STATUS_MAP[rowData.status] as any}
@@ -156,10 +163,16 @@ export default function PageTechnDemo() {
                             header="ລຳດັບຄວາມສຳຄັນ"
                             style={{ minWidth: "130px" }}
                             {...centerProps}
-                            body={(rowData) => (
-                                <PrioritySelector
-                                    priority={rowData.priority}
-                                    onChange={(val) => onPriorityChange(rowData.id, val)}
+                            body={(rowData: TicketRow) => (
+                                <Tag
+                                    value={rowData.priority || "ບໍ່ລະບຸ"}
+                                    severity={PRIORITY_MAP[rowData.priority] as any}
+                                    style={{
+                                        fontSize: "0.95rem",
+                                        padding: "0.15rem 0.5rem",
+                                        backgroundColor: rowData.priority === "ບໍ່ລະບຸ" ? "#6c757d" : undefined,
+                                        color: rowData.priority === "ບໍ່ລະບຸ" ? "#fff" : undefined,
+                                    }}
                                 />
                             )}
                         />
@@ -168,7 +181,11 @@ export default function PageTechnDemo() {
                             header="ດຳເນີນການ"
                             style={{ minWidth: "160px" }}
                             {...centerProps}
-                            body={(rowData) => <TicketActionMenu ticket={rowData} />}
+                            body={(rowData: TicketRow) =>
+                                showAction(rowData) ? (
+                                    <TicketActionMenu ticket={getTicketFromRow(rowData)} />
+                                ) : null
+                            }
                         />
                     </DataTable>
                 </div>

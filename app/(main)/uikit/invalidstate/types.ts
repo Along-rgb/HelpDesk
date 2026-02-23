@@ -11,6 +11,7 @@ export interface TicketForm {
     assetNumber?: string;
     topic: City | null;
     building: City | null;
+    phoneNumber?: string;
     route: City | null;
     level: City | null;
     roomNumber: City | null;

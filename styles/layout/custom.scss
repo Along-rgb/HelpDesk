@@ -13,3 +13,20 @@
 .request-cardd {
     border: 4px solid $colorRequestAccentAlt !important;
 }
+
+/* Support Team table tooltip: สีขาว แสดงด้านล่าง หัวลูกศรแดง (โหลดตลอดเพื่อไม่กลับเป็นค่าเดิมหลัง refresh) */
+.support-team-tooltip.p-tooltip .p-tooltip-text {
+    background-color: #ffffff !important;
+    color: #374151 !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+    font-size: 0.875rem !important;
+    padding: 0.5rem 0.75rem !important;
+    border-radius: 6px !important;
+    border: 1px solid #e5e7eb !important;
+}
+.support-team-tooltip.p-tooltip-bottom .p-tooltip-arrow {
+    border-bottom-color: #ef4444 !important;
+}
+.support-team-tooltip.p-tooltip {
+    z-index: 99999 !important;
+}

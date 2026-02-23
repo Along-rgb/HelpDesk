@@ -14,8 +14,14 @@ export const useUserProfile = () => {
         (currentUser as { role?: { id?: number } })?.role?.id ??
         null;
 
+    const emp = currentUser?.employee as { divisionId?: number; departmentId?: number } | undefined;
+    const divisionId = emp?.divisionId ?? null;
+    const departmentId = emp?.departmentId ?? null;
+
     return {
         displayName: displayName || 'User',
         roleId,
+        divisionId: divisionId ?? undefined,
+        departmentId: departmentId ?? undefined,
     };
 };

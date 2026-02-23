@@ -34,7 +34,7 @@ export default function BuildingsPage() {
     const addCooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const saveCooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const tabItems = [{ label: 'ຕຶກ/ອາຄານ' }, { label: 'ລະດັບຊັ້ນ' }, { label: 'ຫ້ອງ' }];
+    const tabItems = [{ label: 'ຕຶກ/ອາຄານ' }, { label: 'ລະດັບຊັ້ນ' }];
 
     useEffect(() => {
         const tabParam = searchParams.get('tab');
@@ -51,8 +51,7 @@ export default function BuildingsPage() {
 
     const { tableHeaderTitle, columnNameHeader } = useMemo(() => {
         if (activeIndex === BuildingTabs.BUILDING) return { tableHeaderTitle: 'ຈັດການຕຶກ/ອາຄານ', columnNameHeader: 'ຊື່ຕຶກ/ອາຄານ' };
-        if (activeIndex === BuildingTabs.LEVEL) return { tableHeaderTitle: 'ຈັດການລະດັບຊັ້ນ', columnNameHeader: 'ລະດັບຊັ້ນ' };
-        return { tableHeaderTitle: 'ຈັດການຫ້ອງ', columnNameHeader: 'ຊື່ຫ້ອງ' };
+        return { tableHeaderTitle: 'ຈັດການລະດັບຊັ້ນ', columnNameHeader: 'ລະດັບຊັ້ນ' };
     }, [activeIndex]);
 
     const openNew = () => {
@@ -89,7 +88,7 @@ export default function BuildingsPage() {
             const rowName = (row.name ?? '').trim().toLowerCase();
             if (rowName !== nameNorm) return false;
             if (activeIndex === BuildingTabs.BUILDING) return true;
-            if (activeIndex === BuildingTabs.LEVEL || activeIndex === BuildingTabs.ROOM) {
+            if (activeIndex === BuildingTabs.LEVEL) {
                 return (row.parentId ?? null) === (payload.parentId ?? null);
             }
             return true;

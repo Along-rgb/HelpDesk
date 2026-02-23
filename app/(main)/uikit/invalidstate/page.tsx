@@ -93,6 +93,10 @@ const RequestForm = () => {
                     </div>
 
                     <div className="field mb-3">
+                        <label htmlFor="phoneNumber" className="font-bold block mb-2">ເບີໂທ</label>
+                        <InputText id="phoneNumber" value={form.phoneNumber ?? ''} onChange={(e) => updateField('phoneNumber', e.target.value)} className="w-full" style={grayFieldStyle} placeholder="ກະລຸນາເພີ່ມເບີໂທ" />
+                    </div>
+                    <div className="field mb-3">
                         <FormDropdown label="ເສັ້ນທາງ" value={form.route} options={masterData?.routes || []} onChange={(e) => updateField('route', e.value)} placeholder="ກະລຸນາເລືອກເສັ້ນທາງ" showClear />
                     </div>
 

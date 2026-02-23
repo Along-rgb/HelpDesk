@@ -14,8 +14,10 @@ interface Props {
     inputLabel: string;
     isSaving: boolean;
     editData?: ServiceRequestData | null;
-    activeTab: number;                              // [ເພີ່ມ]
-    categoryOptions?: { label: string, value: any }[]; // [ເພີ່ມ]
+    activeTab: number;                              
+    categoryOptions?: { label: string, value: any }[];
+    supportTeamOptions?: { label: string; value: number }[];
+    iconOptions?: { label: string; value: number; iconUrl?: string }[];
 }
 
 export default function ServiceRequestCreateDialog({ 
@@ -27,15 +29,20 @@ export default function ServiceRequestCreateDialog({
     isSaving, 
     editData,
     activeTab,
-    categoryOptions = []
+    categoryOptions = [],
+    supportTeamOptions = [],
+    iconOptions = []
 }: Props) {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [status, setStatus] = useState<string>('ACTIVE');
-    const [parentId, setParentId] = useState<number | null>(null); // [ເພີ່ມ] State ສຳລັບເກັບໝວດໝູ່
+    const [parentId, setParentId] = useState<number | null>(null);
+    const [supportTeamId, setSupportTeamId] = useState<number | null>(null);
+    const [iconId, setIconId] = useState<number | null>(null);
     const [submitted, setSubmitted] = useState(false);
 
-    const isTopicTab = activeTab === 1; // ກວດສອບວ່າແມ່ນ Tab ລາຍການຫົວຂໍ້ບໍ່
+    const isCategoryTab = activeTab === 0;
+    const isTopicTab = activeTab === 1;
 
     useEffect(() => {
         if (visible) {
@@ -43,13 +50,16 @@ export default function ServiceRequestCreateDialog({
                 setName(editData.name);
                 setDescription(editData.description);
                 setStatus(editData.status);
-                // [ເພີ່ມ] ດຶງ parentId ຈາກ editData
                 setParentId(editData.parentId || null);
+                setSupportTeamId(editData.supportTeamId ?? null);
+                setIconId(editData.iconId ?? null);
             } else {
                 setName('');
                 setDescription('');
                 setStatus('ACTIVE');
                 setParentId(null);
+                setSupportTeamId(null);
+                setIconId(null);
             }
             setSubmitted(false);
         }
@@ -59,20 +69,22 @@ export default function ServiceRequestCreateDialog({
         setSubmitted(true);
         if (!name.trim()) return;
 
-        // Validation: ຖ້າເປັນ Tab Topic ຕ້ອງເລືອກໝວດໝູ່
         if (isTopicTab && !parentId) return;
 
         onSave({ 
             name, 
             description, 
             status,
-            parentId: isTopicTab ? (parentId || undefined) : undefined // ສົ່ງ parentId ໄປນຳ
+            parentId: isTopicTab ? (parentId || undefined) : undefined,
+            supportTeamId: isCategoryTab ? (supportTeamId ?? undefined) : undefined,
+            iconId: isCategoryTab ? (iconId ?? undefined) : undefined
         });
     };
 
     const renderFooter = () => (
         <div className="flex justify-content-end gap-2 pt-2">
             <Button 
+                tabIndex={0}
                 label="ຍົກເລີກ" 
                 icon="pi pi-times" 
                 onClick={onHide} 
@@ -80,6 +92,7 @@ export default function ServiceRequestCreateDialog({
                 disabled={isSaving}
             />
             <Button 
+                tabIndex={0}
                 label="ບັນທຶກ" 
                 icon="pi pi-check" 
                 onClick={handleSave} 
@@ -105,7 +118,81 @@ export default function ServiceRequestCreateDialog({
         >
             <div className="flex flex-column gap-3">
                 
-                {/* [ເພີ່ມ] Dropdown ໝວດໝູ່ ໄວ້ເທິງສຸດ (ສະແດງສະເພາະ Tab ລາຍການຫົວຂໍ້) */}
+                {isCategoryTab && (
+                    <div className="field mb-0">
+                        <label htmlFor="supportTeamId" className="font-bold block mb-2">ເລືອກທີມຊ່ວຍເຫຼືອ</label>
+                        <div className="p-inputgroup">
+                            <Dropdown
+                                id="supportTeamId"
+                                value={supportTeamId}
+                                options={supportTeamOptions}
+                                onChange={(e) => setSupportTeamId(e.value)}
+                                placeholder="ເລືອກທີມຊ່ວຍເຫຼືອ"
+                                className="flex-1"
+                                filter
+                                showClear
+                            />
+                            <Button tabIndex={0} type="button" icon="pi pi-times" className="p-button-outlined" onClick={() => setSupportTeamId(null)} tooltip="ລ້າງຄ່າ" />
+                        </div>
+                    </div>
+                )}
+
+                {isCategoryTab && (
+                    <>
+                        <div className="field mb-0">
+                            <label htmlFor="name" className="font-bold block mb-2">
+                                {inputLabel} <span className="text-red-500">*</span>
+                            </label>
+                            <InputText 
+                                id="name" 
+                                value={name} 
+                                onChange={(e) => setName(e.target.value)} 
+                                className={submitted && !name.trim() ? 'p-invalid w-full' : 'w-full'}
+                                autoFocus
+                            />
+                            {submitted && !name.trim() && <small className="text-red-500">ກະລຸນາປ້ອນ {inputLabel}</small>}
+                        </div>
+                        <div className="field mb-0">
+                            <label htmlFor="iconId" className="font-bold block mb-2">ເພີ່ມຮູບໄອຄອນ</label>
+                            <div className="p-inputgroup">
+                                <Dropdown
+                                    id="iconId"
+                                    value={iconId}
+                                    options={iconOptions}
+                                    onChange={(e) => setIconId(e.value)}
+                                    placeholder="ເລືອກຮູບໄອຄອນ"
+                                    className="flex-1"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    valueTemplate={(val: number | null) => {
+                                        if (val == null) return null;
+                                        const opt = iconOptions.find(o => o.value === val);
+                                        return opt?.iconUrl ? (
+                                            <span className="flex align-items-center gap-2">
+                                                <img src={opt.iconUrl} alt="" className="w-1rem h-1rem object-contain" />
+                                                ຮູບໄອຄອນ
+                                            </span>
+                                        ) : <span>ຮູບໄອຄອນ</span>;
+                                    }}
+                                    itemTemplate={(opt: { label: string; value: number; iconUrl?: string }) => opt.iconUrl ? (
+                                        <span className="flex align-items-center gap-2">
+                                            <img src={opt.iconUrl} alt="" className="w-2rem h-2rem object-contain" />
+                                            ຮູບໄອຄອນ
+                                        </span>
+                                    ) : <span>{opt.label}</span>}
+                                    showClear
+                                />
+                                <Button tabIndex={0} type="button" icon="pi pi-times" className="p-button-outlined" onClick={() => setIconId(null)} tooltip="ລ້າງຄ່າ" />
+                            </div>
+                        </div>
+                        <div className="field mb-0">
+                            <label htmlFor="description" className="font-bold block mb-2">ຄຳອະທິບາຍ (ວ່າງໄດ້)</label>
+                            <InputText id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full" />
+                        </div>
+                    </>
+                )}
+
+                {/* Tab ລາຍການຫົວຂໍ້ */}
                 {isTopicTab && (
                     <div className="field mb-0">
                         <label htmlFor="parentId" className="font-bold block mb-2">
@@ -125,6 +212,8 @@ export default function ServiceRequestCreateDialog({
                     </div>
                 )}
 
+                {!isCategoryTab && (
+                    <>
                 <div className="field mb-0">
                     <label htmlFor="name" className="font-bold block mb-2">
                         {inputLabel} <span className="text-red-500">*</span>
@@ -134,7 +223,7 @@ export default function ServiceRequestCreateDialog({
                         value={name} 
                         onChange={(e) => setName(e.target.value)} 
                         className={submitted && !name.trim() ? 'p-invalid w-full' : 'w-full'}
-                        autoFocus={!isTopicTab} // ຖ້າບໍ່ມີ Dropdown ໃຫ້ Focus ທີ່ນີ້
+                        autoFocus={!isTopicTab}
                     />
                     {submitted && !name.trim() && <small className="text-red-500">ກະລຸນາປ້ອນ {inputLabel}</small>}
                 </div>
@@ -148,6 +237,8 @@ export default function ServiceRequestCreateDialog({
                         className="w-full"
                     />
                 </div>
+                    </>
+                )}
             </div>
         </Dialog>
     );

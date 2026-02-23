@@ -7,6 +7,12 @@ export interface Assignee {
     status: 'doing' | 'done' | 'waiting';
 }
 
+/** แถวที่แสดงในตาราง — สำหรับ role 3,4 จะมี rowAssignee (หนึ่งคนต่อแถว), role 1,2 ใช้ ticket อย่างเดียว */
+export interface TicketRow extends Ticket {
+    rowId: string;
+    rowAssignee?: Assignee;
+}
+
 export interface Ticket {
     id: number | string;
     title: string;

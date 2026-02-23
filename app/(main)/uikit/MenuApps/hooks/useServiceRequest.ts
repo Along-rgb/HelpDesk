@@ -2,8 +2,8 @@ import { useCoreApi } from './useCoreApi';
 import { ServiceRequestData, CreateServiceRequestPayload } from '../types';
 
 export function useServiceRequest(activeIndex: number) {
-    // เลือก Endpoint ตาม Tab
     const getEndpoint = (index: number) => {
+        if (index === 2) return ''; // Tab ເພີ່ມໄອຄອນ ໃຊ້ useServiceRequestIcons
         return index === 0 ? '/service-categories' : '/service-items';
     };
 

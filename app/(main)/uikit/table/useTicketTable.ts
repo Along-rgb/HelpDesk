@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Ticket, Assignee } from "./types";
 import { ticketService } from "@/app/services/ticketService";
 import { ASSIGNMENT_GROUPS } from "./constants";
+import { getCurrentDateTimeString } from "@/utils/dateUtils";
 
 export const useTicketTable = () => {
     const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -111,8 +112,13 @@ export const useTicketTable = () => {
 
         try {
             setLoading(true);
+            const assignDate = getCurrentDateTimeString();
             await Promise.all(selectedTickets.map(ticket =>
-                ticketService.updateTicket({ ...ticket, assignees: [...(ticket.assignees || []), ...newAssignees] } as any)
+                ticketService.updateTicket({
+                    ...ticket,
+                    assignees: [...(ticket.assignees || []), ...newAssignees],
+                    assignDate,
+                } as any)
             ));
             fetchData();
             setAssignFilter(null);

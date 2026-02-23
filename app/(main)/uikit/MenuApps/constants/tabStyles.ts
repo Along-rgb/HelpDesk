@@ -7,4 +7,6 @@ export const CUSTOM_TAB_CSS = `
     .custom-tabmenu .p-tabmenu-nav { border-bottom: 1px solid var(--hd-border); }
     .custom-tabmenu .p-tabmenuitem .p-menuitem-link { background: transparent !important; border: none !important; box-shadow: none !important; }
     .custom-tabmenu .p-highlight .p-menuitem-link { border-bottom: 2px solid var(--primary-color) !important; border-radius: 0; }
+    .custom-tabmenu .p-tabmenuitem.p-disabled .p-menuitem-text { color: var(--hd-text-muted) !important; opacity: 0.5; }
+    .custom-tabmenu .p-tabmenuitem.p-disabled .p-menuitem-link { cursor: not-allowed !important; pointer-events: auto !important; }
 `;

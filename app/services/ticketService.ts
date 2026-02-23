@@ -22,6 +22,12 @@ interface FloorApiItem {
     building?: { id: number; name: string };
 }
 
+// รูปแบบจาก API turnings / turnings/selectturning: { id, name }
+interface TurningApiItem {
+    id: number;
+    name: string;
+}
+
 // --- Mock Data (Dropdown) ---
 // ใช้สำหรับ Dependent Dropdown (เลือกหมวดหมู่ -> แสดงหัวข้อ)
 const DB_TOPICS: Record<string, City[]> = {
@@ -79,18 +85,57 @@ async function fetchFloorsByBuilding(buildingId: string | number): Promise<City[
     }
 }
 
+// ดึงรายการເສັ້ນທາງ (turnings) จาก API turnings — JSON: { id, name }[] หรือ { data: [...] }
+async function fetchTurnings(): Promise<City[]> {
+    try {
+        const response = await axiosClientsHelpDesk.get<TurningApiItem[] | { data: TurningApiItem[] }>('turnings');
+        const raw = response.data;
+        const list = Array.isArray(raw) ? raw : (raw as { data: TurningApiItem[] })?.data ?? [];
+        return list.map((item) => ({ name: item.name, code: String(item.id) }));
+    } catch (error) {
+        const err = error as { message?: string; response?: { status?: number } };
+        const is403 = err?.response?.status === 403 || err?.message === AUTH_FORBIDDEN_MSG;
+        if (is403) {
+            if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+                console.warn('[ticketService] GET turnings 403 — ໃຊ້ລາຍການ fallback');
+            }
+            return DB_ROUTES;
+        }
+        console.error('Failed to fetch turnings', error);
+        return DB_ROUTES;
+    }
+}
+
+// รายการເສັ້ນທາງໃຫ້ເລືອກ (dropdown) จาก API turnings/selectturning — JSON: { id, name }[]
+export async function fetchTurningsForSelect(): Promise<City[]> {
+    try {
+        const response = await axiosClientsHelpDesk.get<TurningApiItem[] | { data: TurningApiItem[] }>('turnings/selectturning');
+        const raw = response.data;
+        const list = Array.isArray(raw) ? raw : (raw as { data: TurningApiItem[] })?.data ?? [];
+        return list.map((item) => ({ name: item.name, code: String(item.id) }));
+    } catch (error) {
+        const err = error as { message?: string; response?: { status?: number } };
+        const is403 = err?.response?.status === 403 || err?.message === AUTH_FORBIDDEN_MSG;
+        if (is403) {
+            return DB_ROUTES;
+        }
+        console.error('Failed to fetch turnings/selectturning', error);
+        return DB_ROUTES;
+    }
+}
+
 export const ticketService = {
 
     getBuildings: fetchBuildings,
     getFloorsByBuilding: fetchFloorsByBuilding,
 
-    // 1. Get Master Data (Dropdown) — buildings จาก API, levels โหลดแยกตาม building (ເບິ່ງ getFloorsByBuilding)
+    // 1. Get Master Data (Dropdown) — buildings จาก API, routes จาก API turnings/selectturning (ເລືອກເສັ້ນທາງ), levels โหลดแยกตาม building
     getMasterData: async (): Promise<MasterData> => {
-        const buildings = await fetchBuildings();
+        const [buildings, routes] = await Promise.all([fetchBuildings(), fetchTurningsForSelect()]);
         return {
             categories: STATIC_CATEGORIES,
             buildings,
-            routes: DB_ROUTES,
+            routes,
             levels: [], // ລະດັບຊັ້ນໃຊ້ getFloorsByBuilding(buildingId) ແທນ
             rooms: DB_ROOMS
         };

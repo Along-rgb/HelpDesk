@@ -4,7 +4,6 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
-import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk'; 
 import { BuildingData, CreateBuildingPayload, BuildingTabs } from '../types';
 
 interface Props {
@@ -25,13 +24,10 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
     const [status, setStatus] = useState<string>('ACTIVE');
     
     const [selectedBuilding, setSelectedBuilding] = useState<BuildingData | null>(null);
-    const [selectedLevel, setSelectedLevel] = useState<BuildingData | null>(null);
-    const [levelOptions, setLevelOptions] = useState<BuildingData[]>([]);
 
     const [submitted, setSubmitted] = useState(false);
 
     const isLevelTab = activeTab === BuildingTabs.LEVEL;
-    const isRoomTab = activeTab === BuildingTabs.ROOM;
 
     // ເມື່ອເປີດ Dialog: ຖ້າແກ້ໄຂ ໃຫ້ດຶງຂໍ້ມູນຈາກ editData ມາໃສ່ຟອມ, ຖ້າເພີ່ມໃໝ່ ໃຫ້ລ້າງຟອມ
     useEffect(() => {
@@ -45,54 +41,25 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
                 if (isLevelTab) {
                     const parent = buildingOptions.find(b => b.id === editData.parentId);
                     setSelectedBuilding(parent || null);
-                } else if (isRoomTab) {
-                    setSelectedBuilding(null);
-                    setSelectedLevel(null);
                 }
             } else {
                 setName('');
                 setCode('');
                 setStatus('ACTIVE');
                 setSelectedBuilding(null);
-                setSelectedLevel(null);
-                setLevelOptions([]);
             }
         }
-    }, [visible, editData, buildingOptions, isLevelTab, isRoomTab]);
-
-    // Fetch Levels Logic (Improved)
-    useEffect(() => {
-        if (isRoomTab && selectedBuilding) {
-            const fetchLevels = async () => {
-                try {
-                    const res = await axiosClientsHelpDesk.get('/buildings', {
-                        params: { type: 'LEVEL', status: 'ACTIVE', parentId: selectedBuilding.id }
-                    });
-                    const levels = Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
-                    setLevelOptions(levels);
-                } catch (err) {
-                    console.error("Error fetching levels:", err);
-                    setLevelOptions([]);
-                }
-            };
-            fetchLevels();
-        } else {
-            setLevelOptions([]);
-        }
-    }, [selectedBuilding, isRoomTab]);
+    }, [visible, editData, buildingOptions, isLevelTab]);
 
     const handleSave = () => {
         setSubmitted(true);
         if (!name.trim()) return;
-        
+
         if (isLevelTab && !selectedBuilding) return;
-        if (isRoomTab && (!selectedBuilding || !selectedLevel)) return;
 
         let finalParentId: number | null = null;
         if (isLevelTab) {
             finalParentId = selectedBuilding?.id ?? editData?.parentId ?? null;
-        } else if (isRoomTab) {
-            finalParentId = selectedLevel?.id ?? null;
         }
 
         const payload: CreateBuildingPayload = {
@@ -116,11 +83,6 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
     let mainInputLabel = itemNameLabel;
     let descriptionLabel = "ລາຍລະອຽດ (ວ່າງໄດ້)";
 
-    if (isRoomTab) {
-        mainInputLabel = "ໝາຍເລກຫ້ອງ"; 
-        descriptionLabel = "ຄຳອະທິບາຍ"; 
-    }
-
     return (
         <Dialog 
             header={editData ? 'ແກ້ໄຂຂໍ້ມູນ' : 'ເພີ່ມຂໍ້ມູນ'} 
@@ -135,7 +97,6 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
         >
             <div className="flex flex-column gap-3">
                 
-                {/* Tab ລະດັບຊັ້ນ (tabIndex=1): ຕຶກ/ອາຄານ ເປັນ Dropdown (ເລືອກຕຶກ) — ແກ້ໄຂ ເມື່ອເປີດຈະເລືອກຕຶກປັດຈຸບັນຂອງ floor */}
                 {isLevelTab && (
                     <div className="field mb-0">
                         <label htmlFor="parentBuilding" className="font-bold block mb-2">
@@ -144,7 +105,7 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
                         <Dropdown
                             id="parentBuilding"
                             value={selectedBuilding}
-                            onChange={(e) => { setSelectedBuilding(e.value); setSelectedLevel(null); }}
+                            onChange={(e) => { setSelectedBuilding(e.value); }}
                             options={buildingOptions}
                             optionLabel="name"
                             placeholder="ເລືອກຕຶກ/ອາຄານ"
@@ -152,46 +113,6 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
                             filter
                         />
                         {submitted && !selectedBuilding && <small className="text-red-500">ກະລຸນາເລືອກຕຶກ/ອາຄານ</small>}
-                    </div>
-                )}
-
-                {isRoomTab && (
-                    <div className="field mb-0">
-                        <label htmlFor="parentBuilding" className="font-bold block mb-2">
-                            ຕຶກ/ອາຄານ <span className="text-red-500">*</span>
-                        </label>
-                        <Dropdown
-                            id="parentBuilding"
-                            value={selectedBuilding}
-                            onChange={(e) => { setSelectedBuilding(e.value); setSelectedLevel(null); }}
-                            options={buildingOptions}
-                            optionLabel="name"
-                            placeholder="ເລືອກຕຶກ/ອາຄານ"
-                            className={submitted && !selectedBuilding ? 'p-invalid w-full' : 'w-full'}
-                            filter
-                        />
-                        {submitted && !selectedBuilding && <small className="text-red-500">ກະລຸນາເລືອກຕຶກ/ອາຄານ</small>}
-                    </div>
-                )}
-
-                {isRoomTab && (
-                    <div className="field mb-0">
-                        <label htmlFor="parentLevel" className="font-bold block mb-2">
-                            ລະດັບຊັ້ນ <span className="text-red-500">*</span>
-                        </label>
-                        <Dropdown 
-                            id="parentLevel"
-                            value={selectedLevel} 
-                            onChange={(e) => setSelectedLevel(e.value)} 
-                            options={levelOptions} 
-                            optionLabel="name" 
-                            placeholder="ເລືອກລະດັບຊັ້ນ" 
-                            className={submitted && !selectedLevel ? 'p-invalid w-full' : 'w-full'}
-                            disabled={!selectedBuilding}
-                            emptyMessage="ບໍ່ພົບຂໍ້ມູນລະດັບຊັ້ນ (ກະລຸນາເລືອກຕຶກກ່ອນ)"
-                            filter
-                        />
-                        {submitted && !selectedLevel && <small className="text-red-500">ກະລຸນາເລືອກລະດັບຊັ້ນ</small>}
                     </div>
                 )}
 

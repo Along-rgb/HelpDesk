@@ -11,6 +11,7 @@ const ROLE_ID = { SuperAdmin: 1, Admin: 2, Staff: 3, User: 4 } as const;
 type MenuItemWithRole = AppMenuItem & { allowedRoles?: number[] };
 
 const MENU_MODEL: MenuItemWithRole[] = [
+    { label: 'ໜ້າຫຼັກ', icon: 'pi pi-fw pi-home', to: '/uikit/pageTechn', allowedRoles: [ROLE_ID.Staff] },
     { label: 'ຫນ້າຫຼັກ', icon: 'pi pi-fw pi-home', to: '/uikit/MainBoard', allowedRoles: [ROLE_ID.SuperAdmin, ROLE_ID.Admin] },
     { label: 'ລາຍງານ', icon: 'pi pi-fw pi-th-large', to: '/uikit/reportHD', allowedRoles: [ROLE_ID.SuperAdmin, ROLE_ID.Admin, ROLE_ID.Staff] },
     { label: 'ການຮ້ອງຂໍ', icon: 'pi pi-fw pi-ticket', to: '/uikit/table', allowedRoles: [ROLE_ID.SuperAdmin, ROLE_ID.Admin] },
@@ -36,7 +37,8 @@ const AppMenu = () => {
 
     const visibleMenuItems = useMemo(() => {
         if (roleId == null) return MENU_MODEL;
-        if (roleId === ROLE_ID.SuperAdmin) return MENU_MODEL;
+        // Role 1 (SuperAdmin), 2 (Admin): ไม่แสดงเมนู ໜ້າຫຼັກ path uikit/pageTechn — เฉพาะ Role 3 (Staff) เท่านั้น
+        if (roleId === ROLE_ID.SuperAdmin) return MENU_MODEL.filter((item) => item.to !== '/uikit/pageTechn');
         if (roleId === ROLE_ID.User) return USER_ROLE_MENU;
         return MENU_MODEL.filter((item) => !item.allowedRoles || item.allowedRoles.includes(roleId));
     }, [roleId]);

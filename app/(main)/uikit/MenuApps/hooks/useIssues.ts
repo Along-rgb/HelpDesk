@@ -2,18 +2,20 @@ import { useCoreApi } from './useCoreApi';
 import { IssueData, CreateIssuePayload } from '../types';
 
 export function useIssues(activeIndex: number) {
-    const getIssueType = (index: number) => {
+    const getEndpoint = (index: number) => (index === 2 ? '' : '/issues');
+    const getParams = (index: number) => {
+        if (index === 2) return {};
         const types = ['CATEGORY', 'TOPIC'];
-        return types[index] || 'CATEGORY';
+        return { type: types[index] || 'CATEGORY' };
     };
 
-    const type = getIssueType(activeIndex);
+    const endpoint = getEndpoint(activeIndex);
+    const queryParams = getParams(activeIndex);
 
-    // เรียกใช้ Hook กลางบรรทัดเดียวจบ
     const { toast, items, loading, saveData, deleteData } = useCoreApi<IssueData, CreateIssuePayload>(
-        '/issues',      // Endpoint
-        { type },       // Query Params
-        activeIndex     // Trigger ให้โหลดใหม่เมื่อเปลี่ยน Tab
+        endpoint,
+        queryParams,
+        activeIndex
     );
 
     return { 

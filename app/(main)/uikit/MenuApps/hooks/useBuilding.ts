@@ -12,7 +12,7 @@ import {
 export function useBuilding(activeIndex: number) {
   const [buildingOptions, setBuildingOptions] = useState<BuildingData[]>([]);
 
-  const type = activeIndex === BuildingTabs.BUILDING ? 'BUILDING' : activeIndex === BuildingTabs.ROOM ? 'ROOM' : 'LEVEL';
+  const type = activeIndex === BuildingTabs.BUILDING ? 'BUILDING' : 'LEVEL';
   const endpoint = activeIndex === BuildingTabs.LEVEL ? '/floors' : '/buildings';
   const queryParams = activeIndex === BuildingTabs.LEVEL ? {} : { type };
 

@@ -12,6 +12,7 @@ const INITIAL_FORM: TicketForm = {
     assetNumber: "",
     topic: null,
     building: null,
+    phoneNumber: "",
     route: null,
     level: null,
     roomNumber: null,
@@ -266,7 +267,13 @@ export const useTicketForm = () => {
             LOG('createTicket result', result);
             if (result.success) {
                 alert(result.message);
-                router.push("/uikit/pageTechn");
+                const roleId = useUserProfileStore.getState().currentUser?.roleId ?? 0;
+                const path =
+                    roleId === 1 || roleId === 2 ? '/uikit/table'
+                    : roleId === 3 ? '/uikit/pageTechn'
+                    : roleId === 4 ? '/uikit/pageUser'
+                    : '/auth/login'; // ไม่มี role ถือว่าไม่มีตัวตน → กลับไปหน้า login
+                router.push(path);
             } else {
                 console.warn('[invalidstate] createTicket not success', result.message);
                 alert("Error: " + result.message);
