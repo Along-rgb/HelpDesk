@@ -10,6 +10,8 @@ const TOOLTIP_TARGET = '.js-support-team-cell-tooltip';
 const TECHNICAL_TABLE_COL_COUNT = 4;
 
 type RowData = IssueData | SupportTeamData | HeadCategoryData;
+/** แถวประเภท user ใน tab ວິຊາການ (มี fullName) — ใช้สำหรับ type assertion ในลูป */
+type TechnicalUserRow = Extract<SupportTeamTechnicalRow, { type: 'user' }>;
 
 /** ข้อความเกินจำนวนนี้จะถูกตัดและแสดงเต็มใน Tooltip */
 const MAX_TEXT_LENGTH = 40;
@@ -80,10 +82,8 @@ export default function SupportTeamTable({
                 const users: SupportTeamTechnicalRow[] = [];
                 let j = i + 1;
                 while (j < technicalTabRows.length && technicalTabRows[j].type === 'user') {
-                    const u = technicalTabRows[j];
-                    if (u.type === 'user') {
-                        if ((u.fullName ?? '').toLowerCase().includes(q)) users.push(u);
-                    }
+                    const u = technicalTabRows[j] as TechnicalUserRow;
+                    if ((u.fullName ?? '').toLowerCase().includes(q)) users.push(u);
                     j++;
                 }
                 if (nameMatch || users.length > 0) {
