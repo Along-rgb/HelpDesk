@@ -10,10 +10,24 @@ const TOOLTIP_TARGET = '.js-support-team-cell-tooltip';
 const TECHNICAL_TABLE_COL_COUNT = 4;
 
 type RowData = IssueData | SupportTeamData | HeadCategoryData;
-/** แถวประเภท user ใน tab ວິຊາການ (มี fullName) */
+
+// --- Type guards & helpers for SupportTeamTechnicalRow (section มี name, user มี fullName) ---
+/** แถวประเภท section = หัวกลุ่ม Head Category (มี name) */
+type TechnicalSectionRow = Extract<SupportTeamTechnicalRow, { type: 'section' }>;
+/** แถวประเภท user = ວິຊາການ (มี fullName จาก first_name + last_name) */
 type TechnicalUserRow = Extract<SupportTeamTechnicalRow, { type: 'user' }>;
+
+function isTechnicalSectionRow(row: SupportTeamTechnicalRow): row is TechnicalSectionRow {
+    return row.type === 'section';
+}
 function isTechnicalUserRow(row: SupportTeamTechnicalRow): row is TechnicalUserRow {
     return row.type === 'user';
+}
+/** คืนชื่อสำหรับใช้ค้นหา/แสดง: section → name, user → fullName */
+function getTechnicalRowDisplayName(row: SupportTeamTechnicalRow): string {
+    if (isTechnicalSectionRow(row)) return row.name ?? '';
+    if (isTechnicalUserRow(row)) return row.fullName ?? '';
+    return '';
 }
 
 /** ข้อความเกินจำนวนนี้จะถูกตัดและแสดงเต็มใน Tooltip */
@@ -50,7 +64,7 @@ interface Props {
     onEdit: (item: RowData | unknown) => void;
     onDelete: (item: RowData | unknown) => void;
     issueCategoryMap: Map<string | number, string>;
-    /** แถวกลุ่มสำหรับ tab ວິຊາການ (headcategory + users ตาม divisionId) */
+    /** แถวกลุ่มสำหรับ tab ວິຊາການ: section = Head Category (name), user = ວິຊາການ (fullName), ອ້າງອີງ departmentId/division */
     technicalTabRows?: SupportTeamTechnicalRow[];
     /** เมื่อ true (เช่น role 2 ใน tab ວິຊາການ) ปุ่มແກ້ໄຂ/ລຶບ จะถูกซ่อน */
     disableActions?: boolean;
@@ -80,13 +94,13 @@ export default function SupportTeamTable({
         let i = 0;
         while (i < technicalTabRows.length) {
             const row = technicalTabRows[i];
-            if (row.type === 'section') {
-                const nameMatch = (row.name ?? '').toLowerCase().includes(q);
+            if (isTechnicalSectionRow(row)) {
+                const nameMatch = getTechnicalRowDisplayName(row).toLowerCase().includes(q);
                 const users: SupportTeamTechnicalRow[] = [];
                 let j = i + 1;
-                while (j < technicalTabRows.length && technicalTabRows[j].type === 'user') {
+                while (j < technicalTabRows.length && isTechnicalUserRow(technicalTabRows[j])) {
                     const u = technicalTabRows[j];
-                    if (isTechnicalUserRow(u) && (u.fullName ?? '').toLowerCase().includes(q)) users.push(u);
+                    if (getTechnicalRowDisplayName(u).toLowerCase().includes(q)) users.push(u);
                     j++;
                 }
                 if (nameMatch || users.length > 0) {
@@ -94,8 +108,10 @@ export default function SupportTeamTable({
                     result.push(...users);
                 }
                 i = j;
+            } else if (isTechnicalUserRow(row)) {
+                if (getTechnicalRowDisplayName(row).toLowerCase().includes(q)) result.push(row);
+                i++;
             } else {
-                if ((row.fullName ?? '').toLowerCase().includes(q)) result.push(row);
                 i++;
             }
         }
@@ -104,7 +120,7 @@ export default function SupportTeamTable({
 
     const technicalRowIndexByPosition = useMemo(() => {
         let idx = 0;
-        return filteredTechnicalRows.map((r) => (r.type === 'user' ? ++idx : 0));
+        return filteredTechnicalRows.map((r) => (isTechnicalUserRow(r) ? ++idx : 0));
     }, [filteredTechnicalRows]);
 
     // โหลด Tooltip ใหม่เมื่อตารางเรนเดอร์ (เซลล์ที่มี class นี้เกิดทีหลัง) เพื่อให้แสดงตามเงื่อนไขเฉพาะข้อความยาว > MAX_TEXT_LENGTH
@@ -192,7 +208,7 @@ export default function SupportTeamTable({
                             </thead>
                             <tbody className="p-datatable-tbody">
                                 {filteredTechnicalRows.map((row, idx) => {
-                                    if (row.type === 'section') {
+                                    if (isTechnicalSectionRow(row)) {
                                         return (
                                             <tr key={`section-${row.headCategoryId}`} className="p-datatable-row section-title-row">
                                                 <td colSpan={TECHNICAL_TABLE_COL_COUNT} className="p-3 font-bold text-lg text-indigo-700 border-bottom-1 surface-border" style={{ backgroundColor: '#f0f9ff' }}>
@@ -201,15 +217,18 @@ export default function SupportTeamTable({
                                             </tr>
                                         );
                                     }
-                                    const rowIndex = technicalRowIndexByPosition[idx];
-                                    return (
-                                        <tr key={`user-${row.id}`} className="p-datatable-row">
-                                            <td className="p-datatable-cell text-center">{rowIndex}</td>
-                                            <td className="p-datatable-cell" />
-                                            <td className="p-datatable-cell text-center">{row.fullName}</td>
-                                            <td className="p-datatable-cell text-center">{technicalActionTemplate(row)}</td>
-                                        </tr>
-                                    );
+                                    if (isTechnicalUserRow(row)) {
+                                        const rowIndex = technicalRowIndexByPosition[idx];
+                                        return (
+                                            <tr key={`user-${row.id}`} className="p-datatable-row">
+                                                <td className="p-datatable-cell text-center">{rowIndex}</td>
+                                                <td className="p-datatable-cell" />
+                                                <td className="p-datatable-cell text-center">{row.fullName}</td>
+                                                <td className="p-datatable-cell text-center">{technicalActionTemplate(row)}</td>
+                                            </tr>
+                                        );
+                                    }
+                                    return null;
                                 })}
                             </tbody>
                         </table>
