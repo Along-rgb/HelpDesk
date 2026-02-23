@@ -81,7 +81,7 @@ export default function SupportTeamTable({
                 let j = i + 1;
                 while (j < technicalTabRows.length && technicalTabRows[j].type === 'user') {
                     const u = technicalTabRows[j];
-                    if ((u.fullName ?? '').toLowerCase().includes(q)) users.push(u);
+                    if (u.type === 'user' && (u.fullName ?? '').toLowerCase().includes(q)) users.push(u);
                     j++;
                 }
                 if (nameMatch || users.length > 0) {
