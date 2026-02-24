@@ -11,9 +11,6 @@ export const TicketService = {
       });
       return res.data;
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Get tickets error:', error);
-      }
       throw error;
     }
   },

@@ -53,8 +53,11 @@ export function useUserRoles(
     }, [roleId, enabled]);
 
     useEffect(() => {
-        if (enabled) fetchData();
-        else setItems([]);
+        if (enabled) {
+            setLoading(true); // ໃຫ້ loading=true ກ່ອນ fetch ເພື່ອບໍ່ໃຫ້ແສງ "ບໍ່ພົບຂໍ້ມູນ" ຕອນເປີດໜ້າ/refresh
+            fetchData();
+        }
+        // ບໍ່ລ້າງ items ເມື່ອ disabled — ເກັບ cache ເພື່ອບໍ່ໃຫ້ແສງ "ບໍ່ພົບຂໍ້ມູນ" ຕອນສະຫຼັບ tab
     }, [fetchData, enabled]);
 
     const saveData = useCallback(

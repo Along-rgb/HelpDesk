@@ -13,6 +13,8 @@ interface Props {
     onDelete: (item: IconItemData) => void;
     /** Role-based: false = ซ่อนปุ่มແກ້ໄຂ/ລຶບ */
     canManage?: boolean;
+    /** ຕອນໂຫຼດຂໍ້ມູນ ບໍ່ໃຫ້ແສງ emptyMessage "ບໍ່ພົບຂໍ້ມູນ" */
+    isLoading?: boolean;
 }
 
 /** แสดงรูป icon ພ້ອມ fallback ເມື່ອโหลดບໍ່ได้ (ตามหลัก React: ແຍກ component ສະແດງຜົນ) */
@@ -48,7 +50,9 @@ function IconCell({ src, alt = '' }: { src: string; alt?: string }) {
     );
 }
 
-export default function IssuesIconTable({ items, header, globalFilter, onEdit, onDelete, canManage = true }: Props) {
+const EMPTY_MSG = <div className="text-center p-4 text-gray-500">ບໍ່ພົບຂໍ້ມູນ</div>;
+
+export default function IssuesIconTable({ items, header, globalFilter, onEdit, onDelete, canManage = true, isLoading = false }: Props) {
     const iconTemplate = (row: IconItemData) => <IconCell src={row.iconUrl} alt="" />;
 
     const actionTemplate = (row: IconItemData) => (
@@ -85,7 +89,7 @@ export default function IssuesIconTable({ items, header, globalFilter, onEdit, o
             rows={10}
             className="p-datatable-sm"
             stripedRows
-            emptyMessage={<div className="text-center p-4 text-gray-500">ບໍ່ພົບຂໍ້ມູນ</div>}
+            emptyMessage={!isLoading ? EMPTY_MSG : undefined}
         >
             <Column
                 header="#"

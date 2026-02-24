@@ -54,7 +54,7 @@ function getRoleId(userObj: UserProfile.UserLoginResponse | undefined): number |
 function getLoginErrorFallback(status: number | undefined): string {
   if (status === 400) return 'ຂໍ້ມູນບໍ່ຖືກຕ້ອງ (ກະລຸນາກວດສອບຊື່ຜູ້ໃຊ້ ແລະ ລະຫັດຜ່ານ)';
   if (status === 401) return 'ໄອດີ ຫຼື ລະຫັດຜິດ';
-  if (status === 404) return 'ບໍ່ພົບຈຸດສົ່ງຂໍ້ມູນເຂົ້າລະບົບ';
+  if (status === 404) return 'ບໍ່ພົບ API ເຂົ້າລະບົບ — ກວດສອບ NEXT_PUBLIC_HELPDESK_API_BASE_URL ໃນ .env.local ແລະວ່າ Backend ເປີດແລ້ວ';
   return 'ເກີດຂໍ້ຜິດພາດຈາກເຊີເວີ';
 }
 
@@ -127,7 +127,11 @@ export function useAuthLogin(showMessage: ToastShowMessage) {
         const status = err?.response?.status;
         const responseData = err?.response?.data as ApiErrorResponseBody | string | undefined;
         const fallback = getLoginErrorFallback(status);
-        const message = getApiErrorMessage(responseData, err?.message ?? fallback);
+        const msg = err?.message ?? '';
+        const message =
+          msg.includes('NEXT_PUBLIC_HELPDESK_API_BASE_URL')
+            ? msg
+            : getApiErrorMessage(responseData, fallback);
         showMessage('error', 'ເຂົ້າລະບົບບໍ່ສຳເລັດ', message);
         setLoading(false);
       }

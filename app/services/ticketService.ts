@@ -54,13 +54,7 @@ async function fetchBuildings(): Promise<City[]> {
     } catch (error) {
         const err = error as { message?: string; response?: { status?: number } };
         const is403 = err?.response?.status === 403 || err?.message === AUTH_FORBIDDEN_MSG;
-        if (is403) {
-            if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-                console.warn('[ticketService] GET buildings/selectbuilding 403 — ໃຊ້ລາຍການ fallback');
-            }
-            return DB_BUILDINGS;
-        }
-        console.error('Failed to fetch buildings', error);
+        if (is403) return DB_BUILDINGS;
         return DB_BUILDINGS;
     }
 }
@@ -80,7 +74,6 @@ async function fetchFloorsByBuilding(buildingId: string | number): Promise<City[
         if (is403 || err?.response?.status === 404) {
             return [];
         }
-        console.error('Failed to fetch floors', error);
         return [];
     }
 }
@@ -95,13 +88,7 @@ async function fetchTurnings(): Promise<City[]> {
     } catch (error) {
         const err = error as { message?: string; response?: { status?: number } };
         const is403 = err?.response?.status === 403 || err?.message === AUTH_FORBIDDEN_MSG;
-        if (is403) {
-            if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-                console.warn('[ticketService] GET turnings 403 — ໃຊ້ລາຍການ fallback');
-            }
-            return DB_ROUTES;
-        }
-        console.error('Failed to fetch turnings', error);
+        if (is403) return DB_ROUTES;
         return DB_ROUTES;
     }
 }
@@ -119,7 +106,6 @@ export async function fetchTurningsForSelect(): Promise<City[]> {
         if (is403) {
             return DB_ROUTES;
         }
-        console.error('Failed to fetch turnings/selectturning', error);
         return DB_ROUTES;
     }
 }
@@ -201,8 +187,7 @@ export const ticketService = {
             const response = await axios.post(`${TICKETS_BASE}/tickets`, newTicket);
             return { success: true, message: `ບັນທຶກຂໍ້ມູນສຳເລັດ!` };
 
-        } catch (error) {
-            console.error("Save Error:", error);
+        } catch {
             return { success: false, message: "ບໍ່ສາມາດເຊື່ອມຕໍ່ Server ໄດ້" };
         }
     },
@@ -213,7 +198,6 @@ export const ticketService = {
             const res = await axios.get<Ticket[]>(`${TICKETS_BASE}/tickets`);
             return res.data;
         } catch (error) {
-            console.error("Get tickets error:", error);
             throw error;
         }
     },
@@ -224,7 +208,6 @@ export const ticketService = {
             const response = await axios.put(`${TICKETS_BASE}/tickets/${ticket.id}`, ticket);
             return response.data;
         } catch (error) {
-            console.error(`Error updating ticket ID ${ticket.id}:`, error);
             throw error;
         }
     }

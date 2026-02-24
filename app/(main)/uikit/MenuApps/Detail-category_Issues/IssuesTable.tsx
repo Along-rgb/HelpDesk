@@ -26,7 +26,11 @@ interface Props {
     categoryIconMap: Map<number, string>;
     /** Role-based: false = ซ่อนปุ่มແກ້ໄຂ/ລຶບ */
     canManage: boolean;
+    /** ຕອນໂຫຼດຂໍ້ມູນ ບໍ່ໃຫ້ແສງ emptyMessage "ບໍ່ພົບຂໍ້ມູນ" */
+    isLoading?: boolean;
 }
+
+const EMPTY_MSG = <div className="text-center p-4 text-gray-500">ບໍ່ພົບຂໍ້ມູນ</div>;
 
 export default function IssuesTable({
     items,
@@ -40,6 +44,7 @@ export default function IssuesTable({
     headCategoryMap,
     categoryIconMap,
     canManage,
+    isLoading = false,
 }: Props) {
     const isCategoryTab = activeTab === 0;
     const isTopicTab = activeTab === 1;
@@ -109,7 +114,7 @@ export default function IssuesTable({
             value={items}
             header={header}
             globalFilter={globalFilter}
-            emptyMessage={<div className="text-center p-4 text-gray-500">ບໍ່ພົບຂໍ້ມູນ</div>}
+            emptyMessage={!isLoading ? EMPTY_MSG : undefined}
             className="p-datatable-sm"
             stripedRows
             paginator

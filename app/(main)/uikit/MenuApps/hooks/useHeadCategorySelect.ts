@@ -33,10 +33,10 @@ export function useHeadCategorySelect(triggerFetch: unknown = null, shouldFetch:
 
     useEffect(() => {
         if (shouldFetch) {
+            setLoading(true); // ບໍ່ໃຫ້ແສງ empty ຕອນເປີດໜ້າ/refresh
             fetchData();
-        } else {
-            setItems([]);
         }
+        // ບໍ່ລ້າງ items ເມື່ອ shouldFetch ເປັນ false — ເກັບ cache ເພື່ອບໍ່ໃຫ້ແສງ "ບໍ່ພົບຂໍ້ມູນ" ຕອນສະຫຼັບ tab
     }, [fetchData, triggerFetch, shouldFetch]);
 
     /** Expose fetchData for external refresh (e.g. after save on SupportTeam page) */

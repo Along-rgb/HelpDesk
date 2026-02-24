@@ -43,11 +43,11 @@ export default function IssuesPage() {
     const canManageCategoryAndTopic = isRole2(roleId);
     const canManageIcons = isRole1(roleId);
 
-    const { toast: categoryToast, items: categoryItems, saveData: saveCategory, deleteData: deleteCategory } = useCategories(
+    const { toast: categoryToast, items: categoryItems, loading: categoryLoading, saveData: saveCategory, deleteData: deleteCategory } = useCategories(
         activeIndex,
         profileReady && canManageCategoryAndTopic && activeIndex <= 1
     );
-    const { toast: issueToast, items: topicItems, saveData: saveIssue, deleteData: deleteIssue } = useIssues(
+    const { toast: issueToast, items: topicItems, loading: issueLoading, saveData: saveIssue, deleteData: deleteIssue } = useIssues(
         activeIndex,
         profileReady && canManageCategoryAndTopic && activeIndex === 1
     );
@@ -59,7 +59,7 @@ export default function IssuesPage() {
         activeIndex,
         profileReady && (canManageCategoryAndTopic && activeIndex <= 1 || canManageIcons && activeIndex === IssueTabs.ICON)
     );
-    const { toast: iconToast, items: iconItems, saveData: saveIconData, deleteData: deleteIconData } = useCategoryIcons(
+    const { toast: iconToast, items: iconItems, loading: iconLoading, saveData: saveIconData, deleteData: deleteIconData } = useCategoryIcons(
         activeIndex,
         profileReady && canManageIcons && activeIndex === IssueTabs.ICON
     );
@@ -89,6 +89,14 @@ export default function IssuesPage() {
 
     const items = activeIndex === IssueTabs.ICON ? iconItems : activeIndex === 0 ? categoryItems : topicItems;
     const toast = activeIndex === 0 ? categoryToast : activeIndex === 1 ? issueToast : iconToast;
+
+    /** loading ຂອງ tab ປັດຈຸບັນ — ບໍ່ໃຫ້ແສງ "ບໍ່ພົບຂໍ້ມູນ" ຕອນເປີດໜ້າ/refresh ຫຼື ຍັງໂຫຼດຂໍ້ມູນ */
+    const tableLoading = useMemo(() => {
+        if (!profileReady) return true; // ຍັງບໍ່ຮູ້ role — ບໍ່ໃຫ້ແສງ empty
+        if (activeIndex === IssueTabs.ICON) return iconLoading;
+        if (activeIndex === 0) return categoryLoading;
+        return issueLoading;
+    }, [profileReady, activeIndex, iconLoading, categoryLoading, issueLoading]);
 
     const [isDialogVisible, setDialogVisible] = useState(false);
     const [isIconDialogVisible, setIconDialogVisible] = useState(false);
@@ -282,6 +290,7 @@ export default function IssuesPage() {
                         onEdit={openIconEdit}
                         onDelete={confirmIconDelete}
                         canManage={canManageIcons}
+                        isLoading={tableLoading}
                     />
                     <IssuesIconCreateDialog
                         visible={isIconDialogVisible}
@@ -306,6 +315,7 @@ export default function IssuesPage() {
                         headCategoryMap={headCategoryMap}
                         categoryIconMap={categoryIconMap}
                         canManage={canManageCategoryAndTopic}
+                        isLoading={tableLoading}
                     />
                     <IssuesCreateDialog
                         visible={isDialogVisible}

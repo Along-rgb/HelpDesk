@@ -72,7 +72,12 @@ interface Props {
     headCategoryHasNestedData?: boolean;
     /** ໃຊ້ຄົ້ນຫາຊື່ division ເມື່ອ headCategoryHasNestedData = false (role 2) */
     divisions?: DivisionOption[];
+    /** ຕອນໂຫຼດຂໍ້ມູນ ບໍ່ໃຫ້ແສງ emptyMessage "ບໍ່ພົບຂໍ້ມູນ" */
+    isLoading?: boolean;
 }
+
+const EMPTY_MSG = <div className="text-center p-4 text-gray-500">ບໍ່ພົບຂໍ້ມູນ</div>;
+const EMPTY_MSG_SURFACE = <div className="text-center p-4 text-gray-500 surface-0">ບໍ່ພົບຂໍ້ມູນ</div>;
 
 export default function SupportTeamTable({
     items,
@@ -86,7 +91,8 @@ export default function SupportTeamTable({
     technicalTabRows = [],
     disableActions = false,
     headCategoryHasNestedData = true,
-    divisions = []
+    divisions = [],
+    isLoading = false,
 }: Props) {
     const tooltipRef = useRef<React.ComponentRef<typeof Tooltip>>(null);
     const isIssueCategoryTab = activeTab === SupportTeamTabs.ISSUE_CATEGORY;
@@ -242,9 +248,7 @@ export default function SupportTeamTable({
                             </tbody>
                         </table>
                     </div>
-                    {!hasRows && (
-                        <div className="text-center p-4 text-gray-500 surface-0">ບໍ່ພົບຂໍ້ມູນ</div>
-                    )}
+                    {!hasRows && !isLoading && EMPTY_MSG_SURFACE}
                 </div>
             </>
         );
@@ -268,7 +272,7 @@ export default function SupportTeamTable({
                 rows={10}
                 className="p-datatable-sm"
                 stripedRows
-                emptyMessage={<div className="text-center p-4 text-gray-500">ບໍ່ພົບຂໍ້ມູນ</div>}
+                emptyMessage={!isLoading ? EMPTY_MSG : undefined}
             >
                 <Column header="#" body={(_, opts) => opts.rowIndex + 1} className="text-center w-4rem" alignHeader="center" bodyStyle={centerAlign} />
 

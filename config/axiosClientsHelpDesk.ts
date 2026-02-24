@@ -102,6 +102,14 @@ function is403(error: { response?: { status?: number } }): boolean {
 // --- Request interceptor ---
 axiosClientsHelpDesk.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
+    const base = config.baseURL ?? axiosClientsHelpDesk.defaults.baseURL;
+    if (!base || String(base).trim() === '') {
+      return Promise.reject(
+        new Error(
+          'NEXT_PUBLIC_HELPDESK_API_BASE_URL is not set. Add it to .env.local (e.g. your backend URL ending with /helpdesk/api) and restart the dev server.'
+        )
+      );
+    }
     attachAuthToRequest(config);
     return config;
   },
@@ -116,17 +124,6 @@ axiosClientsHelpDesk.interceptors.response.use(
       return handle401();
     }
     if (is403(error)) {
-      const config = (error as { config?: { url?: string; method?: string; baseURL?: string } }).config;
-      const method = config?.method?.toUpperCase();
-      const url = config?.url;
-      const baseURL = config?.baseURL ?? axiosClientsHelpDesk.defaults.baseURL;
-      const fullUrl = baseURL && url ? `${baseURL.replace(/\/$/, '')}/${url.replace(/^\//, '')}` : url;
-      console.warn('[403 ທ່ານບໍ່ໄດ້ຮັບອະນຸຍາດ]', {
-        method,
-        url: fullUrl ?? url,
-        status: (error as { response?: { status?: number } }).response?.status,
-        responseData: (error as { response?: { data?: unknown } }).response?.data,
-      });
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent(AUTH_FORBIDDEN_TOAST_EVENT, { detail: { message: AUTH_FORBIDDEN_MSG } }));
       }

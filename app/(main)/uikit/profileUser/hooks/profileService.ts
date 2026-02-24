@@ -42,7 +42,6 @@ export const getUserProfile = async (
     }
     throw new Error('ບໍ່ສາມາດດຶງຂໍ້ມູນໄດ້');
   } catch (error: any) {
-    console.error('Error fetching user profile:', error);
     throw error?.response?.data || error;
   }
 };
@@ -63,7 +62,6 @@ export const updateUserProfile = async (
 
     throw new Error('ບໍ່ສາມາດບັນທຶກຂໍ້ມູນໄດ້');
   } catch (error: any) {
-    console.error('Error updating user profile:', error);
     throw error?.response?.data || error;
   }
 };
@@ -144,7 +142,6 @@ export const getPositionCodes = async (roleId?: number | null): Promise<UserProf
       clearAppSession();
       throw err;
     }
-    console.error('getPositionCodes error:', err);
     throw err;
   }
 };

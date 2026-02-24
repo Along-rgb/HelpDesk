@@ -27,9 +27,6 @@ export default function Loginform(props: ILoginformProps) {
       // defaultValues: defaultRowItem,
     }
   );
-  React.useEffect(() => {
-    console.log("errors", errors)
-  }, [errors])
   // 🧨 แสดงข้อความ Toast
   const showMessage = (
     severity: "success" | "info" | "warn" | "error",
@@ -44,7 +41,6 @@ export default function Loginform(props: ILoginformProps) {
     });
   };
   const onSummit: SubmitHandler<LoginInput> = async (data) => {
-    console.log("data", data)
     try {
       setLoading(true);
       const resp: any = await loginUser(data);

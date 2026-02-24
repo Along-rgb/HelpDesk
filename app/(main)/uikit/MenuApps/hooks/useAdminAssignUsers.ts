@@ -31,8 +31,11 @@ export function useAdminAssignUsers(triggerFetch: unknown = null, enabled: boole
     }, [enabled]);
 
     useEffect(() => {
-        if (enabled) fetchData();
-        else setItems([]);
+        if (enabled) {
+            setLoading(true); // ບໍ່ໃຫ້ແສງ empty ຕອນເປີດໜ້າ/refresh
+            fetchData();
+        }
+        // ບໍ່ລ້າງ items ເມື່ອ disabled — ເກັບ cache ເພື່ອບໍ່ໃຫ້ແສງ "ບໍ່ພົບຂໍ້ມູນ" ຕອນສະຫຼັບ tab
     }, [fetchData, triggerFetch, enabled]);
 
     /** POST (no id) or PUT (with id) to ENDPOINT. Returns true on success, false on error. */

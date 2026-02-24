@@ -34,10 +34,10 @@ export function useCategoryIcons(triggerFetch: unknown, shouldFetch: boolean = t
 
     useEffect(() => {
         if (shouldFetch) {
+            setLoading(true); // ໃຫ້ loading=true ກ່ອນ fetch ເພື່ອບໍ່ໃຫ້ແສງ "ບໍ່ພົບຂໍ້ມູນ" ຕອນເປີດໜ້າ/refresh
             fetchData();
-        } else {
-            setItems([]);
         }
+        // ບໍ່ລ້າງ items ເມື່ອ shouldFetch ເປັນ false — ເກັບ cache ເພື່ອບໍ່ໃຫ້ແສງ "ບໍ່ພົບຂໍ້ມູນ" ຕອນສະຫຼັບ tab
     }, [fetchData, triggerFetch, shouldFetch]);
 
     const saveData = useCallback(

@@ -11,7 +11,11 @@ interface Props {
     globalFilter: string;
     onEdit: (item: UserRoleData) => void;
     onDelete: (item: UserRoleData) => void;
+    /** ຕອນໂຫຼດຂໍ້ມູນ ບໍ່ໃຫ້ແສງ emptyMessage "ບໍ່ພົບຂໍ້ມູນ" */
+    isLoading?: boolean;
 }
+
+const EMPTY_MSG = <div className="text-center p-4 text-gray-500">ບໍ່ພົບຂໍ້ມູນ</div>;
 
 export default function RoleManagementTable({
     items,
@@ -19,6 +23,7 @@ export default function RoleManagementTable({
     globalFilter,
     onEdit,
     onDelete,
+    isLoading = false,
 }: Props) {
     const actionTemplate = (row: UserRoleData) => (
         <div className="flex gap-2 justify-content-center align-items-center">
@@ -52,7 +57,7 @@ export default function RoleManagementTable({
             rows={10}
             className="p-datatable-sm"
             stripedRows
-            emptyMessage={<div className="text-center p-4 text-gray-500">ບໍ່ພົບຂໍ້ມູນ</div>}
+            emptyMessage={!isLoading ? EMPTY_MSG : undefined}
         >
             <Column header="#" body={(_, opts) => opts.rowIndex + 1} className="text-center w-4rem" alignHeader="center" bodyStyle={centerAlign} />
             <Column field="userName" header="ຊື່ຄົນ" style={{ minWidth: '180px' }} alignHeader="center" bodyStyle={centerAlign} />

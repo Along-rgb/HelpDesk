@@ -3,8 +3,15 @@ import { create } from 'zustand';
 import { initialState } from '@/config/constant-api';
 import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
 import { env } from '@/config/env';
+import { isConfigured } from '@/config/env';
 import type { LoginApiResponse } from '@/global/types/api';
 import { Users } from '@/global/types';
+
+/** Normalize login path: no leading slash, collapse duplicate "auth" (e.g. auth/auth/login → auth/login). */
+function normalizeLoginPath(path: string): string {
+  const p = path.replace(/^\/+/, '').trim();
+  return p.replace(/auth\/auth\//g, 'auth/') || 'auth/login';
+}
 
 /** พารามิเตอร์สำหรับเรียก login (ตรงกับฟอร์ม Login) */
 export interface LoginCredentials {
@@ -38,7 +45,12 @@ export const useUsersStore = create<UsersStore, []>((set, get) => ({
     dataUser: [],
     loading: false,
     loginUser: async (userLogin) => {
-        const loginPath = env.helpdeskAuthLoginPath;
+        if (!isConfigured('helpdeskApiUrl')) {
+            throw new Error(
+                'NEXT_PUBLIC_HELPDESK_API_BASE_URL is not set. Add it to .env.local (e.g. your backend URL ending with /helpdesk/api) and restart the dev server.'
+            );
+        }
+        const loginPath = normalizeLoginPath(env.helpdeskAuthLoginPath);
         const u = userLogin?.username ?? '';
         const p = userLogin?.password ?? '';
         const payload = env.loginUsePascalCase
@@ -53,8 +65,7 @@ export const useUsersStore = create<UsersStore, []>((set, get) => ({
             // baseURL already includes "/api"
             const response = await axiosClientsHelpDesk.get('users');
             set({ ...initialState, loading: false, success: true, dataUser: response.status === 200 ? response.data : [] });
-        } catch (error) {
-            console.error('Error fetching data:', error);
+        } catch {
             set({ ...initialState, loading: false, error: true });
         }
     },
@@ -63,8 +74,7 @@ export const useUsersStore = create<UsersStore, []>((set, get) => ({
         try {
             const response = await axiosClientsHelpDesk.get('/Users/byUsers/' + UserId);
             set({ ...initialState, success: true, dataUser: response.status === 200 ? response.data : [] });
-        } catch (error) {
-            console.error('Error fetching data by province ID:', error);
+        } catch {
             set({ ...initialState, error: true });
         }
     },
@@ -74,14 +84,10 @@ export const useUsersStore = create<UsersStore, []>((set, get) => ({
             const response = await axiosClientsHelpDesk.get(`/Users/byId/${UserId}`);
             // Check if the API call was successful (status code 200)
             if (response.status === 200) {
-                // Return the retrieved news details
                 return response.data.data;
-            } else {
-                console.error('Failed to fetch news details. Status:', response.status);
-                return null;
             }
-        } catch (error) {
-            console.error('Error fetching news details:', error);
+            return null;
+        } catch {
             return null;
         }
     },
@@ -91,13 +97,10 @@ export const useUsersStore = create<UsersStore, []>((set, get) => ({
             const response = await axiosClientsHelpDesk.post( '/Users/add', newUser);
             // Check if the API call was successful (status code 201)
             if (response.status === 200) {
-                // Update the local state with the new center
                 set((state) => ({ dataUser: [...state.dataUser, response.data] }));
-            } else {
-                console.error('Failed to add center. Status:', response.status);
             }
-        } catch (error) {
-            console.error('Error adding center:', error);
+        } catch {
+            // addUser failed — state unchanged
         }
     },
     updateUser: async (updatedUser) => {
@@ -106,17 +109,14 @@ export const useUsersStore = create<UsersStore, []>((set, get) => ({
             const response = await axiosClientsHelpDesk.put( `/Users/update`, updatedUser);
             // Check if the API call was successful (status code 200)
             if (response.status === 200) {
-                // Update the local state with the updated center
                 set((state) => ({
                     dataUser: state.dataUser.map((center) =>
                         center.id === updatedUser.id ? updatedUser : center
                     ),
                 }));
-            } else {
-                console.error('Failed to update center. Status:', response.status);
             }
-        } catch (error) {
-            console.error('Error updating center:', error);
+        } catch {
+            // updateUser failed — state unchanged
         }
     },
     deleteUser: async (UserId) => {
@@ -125,15 +125,12 @@ export const useUsersStore = create<UsersStore, []>((set, get) => ({
             const response = await axiosClientsHelpDesk.delete( `/Users/del/${UserId}`);
             // Check if the API call was successful (status code 200)
             if (response.status === 200) {
-                // Update the local state by removing the deleted center
                 set((state) => ({
                     dataUser: state.dataUser.filter((center) => center.id !== UserId),
                 }));
-            } else {
-                console.error('Failed to delete center. Status:', response.status);
             }
-        } catch (error) {
-            console.error('Error deleting center:', error);
+        } catch {
+            // deleteUser failed — state unchanged
         }
     }
 }));

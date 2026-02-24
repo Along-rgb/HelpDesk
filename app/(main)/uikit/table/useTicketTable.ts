@@ -47,7 +47,7 @@ export const useTicketTable = () => {
                 setTickets(ticketData);
                 setFilteredTickets(filterTickets(ticketData, globalFilter));
             })
-            .catch((err) => console.error("Fetch Error:", err))
+            .catch(() => {})
             .finally(() => setLoading(false));
     }, [globalFilter]); 
 
@@ -73,8 +73,7 @@ export const useTicketTable = () => {
             setLoading(true);
             await ticketService.updateTicket({ ...targetTicket, priority: newPriority } as any);
             fetchData();
-        } catch (error) {
-            console.error("Update Priority Failed:", error);
+        } catch {
             setLoading(false);
         }
     };
@@ -123,8 +122,7 @@ export const useTicketTable = () => {
             fetchData();
             setAssignFilter(null);
             setSelectedTickets([]);
-        } catch (error) {
-            console.error("Bulk Assign Failed:", error);
+        } catch {
             setLoading(false);
         }
     };
