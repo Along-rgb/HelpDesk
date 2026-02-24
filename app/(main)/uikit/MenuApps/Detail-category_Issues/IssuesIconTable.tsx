@@ -24,7 +24,7 @@ function IconCell({ src, alt = '' }: { src: string; alt?: string }) {
         );
     if (error)
         return (
-            <span className="text-500 text-sm inline-flex align-items-center justify-content-center w-3rem h-3rem surface-100 border-round">
+            <span className="text-500 text-sm inline-flex align-items-center justify-content-center w-3rem h-3rem surface-100 border-round" title={src}>
                 ບໍ່ມີຮູບ
             </span>
         );
@@ -33,10 +33,14 @@ function IconCell({ src, alt = '' }: { src: string; alt?: string }) {
             <img
                 src={src}
                 alt={alt}
-                className="w-3rem h-3rem object-contain border-round"
-                loading="lazy"
-                decoding="async"
-                onError={() => setError(true)}
+                width={48}
+                height={48}
+                className="border-round"
+                style={{ width: '48px', height: '48px', objectFit: 'contain' }}
+                onError={() => {
+                    console.error('Image load failed for URL:', src);
+                    setError(true);
+                }}
             />
         </span>
     );

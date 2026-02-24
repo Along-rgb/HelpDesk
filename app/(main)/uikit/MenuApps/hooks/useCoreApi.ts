@@ -12,7 +12,7 @@ export function useCoreApi<T, P>(
     endpoint: string,
     queryParams: Record<string, unknown> = {},
     triggerFetch: unknown = null,
-    enabled: boolean = true,
+    shouldFetch: boolean = true,
     options: UseCoreApiOptions = {}
 ) {
     const { silentFetchError = false } = options;
@@ -27,7 +27,7 @@ export function useCoreApi<T, P>(
     const [loading, setLoading] = useState(false);
 
     const fetchData = useCallback(async () => {
-        if (!endpoint || !enabled) return;
+        if (!endpoint || !shouldFetch) return;
         const params = queryParamsRef.current;
         setLoading(true);
         try {
@@ -46,7 +46,7 @@ export function useCoreApi<T, P>(
             const status = error && typeof error === 'object' && 'response' in error
                 ? (error as { response?: { status?: number } }).response?.status
                 : undefined;
-            const skipToast = status === 403 || serverErrorShownRef.current || silentFetchErrorRef.current;
+            const skipToast = status === 403 || status === 404 || serverErrorShownRef.current || silentFetchErrorRef.current;
             if (!skipToast) {
                 serverErrorShownRef.current = true;
                 toast.current?.show({
@@ -59,12 +59,15 @@ export function useCoreApi<T, P>(
         } finally {
             setLoading(false);
         }
-    }, [endpoint, enabled]);
+    }, [endpoint, shouldFetch]);
 
     useEffect(() => {
-        if (enabled) fetchData();
-        else setItems([]);
-    }, [fetchData, triggerFetch, enabled]);
+        if (shouldFetch) {
+            fetchData();
+        } else {
+            setItems([]);
+        }
+    }, [fetchData, triggerFetch, shouldFetch]);
 
     // 2. Save Data (Create / Update)
     const saveData = async (payload: P, id?: number, options?: { noQueryParams?: boolean }) => {

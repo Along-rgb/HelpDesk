@@ -6,13 +6,13 @@ import type { HeadCategorySelectItem } from '../types';
 /** ເລືອກທີມຊ່ວຍເຫຼືອ — response: array of { id, name, description, departmentId, divisionId, createdAt, updatedAt } */
 const ENDPOINT = 'headcategorys/selectheadcategory';
 
-/** enabled=false: ไม่เรียก API (Role 1 ບໍ່ໃຊ້ tab ວິຊາການ — หลีกเลี่ยง Forbidden) */
-export function useHeadCategorySelect(triggerFetch: unknown = null, enabled: boolean = true) {
+/** shouldFetch=false: ไม่เรียก API (Role 1 ບໍ່ໃຊ້ tab ວິຊາການ — หลีกเลี่ยง Forbidden) */
+export function useHeadCategorySelect(triggerFetch: unknown = null, shouldFetch: boolean = true) {
     const [items, setItems] = useState<HeadCategorySelectItem[]>([]);
     const [loading, setLoading] = useState(false);
 
     const fetchData = useCallback(async () => {
-        if (!enabled) return;
+        if (!shouldFetch) return;
         setLoading(true);
         try {
             const response = await axiosClientsHelpDesk.get(ENDPOINT);
@@ -29,12 +29,15 @@ export function useHeadCategorySelect(triggerFetch: unknown = null, enabled: boo
         } finally {
             setLoading(false);
         }
-    }, [enabled]);
+    }, [shouldFetch]);
 
     useEffect(() => {
-        if (enabled) fetchData();
-        else setItems([]);
-    }, [fetchData, triggerFetch, enabled]);
+        if (shouldFetch) {
+            fetchData();
+        } else {
+            setItems([]);
+        }
+    }, [fetchData, triggerFetch, shouldFetch]);
 
     /** Expose fetchData for external refresh (e.g. after save on SupportTeam page) */
     return { items, loading, fetchData };

@@ -77,6 +77,8 @@ export default function IssuesTable({
         return '-';
     };
 
+    const centerAlign = { textAlign: 'center' as const };
+
     const actionTemplate = (row: RowData) => (
         <div className="flex gap-2 justify-content-center">
             {canManage && (
@@ -113,25 +115,25 @@ export default function IssuesTable({
             paginator
             rows={10}
         >
-            <Column header="#" body={(_, opts) => opts.rowIndex + 1} className="text-center w-4rem" />
+            <Column header="#" body={(_, opts) => opts.rowIndex + 1} className="text-center w-4rem" alignHeader="center" bodyStyle={centerAlign} />
 
             {isCategoryTab && (
-                <Column header="ທີມຊ່ວຍເຫຼືອ" body={headCategoryNameTemplate} style={{ minWidth: '150px' }} />
+                <Column header="ທີມຊ່ວຍເຫຼືອ" body={headCategoryNameTemplate} style={{ minWidth: '150px' }} className="text-center" alignHeader="center" bodyStyle={centerAlign} />
             )}
-            {isCategoryTab && <Column field="title" header="ຊື່ໝວດໝູ່" style={{ minWidth: '200px' }} />}
+            {isCategoryTab && <Column field="title" header="ຊື່ໝວດໝູ່" style={{ minWidth: '200px' }} className="text-center" alignHeader="center" bodyStyle={centerAlign} />}
             {isCategoryTab && (
-                <Column header="ຮູບໄອຄອນ" body={categoryIconTemplate} style={{ minWidth: '80px' }} className="text-center" />
+                <Column header="ຮູບໄອຄອນ" body={categoryIconTemplate} style={{ minWidth: '80px' }} className="text-center" alignHeader="center" bodyStyle={centerAlign} />
             )}
-            {isCategoryTab && <Column field="description" header="ຄຳອະທິບາຍ" style={{ minWidth: '250px' }} />}
+            {isCategoryTab && <Column field="description" header="ຄຳອະທິບາຍ" style={{ minWidth: '250px' }} className="text-center" alignHeader="center" bodyStyle={centerAlign} />}
             {isCategoryTab && (
-                <Column header="ວັນທີສ້າງ" body={createdAtTemplate} style={{ minWidth: '120px' }} />
+                <Column header="ວັນທີສ້າງ" body={createdAtTemplate} style={{ minWidth: '120px' }} className="text-center" alignHeader="center" bodyStyle={centerAlign} />
             )}
 
-            {isTopicTab && <Column header="ໝວດໝູ່" style={{ minWidth: '150px' }} body={parentNameTemplate} />}
-            {isTopicTab && <Column field="title" header={nameColumnHeader} style={{ minWidth: '200px' }} />}
-            {isTopicTab && <Column field="description" header="ຄຳອະທິບາຍ" style={{ minWidth: '250px' }} />}
+            {isTopicTab && <Column header="ໝວດໝູ່" style={{ minWidth: '150px' }} body={parentNameTemplate} className="text-center" alignHeader="center" bodyStyle={centerAlign} />}
+            {isTopicTab && <Column field="title" header={nameColumnHeader} style={{ minWidth: '200px' }} className="text-center" alignHeader="center" bodyStyle={centerAlign} />}
+            {isTopicTab && <Column field="description" header="ຄຳອະທິບາຍ" style={{ minWidth: '250px' }} className="text-center" alignHeader="center" bodyStyle={centerAlign} />}
 
-            <Column header="ດຳເນີນການ" body={actionTemplate} className="text-center w-8rem" />
+            <Column header="ດຳເນີນການ" body={actionTemplate} className="text-center w-8rem" alignHeader="center" bodyStyle={centerAlign} />
         </DataTable>
     );
 }

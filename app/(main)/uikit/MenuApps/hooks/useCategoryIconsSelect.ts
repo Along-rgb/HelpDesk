@@ -6,12 +6,13 @@ import type { CategoryIconSelectItem } from '../types';
 /** ເລືອກຮູບໄອຄອນ — response: array of { id, catIcon?, sortOrder?, ... } */
 const ENDPOINT = 'categoryicons/selectcategoryicon';
 
-export function useCategoryIconsSelect(triggerFetch: unknown = null, enabled: boolean = true) {
+/** shouldFetch=false: ไม่เรียก API ເພື່ອຫຼີກເວັ້ນ 403 */
+export function useCategoryIconsSelect(triggerFetch: unknown = null, shouldFetch: boolean = true) {
     const [items, setItems] = useState<CategoryIconSelectItem[]>([]);
     const [loading, setLoading] = useState(false);
 
     const fetchData = useCallback(async () => {
-        if (!enabled) return;
+        if (!shouldFetch) return;
         setLoading(true);
         try {
             const response = await axiosClientsHelpDesk.get(ENDPOINT);
@@ -28,12 +29,15 @@ export function useCategoryIconsSelect(triggerFetch: unknown = null, enabled: bo
         } finally {
             setLoading(false);
         }
-    }, [enabled]);
+    }, [shouldFetch]);
 
     useEffect(() => {
-        if (enabled) fetchData();
-        else setItems([]);
-    }, [fetchData, triggerFetch, enabled]);
+        if (shouldFetch) {
+            fetchData();
+        } else {
+            setItems([]);
+        }
+    }, [fetchData, triggerFetch, shouldFetch]);
 
     return { items, loading, fetchData };
 }

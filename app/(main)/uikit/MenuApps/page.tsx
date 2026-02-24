@@ -6,9 +6,10 @@ import { MENU_ITEMS } from './data';
 import { SettingsCard } from './SettingsCard';
 import { useAdminRouteGuard } from '@/app/hooks/useAdminRouteGuard';
 import { useUserProfile } from '@/types/useUserProfile';
-import { useIssueIcons } from './hooks/useIssueIcons';
-import { useServiceRequestIcons } from './hooks/useServiceRequestIcons';
-import { IssueTabs, ServiceRequestTabs } from './types';
+
+/** Role 2: Tab ໝວດໝູ່ & ລາຍການຫົວຂໍ້. Role 1: Tab ເພີ່ມໄອຄອນ. */
+const isRole2 = (r: number | string | null | undefined) => Number(r) === 2;
+const isRole1 = (r: number | string | null | undefined) => Number(r) === 1;
 
 const SettingsPage = () => {
     const router = useRouter();
@@ -16,33 +17,47 @@ const SettingsPage = () => {
     const { loading, allowed } = useAdminRouteGuard('/uikit/profileUser');
     const { roleId } = useUserProfile();
 
-    const { items: issueIcons } = useIssueIcons(IssueTabs.ICON);
-    const { items: serviceIcons } = useServiceRequestIcons(ServiceRequestTabs.ICON);
+    const canManageCategoryAndTopic = isRole2(roleId);
+    const canManageIcons = isRole1(roleId);
+    const profileReady = roleId === 1 || roleId === 2;
 
-    const itemsWithIcons = useMemo(() => {
-        const issueFirstIcon = [...issueIcons].sort((a, b) => a.sortOrder - b.sortOrder)[0]?.iconUrl;
-        const serviceFirstIcon = [...serviceIcons].sort((a, b) => a.sortOrder - b.sortOrder)[0]?.iconUrl;
-        return MENU_ITEMS.map((item) => {
-            if (item.id === 'issues' && issueFirstIcon) return { ...item, iconUrl: issueFirstIcon };
-            if (item.id === 'services' && serviceFirstIcon) return { ...item, iconUrl: serviceFirstIcon };
-            return item;
-        });
-    }, [issueIcons, serviceIcons]);
+    /** ทุกการ์ดใช้ PrimeReact icon จาก MENU_ITEMS เท่านั้น — ไม่ใช้รูปจาก API เพื่อหลีกเลี่ยง placeholder/รูปโหลดไม่ขึ้น */
+    const visibleItems = useMemo(() => MENU_ITEMS.map((item) => ({ ...item, iconUrl: undefined })), []);
 
-    const visibleItems = useMemo(() => itemsWithIcons, [itemsWithIcons]);
-
-    /** Role 1: ວິຊາການ (tabIndex=1) disabled. Role 2: ທິມສະໜັບສະໜູນ (tabIndex=0) disabled. ສະຖານະ (tabIndex=2) ໃຫ້ role1 ແລະ role2 ເຫັນແລະກົດໄດ້. */
+    /** Role 1: tab ໝວດໝູ່, ລາຍການຫົວຂໍ້ (0,1) disabled. Role 2: tab ເພີ່ມໄອຄອນ (2) disabled.
+     * ການແຈ້ງບັນຫາ/ການຮ້ອງຂໍ: Role 1 ກົດໄດ້ແຕ່ ເພີ່ມໄອຄອນ (tabIndex=2). Role 2 ກົດໄດ້ແຕ່ ໝວດໝູ່, ລາຍການຫົວຂໍ້ (tabIndex=0,1). */
     const getSubMenuDisabled = useMemo(() => {
         const r = Number(roleId);
         return (itemId: string, tabIndex: number) => {
-            if (itemId !== 'users') return false;
-            if (r === 1 && tabIndex === 1) return true;
-            if (r === 2 && tabIndex === 0) return true;
+            if (itemId === 'users') {
+                if (r === 1 && tabIndex === 1) return true;
+                if (r === 2 && tabIndex === 0) return true;
+                return false;
+            }
+            if (itemId === 'issues' || itemId === 'services') {
+                if (r === 1 && (tabIndex === 0 || tabIndex === 1)) return true;
+                if (r === 2 && tabIndex === 2) return true;
+                return false;
+            }
             return false;
         };
     }, [roleId]);
 
+    /** การ์ด dis ເມື່ອ role ບໍ່ມີສິດໃຊ້ງານ: ຜູ້ໃຊ້ = ຕ້ອງ profileReady; ອາຄານ = Role 1 ເທົ່ານັ້ນ (API /api/buildings, /api/floors); ການແຈ້ງບັນຫາ/ການຮ້ອງຂໍ = ຕ້ອງมีສິດ Tab. */
+    const getCardDisabled = useMemo(() => {
+        return (itemId: string): boolean => {
+            if (itemId === 'users') return !profileReady;
+            if (itemId === 'locations') return !profileReady || !isRole1(roleId);
+            if (itemId === 'issues' || itemId === 'services') return !(canManageCategoryAndTopic || canManageIcons);
+            return false;
+        };
+    }, [profileReady, roleId, canManageCategoryAndTopic, canManageIcons]);
+
     const handleSubMenuClick = (itemId: string, label: string, mainPath: string, tabIndex?: number) => {
+        if (tabIndex !== undefined && (itemId === 'issues' || itemId === 'services')) {
+            if (!canManageCategoryAndTopic && (tabIndex === 0 || tabIndex === 1)) return;
+            if (!canManageIcons && tabIndex === 2) return;
+        }
         const uniqueKey = `${itemId}-${label}`;
         setActiveButton(uniqueKey);
         const destination = tabIndex !== undefined
@@ -69,12 +84,12 @@ const SettingsPage = () => {
             <div className="grid">
                 {visibleItems.map((item) => (
                     <div key={item.id} className="col-12 md:col-6 lg:col-3 p-2">
-                        {/* ส่งฟังก์ชันที่แก้แล้วลง prop เดิม */}
-                        <SettingsCard 
+                        <SettingsCard
                             item={item}
                             activeButton={activeButton}
                             onSubMenuClick={handleSubMenuClick}
                             getSubMenuDisabled={getSubMenuDisabled}
+                            cardDisabled={getCardDisabled(item.id)}
                         />
                     </div>
                 ))}

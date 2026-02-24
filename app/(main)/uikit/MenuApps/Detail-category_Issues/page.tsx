@@ -45,17 +45,23 @@ export default function IssuesPage() {
 
     const { toast: categoryToast, items: categoryItems, saveData: saveCategory, deleteData: deleteCategory } = useCategories(
         activeIndex,
-        profileReady && activeIndex <= 1
+        profileReady && canManageCategoryAndTopic && activeIndex <= 1
     );
     const { toast: issueToast, items: topicItems, saveData: saveIssue, deleteData: deleteIssue } = useIssues(
         activeIndex,
-        profileReady && activeIndex === 1
+        profileReady && canManageCategoryAndTopic && activeIndex === 1
     );
-    const { items: headCategorySelectItems } = useHeadCategorySelect(activeIndex, profileReady && activeIndex <= 1);
-    const { items: categoryIconSelectItems } = useCategoryIconsSelect(activeIndex, profileReady && activeIndex <= 1);
+    const { items: headCategorySelectItems } = useHeadCategorySelect(
+        activeIndex,
+        profileReady && canManageCategoryAndTopic && activeIndex <= 1
+    );
+    const { items: categoryIconSelectItems } = useCategoryIconsSelect(
+        activeIndex,
+        profileReady && (canManageCategoryAndTopic && activeIndex <= 1 || canManageIcons && activeIndex === IssueTabs.ICON)
+    );
     const { toast: iconToast, items: iconItems, saveData: saveIconData, deleteData: deleteIconData } = useCategoryIcons(
         activeIndex,
-        profileReady && activeIndex === IssueTabs.ICON
+        profileReady && canManageIcons && activeIndex === IssueTabs.ICON
     );
 
     const headCategoryMap = useMemo(() => createDataMap(headCategorySelectItems, 'id', 'name'), [headCategorySelectItems]);
@@ -91,15 +97,49 @@ export default function IssuesPage() {
     const [selectedItem, setSelectedItem] = useState<IssueData | CategoryData | null>(null);
     const [selectedIconItem, setSelectedIconItem] = useState<IconItemData | null>(null);
 
-    const tabItems = [{ label: 'ໝວດໝູ່' }, { label: 'ລາຍການຫົວຂໍ້' }, { label: 'ເພີ່ມໄອຄອນ' }];
+    const tabItems = useMemo(
+        () => [
+            { label: 'ໝວດໝູ່', disabled: !canManageCategoryAndTopic },
+            { label: 'ລາຍການຫົວຂໍ້', disabled: !canManageCategoryAndTopic },
+            { label: 'ເພີ່ມໄອຄອນ', disabled: !canManageIcons },
+        ],
+        [canManageCategoryAndTopic, canManageIcons]
+    );
+
+    const defaultTabIndex = useMemo(() => {
+        if (canManageCategoryAndTopic) return 0;
+        if (canManageIcons) return IssueTabs.ICON;
+        return 0;
+    }, [canManageCategoryAndTopic, canManageIcons]);
 
     useEffect(() => {
         const tabParam = searchParams.get('tab');
-        if (tabParam) {
-            const index = Number(tabParam);
-            if (index >= 0 && index < tabItems.length) setActiveIndex(index);
+        const requested =
+            tabParam !== null && tabParam !== '' ? Number(tabParam) : null;
+
+        if (
+            requested !== null &&
+            !Number.isNaN(requested) &&
+            requested >= 0 &&
+            requested < tabItems.length
+        ) {
+            if (requested === 0 || requested === 1) {
+                if (canManageCategoryAndTopic) {
+                    setActiveIndex(requested);
+                } else {
+                    setActiveIndex(defaultTabIndex);
+                }
+            } else {
+                if (canManageIcons) {
+                    setActiveIndex(IssueTabs.ICON);
+                } else {
+                    setActiveIndex(defaultTabIndex);
+                }
+            }
+        } else {
+            setActiveIndex(defaultTabIndex);
         }
-    }, [searchParams]);
+    }, [searchParams, canManageCategoryAndTopic, canManageIcons, defaultTabIndex, tabItems.length]);
 
     const { tableHeaderTitle, columnNameHeader } = useMemo(() => {
         if (activeIndex === 0)
@@ -225,7 +265,10 @@ export default function IssuesPage() {
                 <TabMenu
                     model={tabItems}
                     activeIndex={activeIndex}
-                    onTabChange={(e) => setActiveIndex(e.index)}
+                    onTabChange={(e) => {
+                        const item = tabItems[e.index];
+                        if (!item?.disabled) setActiveIndex(e.index);
+                    }}
                     className="custom-tabmenu"
                 />
             </div>

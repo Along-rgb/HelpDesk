@@ -9,13 +9,18 @@ interface SettingsCardProps {
     onSubMenuClick: (itemId: string, label: string, path: string, tabIndex?: number) => void;
     /** Role 1: ວິຊາການ (tabIndex=1) disabled. Role 2: ທິມສະໜັບສະໜູນ (tabIndex=0) disabled */
     getSubMenuDisabled?: (itemId: string, tabIndex: number) => boolean;
+    /** เมื่อ true ກົດທົ່ວກາດໄດ້ບໍ່ໄດ້ ແລະ ແສງເປັນ disabled */
+    cardDisabled?: boolean;
 }
 
-export const SettingsCard: React.FC<SettingsCardProps> = ({ item, activeButton, onSubMenuClick, getSubMenuDisabled }) => {
+export const SettingsCard: React.FC<SettingsCardProps> = ({ item, activeButton, onSubMenuClick, getSubMenuDisabled, cardDisabled = false }) => {
     const displayItems = item.subMenus || [];
 
     return (
-        <div className="surface-card shadow-1 p-3 border-round h-full flex flex-row align-items-start gap-3">
+        <div
+            className={`surface-card shadow-1 p-3 border-round h-full flex flex-row align-items-start gap-3 ${cardDisabled ? 'opacity-60 cursor-not-allowed pointer-events-none' : ''}`}
+            aria-disabled={cardDisabled}
+        >
             <div className="flex align-items-center justify-content-center border-round-md overflow-hidden" style={{ minWidth: '3.5rem', height: '3.5rem' }}>
                 {item.iconUrl ? (
                     <img src={item.iconUrl} alt="" className="w-full h-full object-contain" />

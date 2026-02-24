@@ -18,7 +18,7 @@ export const SubMenuLink: React.FC<SubMenuLinkProps> = ({ label, isActive, onCli
             style={{ fontFamily: 'inherit' }}
             className={`
                 border-none bg-transparent p-0 text-base white-space-nowrap transition-colors duration-200 outline-none
-                ${disabled ? 'cursor-not-allowed text-400' : 'cursor-pointer'}
+                ${disabled ? 'cursor-not-allowed text-400 opacity-60' : 'cursor-pointer'}
                 ${!disabled && isActive ? 'text-blue-600 font-bold' : !disabled ? 'text-900 font-normal hover:text-blue-600' : ''}
             `}
         >

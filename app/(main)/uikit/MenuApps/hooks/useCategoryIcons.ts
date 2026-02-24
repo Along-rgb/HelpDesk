@@ -7,13 +7,13 @@ import { getCategoryIconFullUrl } from '../utils/iconUrl';
 const ENDPOINT = 'categoryicons';
 
 /** Tab 2 ເພີ່ມໄອຄອນ: GET/DELETE /api/categoryicons, POST/PUT with FormData (catIcon = file) */
-export function useCategoryIcons(triggerFetch: unknown, enabled: boolean = true) {
+export function useCategoryIcons(triggerFetch: unknown, shouldFetch: boolean = true) {
     const toast = useRef<Toast>(null);
     const [items, setItems] = useState<IconItemData[]>([]);
     const [loading, setLoading] = useState(false);
 
     const fetchData = useCallback(async () => {
-        if (!ENDPOINT || !enabled) return;
+        if (!ENDPOINT || !shouldFetch) return;
         setLoading(true);
         try {
             const response = await axiosClientsHelpDesk.get(ENDPOINT);
@@ -30,12 +30,15 @@ export function useCategoryIcons(triggerFetch: unknown, enabled: boolean = true)
         } finally {
             setLoading(false);
         }
-    }, [enabled]);
+    }, [shouldFetch]);
 
     useEffect(() => {
-        if (enabled) fetchData();
-        else setItems([]);
-    }, [fetchData, triggerFetch, enabled]);
+        if (shouldFetch) {
+            fetchData();
+        } else {
+            setItems([]);
+        }
+    }, [fetchData, triggerFetch, shouldFetch]);
 
     const saveData = useCallback(
         async (payload: CreateIconPayload, id?: number): Promise<boolean> => {
