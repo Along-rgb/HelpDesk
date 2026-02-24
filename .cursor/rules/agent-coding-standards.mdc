@@ -1,0 +1,25 @@
+---
+description: Agent coding standards — Clean Code, no secrets, general principles
+alwaysApply: true
+---
+
+# Agent Coding Standards
+
+## Security
+
+- **No secrets**: Do not put real API URL, IP, domain, token, password in code or in replies.
+- **Env only**: Secrets/env-specific values must come from `process.env` / `config/env.ts`.
+- **No .env in repo**: Only `.env.example` (no real values) should be committed.
+
+## Clean Code
+
+- **DRY**: Shared logic in hooks, components, utils.
+- **Meaningful names**: Variables/functions clearly describe purpose.
+- **Single responsibility**: One concern per function/component; layers: api → service → hook → UI.
+- **Error handling**: No empty `catch (e) {}`; log or throw appropriately; never log secrets.
+
+## General
+
+- Do not change files unrelated to the task.
+- Do not remove or change behavior the user did not ask for.
+- When adding new config/env vars, update `.env.example` (no real values).

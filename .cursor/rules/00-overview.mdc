@@ -1,0 +1,13 @@
+---
+description: [Read first] Project rules — security, env, agent standards
+alwaysApply: true
+---
+
+# HelpDesk_SVC Rules (Overview)
+
+1. **Secrets**: No hardcoded API URL/key/token; use `config/env.ts` and `process.env` only.
+2. **Client env**: Browser-facing vars must use `NEXT_PUBLIC_` prefix.
+3. **No secrets in output**: Use placeholders (e.g. `your_api_url`) in examples, never real URLs/keys.
+4. **Clean Code**: DRY, meaningful names, separate layers, proper error handling (no logging secrets).
+
+Details: see other rules in `.cursor/rules/`.

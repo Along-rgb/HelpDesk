@@ -1,0 +1,27 @@
+---
+globs: "config/**/*.ts,**/services/**/*.ts,**/.env*"
+alwaysApply: false
+---
+# Environment & Config
+
+## Next.js
+
+- **Client**: Use `NEXT_PUBLIC_` prefix for browser-visible vars.
+- **Server**: Vars without `NEXT_PUBLIC_` are server-only (API routes, server components).
+
+## This project
+
+- **Single source**: `import { env } from '@/config/env'` then `env.helpdeskApiUrl`, `env.ticketsApiUrl`, etc.
+- **No hardcode**: In `config/`, `app/services/` — all values from env (via `process.env`).
+- **Fallback**: Use empty string `''` for URLs/secrets in config; no real URL as default.
+
+```typescript
+// OK
+const baseUrl = env.helpdeskApiUrl;
+const api = axios.create({ baseURL: baseUrl });
+```
+
+```typescript
+// BAD — hardcoded URL
+const baseUrl = 'https://api.example.com/helpdesk/api';
+```

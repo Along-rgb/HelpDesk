@@ -16,7 +16,7 @@ export interface CreatePayload {
     status: string;
 }
 
-// baseURL = https://api-test.edl.com.la/helpdesk/api — ບໍ່ໃສ່ /api/ ຊ້ຳໃນ path
+// baseURL มาจาก env.helpdeskApiUrl (config/axiosClientsHelpDesk) — ບໍ່ໃສ່ /api/ ຊ້ຳໃນ path
 export const ServiceRequestApi = {
     // --- 1. หมวดหมู่ (Categories) ---
     getCategories: async () => {

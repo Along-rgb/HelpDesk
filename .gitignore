@@ -24,8 +24,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
+# local env files (ห้าม commit ค่าจริง/ความลับ)
+.env
 .env*.local
+.env.development
+.env.production
+.env.test
+!.env.example
 
 # vercel
 .vercel

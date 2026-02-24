@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import Layout from "@/layout/layout";
+import { env } from "@/config/env";
 
 interface AppLayoutProps {
     children: React.ReactNode;
@@ -10,17 +11,20 @@ export const viewport = {
     initialScale: 1,
 };
 
+const baseUrl = env.appUrl || 'http://localhost:3500';
+const ogImage = env.ogImageUrl || '/layout/images/faifarlao.png';
+
 export const metadata: Metadata = {
     title: 'HelpDesk-action',
     description: 'HelpDesk Manage Action-Plan',
     robots: { index: false, follow: false },
-    metadataBase: new URL('https://edl.com.la'), 
+    metadataBase: new URL(baseUrl),
     openGraph: {
         type: 'website',
         title: 'EDL Evaluation',
-        url: 'https://edl.com.la',
+        url: baseUrl,
         description: 'Evaluation EDL Laos',
-        images: ['https://res.cloudinary.com/dp3zeejct/image/upload/v1690474394/Payment/EDLHQ_mcifks.png'],
+        images: [ogImage.startsWith('http') ? ogImage : `${baseUrl}${ogImage.startsWith('/') ? '' : '/'}${ogImage}`],
         ttl: 604800
     },
     icons: {

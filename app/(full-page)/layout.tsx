@@ -1,12 +1,13 @@
 import { Metadata } from 'next';
 import AppConfig from '../../layout/AppConfig';
 import React from 'react';
+import { env } from '@/config/env';
 
 interface SimpleLayoutProps {
     children: React.ReactNode;
 }
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3500';
+const appUrl = env.appUrl || 'http://localhost:3500';
 
 export const metadata: Metadata = {
     metadataBase: new URL(appUrl),
