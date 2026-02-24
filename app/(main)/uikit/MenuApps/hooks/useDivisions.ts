@@ -3,11 +3,13 @@ import { useState, useEffect, useCallback } from 'react';
 import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
 import { DivisionOption } from '../types';
 
-export function useDivisions() {
+/** enabled=false: ບໍ່ເອີ້ນ GET /api/divisions (Role 2 ໄດ້ 403). */
+export function useDivisions(enabled: boolean = true) {
     const [divisions, setDivisions] = useState<DivisionOption[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchData = useCallback(async () => {
+        if (!enabled) return;
         setLoading(true);
         try {
             const response = await axiosClientsHelpDesk.get('divisions');
@@ -19,11 +21,16 @@ export function useDivisions() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [enabled]);
 
     useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+        if (enabled) {
+            fetchData();
+        } else {
+            setDivisions([]);
+            setLoading(false);
+        }
+    }, [fetchData, enabled]);
 
     const options = divisions.map((d) => ({ label: d.division_name, value: d.id }));
     return { divisions, options, loading, fetchData };

@@ -5,7 +5,7 @@ import type { AdminAssignUser } from '../types';
 
 const ENDPOINT = 'users/adminassign';
 
-/** enabled=false: ไม่เรียก API (สำหรับ Role 1 เพื่อหลีกเลี่ยง Forbidden) */
+/** enabled=false: ไม่เรียก API (สำหรับ Role 1 เพื่อหลีกเลี่ยง Forbidden). Role 2 ໃຊ້ GET/POST/PUT/DELETE ວິຊາການ. */
 export function useAdminAssignUsers(triggerFetch: unknown = null, enabled: boolean = true) {
     const [items, setItems] = useState<AdminAssignUser[]>([]);
     const [loading, setLoading] = useState(false);
@@ -35,6 +35,31 @@ export function useAdminAssignUsers(triggerFetch: unknown = null, enabled: boole
         else setItems([]);
     }, [fetchData, triggerFetch, enabled]);
 
-    /** Expose fetchData for external refresh (e.g. after save on SupportTeam page) */
-    return { items, loading, fetchData };
+    /** POST (no id) or PUT (with id) to ENDPOINT. Returns true on success, false on error. */
+    const saveData = useCallback(async (payload: Record<string, unknown>, id?: number): Promise<boolean> => {
+        try {
+            if (id != null) {
+                await axiosClientsHelpDesk.put(`${ENDPOINT}/${id}`, payload);
+            } else {
+                await axiosClientsHelpDesk.post(ENDPOINT, payload);
+            }
+            await fetchData();
+            return true;
+        } catch {
+            return false;
+        }
+    }, [fetchData]);
+
+    /** DELETE by item.id, then refresh. Returns true on success, false on error. */
+    const deleteData = useCallback(async (item: { id: number }): Promise<boolean> => {
+        try {
+            await axiosClientsHelpDesk.delete(`${ENDPOINT}/${item.id}`);
+            await fetchData();
+            return true;
+        } catch {
+            return false;
+        }
+    }, [fetchData]);
+
+    return { items, loading, fetchData, saveData, deleteData };
 }

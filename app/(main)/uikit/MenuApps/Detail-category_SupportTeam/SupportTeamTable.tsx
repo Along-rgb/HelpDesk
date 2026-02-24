@@ -4,10 +4,10 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Tooltip } from 'primereact/tooltip';
-import { SupportTeamData, IssueData, HeadCategoryData, SupportTeamTabs, SupportTeamTechnicalRow } from '../types';
+import { SupportTeamData, IssueData, HeadCategoryData, SupportTeamTabs, SupportTeamTechnicalRow, DivisionOption } from '../types';
 
 const TOOLTIP_TARGET = '.js-support-team-cell-tooltip';
-const TECHNICAL_TABLE_COL_COUNT = 4;
+const TECHNICAL_TABLE_COL_COUNT = 5;
 
 type RowData = IssueData | SupportTeamData | HeadCategoryData;
 
@@ -68,6 +68,10 @@ interface Props {
     technicalTabRows?: SupportTeamTechnicalRow[];
     /** เมื่อ true (เช่น role 2 ใน tab ວິຊາການ) ปุ่มແກ້ໄຂ/ລຶບ จะถูกซ่อน */
     disableActions?: boolean;
+    /** เมื่อ true = ข้อมูลจาก GET /api/headcategorys (มี department/division nested). เมื่อ false = จาก selectheadcategory (มีแค่ departmentId/divisionId) */
+    headCategoryHasNestedData?: boolean;
+    /** ໃຊ້ຄົ້ນຫາຊື່ division ເມື່ອ headCategoryHasNestedData = false (role 2) */
+    divisions?: DivisionOption[];
 }
 
 export default function SupportTeamTable({
@@ -80,7 +84,9 @@ export default function SupportTeamTable({
     onDelete,
     issueCategoryMap,
     technicalTabRows = [],
-    disableActions = false
+    disableActions = false,
+    headCategoryHasNestedData = true,
+    divisions = []
 }: Props) {
     const tooltipRef = useRef<React.ComponentRef<typeof Tooltip>>(null);
     const isIssueCategoryTab = activeTab === SupportTeamTabs.ISSUE_CATEGORY;
@@ -203,6 +209,7 @@ export default function SupportTeamTable({
                                     <th className="p-datatable-header text-center w-4rem surface-0 border-bottom-1 surface-border">#</th>
                                     <th className="p-datatable-header surface-0 border-bottom-1 surface-border" style={{ minWidth: '200px' }}>ຊື່ທີມສະໜັບສະໜູນ</th>
                                     <th className="p-datatable-header text-center surface-0 border-bottom-1 surface-border" style={{ minWidth: '200px' }}>ວິຊາການ</th>
+                                    <th className="p-datatable-header text-center surface-0 border-bottom-1 surface-border" style={{ minWidth: '140px' }}>ສະຖານະ</th>
                                     <th className="p-datatable-header text-center w-8rem surface-0 border-bottom-1 surface-border">ດຳເນີນການ</th>
                                 </tr>
                             </thead>
@@ -219,11 +226,13 @@ export default function SupportTeamTable({
                                     }
                                     if (isTechnicalUserRow(row)) {
                                         const rowIndex = technicalRowIndexByPosition[idx];
+                                        const roleName = (row.raw as { role?: { name?: string } })?.role?.name ?? '-';
                                         return (
-                                            <tr key={`user-${row.id}`} className="p-datatable-row">
+                                            <tr key={`row-${idx}`} className="p-datatable-row">
                                                 <td className="p-datatable-cell text-center">{rowIndex}</td>
                                                 <td className="p-datatable-cell" />
                                                 <td className="p-datatable-cell text-center">{row.fullName}</td>
+                                                <td className="p-datatable-cell text-center">{roleName}</td>
                                                 <td className="p-datatable-cell text-center">{technicalActionTemplate(row)}</td>
                                             </tr>
                                         );
@@ -270,7 +279,13 @@ export default function SupportTeamTable({
                         style={{ minWidth: '180px' }}
                         alignHeader="center"
                         bodyStyle={centerAlign}
-                        body={(row: RowData) => <CellWithTooltip text={(row as HeadCategoryData).division?.division_name ?? ''} />}
+                        body={(row: RowData) => {
+                            const r = row as HeadCategoryData;
+                            const divisionName = headCategoryHasNestedData
+                                ? (r.division?.division_name ?? '')
+                                : (divisions.find((d) => d.id === r.divisionId)?.division_name ?? '-');
+                            return <CellWithTooltip text={divisionName} />;
+                        }}
                     />
                 )}
                 {isIssueCategoryTab && (

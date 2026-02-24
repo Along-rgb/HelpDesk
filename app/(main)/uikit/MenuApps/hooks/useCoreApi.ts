@@ -2,17 +2,26 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Toast } from 'primereact/toast';
 import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
 
+export interface UseCoreApiOptions {
+    /** เมื่อ true ບໍ່ແສງ toast "Server ມີຂໍ້ຜິດພາດ" ເມື່ອ GET ລົ້ມເຫຼວ (ໃຊ້ກັບ tab ສະຖານະ ເວັ້ນເກີດ error ຊ້ຳ) */
+    silentFetchError?: boolean;
+}
+
 /** enabled=false: ไม่เรียก API (สำหรับ Role 1 หลีกเลี่ยง Forbidden ໃນ endpoint ที่ຫ້າມ) */
 export function useCoreApi<T, P>(
     endpoint: string,
     queryParams: Record<string, unknown> = {},
     triggerFetch: unknown = null,
-    enabled: boolean = true
+    enabled: boolean = true,
+    options: UseCoreApiOptions = {}
 ) {
+    const { silentFetchError = false } = options;
     const toast = useRef<Toast>(null);
     const queryParamsRef = useRef(queryParams);
     const serverErrorShownRef = useRef(false);
+    const silentFetchErrorRef = useRef(silentFetchError);
     queryParamsRef.current = queryParams;
+    silentFetchErrorRef.current = silentFetchError;
 
     const [items, setItems] = useState<T[]>([]);
     const [loading, setLoading] = useState(false);
@@ -37,7 +46,8 @@ export function useCoreApi<T, P>(
             const status = error && typeof error === 'object' && 'response' in error
                 ? (error as { response?: { status?: number } }).response?.status
                 : undefined;
-            if (status !== 403 && !serverErrorShownRef.current) {
+            const skipToast = status === 403 || serverErrorShownRef.current || silentFetchErrorRef.current;
+            if (!skipToast) {
                 serverErrorShownRef.current = true;
                 toast.current?.show({
                     severity: 'error',

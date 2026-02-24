@@ -43,6 +43,25 @@ export interface CreateBuildingPayload {
 }
 
 // --- Issue Types ---
+/** Tab 0: หมวดหมู่ from GET/POST/PUT/DELETE /api/categorys */
+export interface CategoryData {
+    id: number;
+    headCategoryId: number;
+    title: string;
+    description: string;
+    catIconId: number;
+    createdAt: string;
+    updatedAt: string;
+    createdById: number;
+}
+
+export interface CreateCategoryPayload {
+    headCategoryId: number;
+    title: string;
+    description: string;
+    catIconId?: number;
+}
+
 export interface IssueData {
     id: number;
     title: string;
@@ -93,17 +112,28 @@ export interface CreateServiceRequestPayload {
 }
 
 // --- Icon (Tab ເພີ່ມໄອຄອນ) - ใช้ร่วม Service Request & Issue ---
+/** Response from GET /api/categoryicons/selectcategoryicon — ใช้ map id → catIcon (ชื่อไฟล์/URL) */
+export interface CategoryIconSelectItem {
+    id: number;
+    catIcon?: string;
+    sortOrder?: number;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
 export interface IconItemData {
     id: number;
     sortOrder: number;
     iconUrl: string;
+    /** ชื่อไฟล์หรือ path จาก API /api/categoryicons (ใช้แสดงรูปเมื่อไม่มี iconUrl) */
+    catIcon?: string;
     createdAt?: string;
 }
 
 export interface CreateIconPayload {
     sortOrder: number;
     iconFile?: File;
-    iconUrl?: string; // base64 or URL หลัง upload
+    iconUrl?: string; // base64 or URL หลัง upload — ไม่ใช้เมื่อส่ง FormData (catIcon)
 }
 
 // --- HeadCategory (ທິມສະໜັບສະໜູນ from /api/headcategorys) ---
@@ -219,5 +249,36 @@ export enum ServiceRequestTabs {
 
 export enum SupportTeamTabs {
     ISSUE_CATEGORY = 0,  // ທິມສະໜັບສະໜູນ
-    TECHNICAL = 1        // ວິຊາການ
+    TECHNICAL = 1,       // ວິຊາການ
+    ROLE_MANAGEMENT = 2  // ສະຖານະ (Roles)
+}
+
+// --- Role Management (tab ສະຖານະ) ---
+export interface RoleSelectItem {
+    id: number;
+    name: string;
+    description?: string;
+}
+
+export interface UserRoleData {
+    id: number;
+    userId: number;
+    userName?: string;
+    roleId: number;
+    roleName?: string;
+    description?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface CreateUserRolePayload {
+    userId: number;
+    roleId: number;
+    description?: string;
+}
+
+export interface UpdateUserRolePayload {
+    userId: number;
+    roleId: number;
+    description?: string;
 }

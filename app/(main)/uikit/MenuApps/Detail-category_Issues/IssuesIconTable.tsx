@@ -1,5 +1,5 @@
 // src/uikit/MenuApps/Detail-category_Issues/IssuesIconTable.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -11,18 +11,44 @@ interface Props {
     globalFilter: string;
     onEdit: (item: IconItemData) => void;
     onDelete: (item: IconItemData) => void;
+    /** Role-based: false = ซ่อนปุ่มແກ້ໄຂ/ລຶບ */
+    canManage?: boolean;
 }
 
-export default function IssuesIconTable({ items, header, globalFilter, onEdit, onDelete }: Props) {
-    const iconTemplate = (row: IconItemData) =>
-        row.iconUrl ? (
-            <img src={row.iconUrl} alt="" className="w-3rem h-3rem object-contain border-round" />
-        ) : (
-            <span className="text-500">-</span>
+/** แสดงรูป icon ພ້ອມ fallback ເມື່ອโหลดບໍ່ได้ (ตามหลัก React: ແຍກ component ສະແດງຜົນ) */
+function IconCell({ src, alt = '' }: { src: string; alt?: string }) {
+    const [error, setError] = useState(false);
+    if (!src)
+        return (
+            <span className="text-500 inline-flex align-items-center justify-content-center w-3rem h-3rem">-</span>
         );
+    if (error)
+        return (
+            <span className="text-500 text-sm inline-flex align-items-center justify-content-center w-3rem h-3rem surface-100 border-round">
+                ບໍ່ມີຮູບ
+            </span>
+        );
+    return (
+        <span className="inline-flex align-items-center justify-content-center">
+            <img
+                src={src}
+                alt={alt}
+                className="w-3rem h-3rem object-contain border-round"
+                loading="lazy"
+                decoding="async"
+                onError={() => setError(true)}
+            />
+        </span>
+    );
+}
+
+export default function IssuesIconTable({ items, header, globalFilter, onEdit, onDelete, canManage = true }: Props) {
+    const iconTemplate = (row: IconItemData) => <IconCell src={row.iconUrl} alt="" />;
 
     const actionTemplate = (row: IconItemData) => (
         <div className="flex gap-2 justify-content-center">
+            {canManage && (
+                <>
             <Button
                 icon="pi pi-pencil"
                 rounded
@@ -39,6 +65,8 @@ export default function IssuesIconTable({ items, header, globalFilter, onEdit, o
                 tooltip="ລຶບ"
                 onClick={() => onDelete(row)}
             />
+                </>
+            )}
         </div>
     );
 
@@ -53,10 +81,27 @@ export default function IssuesIconTable({ items, header, globalFilter, onEdit, o
             stripedRows
             emptyMessage={<div className="text-center p-4 text-gray-500">ບໍ່ພົບຂໍ້ມູນ</div>}
         >
-            <Column header="#" body={(_, opts) => opts.rowIndex + 1} className="text-center w-4rem" />
-            <Column field="sortOrder" header="ລຳດັບ" className="text-center" style={{ minWidth: '100px' }} />
-            <Column header="ຮູປໄອຄອນ" body={iconTemplate} style={{ minWidth: '120px' }} />
-            <Column header="ດຳເນີນການ" body={actionTemplate} className="text-center w-8rem" />
+            <Column
+                header="#"
+                body={(_, opts) => opts.rowIndex + 1}
+                alignHeader="center"
+                bodyStyle={{ textAlign: 'center' }}
+                className="w-4rem"
+            />
+            <Column
+                header="ຮູປໄອຄອນ"
+                body={iconTemplate}
+                alignHeader="center"
+                bodyStyle={{ textAlign: 'center' }}
+                style={{ minWidth: '120px' }}
+            />
+            <Column
+                header="ດຳເນີນການ"
+                body={actionTemplate}
+                alignHeader="center"
+                bodyStyle={{ textAlign: 'center' }}
+                className="w-8rem"
+            />
         </DataTable>
     );
 }

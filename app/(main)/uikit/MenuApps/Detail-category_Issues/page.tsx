@@ -11,47 +11,85 @@ import IssuesTable from './IssuesTable';
 import IssuesCreateDialog from './IssuesCreateDialog';
 import IssuesIconTable from './IssuesIconTable';
 import IssuesIconCreateDialog from './IssuesIconCreateDialog';
+import { useCategories } from '../hooks/useCategories';
 import { useIssues } from '../hooks/useIssues';
-import { useIssueIcons } from '../hooks/useIssueIcons';
-import { useSupportTeam } from '../hooks/useSupportTeam';
-import { IssueData, CreateIssuePayload, IssueTabs } from '../types';
+import { useHeadCategorySelect } from '../hooks/useHeadCategorySelect';
+import { useCategoryIconsSelect } from '../hooks/useCategoryIconsSelect';
+import { useCategoryIcons } from '../hooks/useCategoryIcons';
+import { useUserProfile } from '@/types/useUserProfile';
+import {
+    IssueData,
+    CreateIssuePayload,
+    IssueTabs,
+    CategoryData,
+    CreateCategoryPayload,
+    IconItemData,
+    CreateIconPayload,
+} from '../types';
 import { createDataMap } from '../utils/dataMapping';
+import { getCategoryIconFullUrl } from '../utils/iconUrl';
 import { CUSTOM_TAB_CSS } from '../constants/tabStyles';
+
+/** Role 2: สิทธิ์จัดการ Tab ໝວດໝູ່ & ລາຍການຫົວຂໍ້. Role 1: สิทธิ์จัดการ Tab ເພີ່ມໄອຄອນ (POST /api/categoryicons ได้ role เดียว). */
+const isRole2 = (r: number | string | null | undefined) => Number(r) === 2;
+const isRole1 = (r: number | string | null | undefined) => Number(r) === 1;
 
 export default function IssuesPage() {
     const searchParams = useSearchParams();
+    const { roleId } = useUserProfile();
     const [activeIndex, setActiveIndex] = useState<number>(0);
 
-    // Main Data
-    const { toast, items, saveData, deleteData } = useIssues(activeIndex);
-    const { items: iconItems, saveData: saveIconData, deleteData: deleteIconData } = useIssueIcons(activeIndex);
-    const { items: supportTeamItems } = useSupportTeam(1);
+    const profileReady = roleId === 1 || roleId === 2;
+    const canManageCategoryAndTopic = isRole2(roleId);
+    const canManageIcons = isRole1(roleId);
 
-    const supportTeamMap = useMemo(() => createDataMap(supportTeamItems, 'id', 'name'), [supportTeamItems]);
-    const supportTeamOptions = useMemo(() => supportTeamItems.map(t => ({ label: t.name, value: t.id })), [supportTeamItems]);
-    const iconMap = useMemo(() => new Map(iconItems.map(i => [i.id, i.iconUrl])), [iconItems]);
-    const iconOptions = useMemo(() => iconItems.map(i => ({ label: 'ຮູບໄອຄອນ', value: i.id, iconUrl: i.iconUrl })), [iconItems]);
-    
-    // [Microservices Strategy] ดึง Category (Tab 0) เตรียมไว้สำหรับ Join
-    const { items: categoryItemsFromHook } = useIssues(0);
-    const categoryItems = activeIndex === 0 ? items : categoryItemsFromHook;
+    const { toast: categoryToast, items: categoryItems, saveData: saveCategory, deleteData: deleteCategory } = useCategories(
+        activeIndex,
+        profileReady && activeIndex <= 1
+    );
+    const { toast: issueToast, items: topicItems, saveData: saveIssue, deleteData: deleteIssue } = useIssues(
+        activeIndex,
+        profileReady && activeIndex === 1
+    );
+    const { items: headCategorySelectItems } = useHeadCategorySelect(activeIndex, profileReady && activeIndex <= 1);
+    const { items: categoryIconSelectItems } = useCategoryIconsSelect(activeIndex, profileReady && activeIndex <= 1);
+    const { toast: iconToast, items: iconItems, saveData: saveIconData, deleteData: deleteIconData } = useCategoryIcons(
+        activeIndex,
+        profileReady && activeIndex === IssueTabs.ICON
+    );
 
-    // [Performance] 1. แปลง Array เป็น Map ทันที (O(N)) เพื่อให้ Table ดึงใช้ได้เลย (O(1))
-    const categoryMap = useMemo(() => {
-        return createDataMap(categoryItems, 'id', 'title');
-    }, [categoryItems]);
+    const headCategoryMap = useMemo(() => createDataMap(headCategorySelectItems, 'id', 'name'), [headCategorySelectItems]);
+    const headCategoryOptions = useMemo(
+        () => headCategorySelectItems.map((h) => ({ label: h.name, value: h.id })),
+        [headCategorySelectItems]
+    );
+    const categoryIconMap = useMemo(() => {
+        const m = new Map<number, string>();
+        categoryIconSelectItems.forEach((i) => m.set(i.id, getCategoryIconFullUrl(i.catIcon ?? '')));
+        return m;
+    }, [categoryIconSelectItems]);
+    const iconOptions = useMemo(
+        () =>
+            categoryIconSelectItems.map((i) => ({
+                label: 'ຮູບໄອຄອນ',
+                value: i.id,
+                iconUrl: getCategoryIconFullUrl(i.catIcon ?? ''),
+            })),
+        [categoryIconSelectItems]
+    );
 
-    // [UX] 2. แปลงเป็น Options สำหรับ Dropdown
-    const categoryOptions = useMemo(() => {
-        return categoryItems.map(c => ({ label: c.title, value: c.id }));
-    }, [categoryItems]);
-    
+    const categoryMap = useMemo(() => createDataMap(categoryItems, 'id', 'title'), [categoryItems]);
+    const categoryOptions = useMemo(() => categoryItems.map((c) => ({ label: c.title, value: c.id })), [categoryItems]);
+
+    const items = activeIndex === IssueTabs.ICON ? iconItems : activeIndex === 0 ? categoryItems : topicItems;
+    const toast = activeIndex === 0 ? categoryToast : activeIndex === 1 ? issueToast : iconToast;
+
     const [isDialogVisible, setDialogVisible] = useState(false);
     const [isIconDialogVisible, setIconDialogVisible] = useState(false);
     const [isSaving, setSaving] = useState(false);
     const [globalFilter, setGlobalFilter] = useState('');
-    const [selectedItem, setSelectedItem] = useState<IssueData | null>(null);
-    const [selectedIconItem, setSelectedIconItem] = useState<import('../types').IconItemData | null>(null);
+    const [selectedItem, setSelectedItem] = useState<IssueData | CategoryData | null>(null);
+    const [selectedIconItem, setSelectedIconItem] = useState<IconItemData | null>(null);
 
     const tabItems = [{ label: 'ໝວດໝູ່' }, { label: 'ລາຍການຫົວຂໍ້' }, { label: 'ເພີ່ມໄອຄອນ' }];
 
@@ -71,42 +109,71 @@ export default function IssuesPage() {
         return { tableHeaderTitle: 'ເພີ່ມຮູປໄອຄອນ', columnNameHeader: '' };
     }, [activeIndex]);
 
-    const openNew = () => { setSelectedItem(null); setDialogVisible(true); };
-    const openEdit = (item: IssueData) => { setSelectedItem(item); setDialogVisible(true); };
-    const openIconNew = () => { setSelectedIconItem(null); setIconDialogVisible(true); };
-    const openIconEdit = (item: import('../types').IconItemData) => { setSelectedIconItem(item); setIconDialogVisible(true); };
+    const openNew = () => {
+        setSelectedItem(null);
+        setDialogVisible(true);
+    };
+    const openEdit = (item: IssueData | CategoryData) => {
+        setSelectedItem(item);
+        setDialogVisible(true);
+    };
+    const openIconNew = () => {
+        setSelectedIconItem(null);
+        setIconDialogVisible(true);
+    };
+    const openIconEdit = (item: IconItemData) => {
+        setSelectedIconItem(item);
+        setIconDialogVisible(true);
+    };
 
-    const handleSave = async (payload: CreateIssuePayload) => {
+    const handleSave = async (payload: CreateIssuePayload | CreateCategoryPayload) => {
         setSaving(true);
-        const success = await saveData(payload, selectedItem?.id);
-        if (success) setDialogVisible(false);
+        if (activeIndex === 0) {
+            const p = payload as CreateCategoryPayload;
+            const id = selectedItem && 'headCategoryId' in selectedItem ? selectedItem.id : undefined;
+            const success = await saveCategory(p, id);
+            if (success) setDialogVisible(false);
+        } else {
+            const p = payload as CreateIssuePayload;
+            const id = selectedItem && 'parentId' in selectedItem ? selectedItem.id : undefined;
+            const success = await saveIssue(p, id);
+            if (success) setDialogVisible(false);
+        }
         setSaving(false);
     };
 
-    const handleIconSave = async (payload: import('../types').CreateIconPayload) => {
+    const handleIconSave = async (payload: CreateIconPayload) => {
         setSaving(true);
         const success = await saveIconData(payload, selectedIconItem?.id);
         if (success) setIconDialogVisible(false);
         setSaving(false);
     };
 
-    const confirmDelete = (item: IssueData) => {
+    const confirmDelete = (item: IssueData | CategoryData) => {
+        const name = 'title' in item ? item.title : '';
         confirmDialog({
-            message: `ທ່ານຕ້ອງການລຶບ "${item.title}" ແທ້ບໍ່?`,
+            message: `ທ່ານຕ້ອງການລຶບ "${name}" ແທ້ບໍ່?`,
             header: 'ຢືນຢັນການລຶບ',
             icon: 'pi pi-exclamation-triangle',
-            acceptLabel: 'ຕົກລົງ', rejectLabel: 'ຍົກເລີກ', acceptClassName: 'p-button-danger',
-            accept: () => deleteData(item)
+            acceptLabel: 'ຕົກລົງ',
+            rejectLabel: 'ຍົກເລີກ',
+            acceptClassName: 'p-button-danger',
+            accept: () => {
+                if (activeIndex === 0) deleteCategory(item as CategoryData);
+                else deleteIssue(item as IssueData);
+            },
         });
     };
 
-    const confirmIconDelete = (item: import('../types').IconItemData) => {
+    const confirmIconDelete = (item: IconItemData) => {
         confirmDialog({
             message: 'ທ່ານຕ້ອງການລຶບຮູບໄອຄອນນີ້ ແທ້ບໍ່?',
             header: 'ຢືນຢັນການລຶບ',
             icon: 'pi pi-exclamation-triangle',
-            acceptLabel: 'ຕົກລົງ', rejectLabel: 'ຍົກເລີກ', acceptClassName: 'p-button-danger',
-            accept: () => deleteIconData(item)
+            acceptLabel: 'ຕົກລົງ',
+            rejectLabel: 'ຍົກເລີກ',
+            acceptClassName: 'p-button-danger',
+            accept: () => deleteIconData(item),
         });
     };
 
@@ -116,12 +183,34 @@ export default function IssuesPage() {
             <div className="flex align-items-center gap-2">
                 <span className="p-input-icon-left w-full md:w-auto">
                     <i className="pi pi-search" />
-                    <InputText value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="ຄົ້ນຫາ.." className="p-inputtext-sm w-full md:w-15rem" />
+                    <InputText
+                        value={globalFilter}
+                        onChange={(e) => setGlobalFilter(e.target.value)}
+                        placeholder="ຄົ້ນຫາ.."
+                        className="p-inputtext-sm w-full md:w-15rem"
+                        disabled={activeIndex === IssueTabs.ICON && !canManageIcons}
+                    />
                 </span>
                 {activeIndex === IssueTabs.ICON ? (
-                    <Button tabIndex={0} label="ເພີ່ມໃໝ່" icon="pi pi-plus" size="small" className="bg-indigo-600 border-indigo-600" onClick={openIconNew} />
+                    <Button
+                        tabIndex={0}
+                        label="ເພີ່ມໃໝ່"
+                        icon="pi pi-plus"
+                        size="small"
+                        className="bg-indigo-600 border-indigo-600"
+                        onClick={openIconNew}
+                        disabled={!canManageIcons}
+                    />
                 ) : (
-                    <Button tabIndex={0} label="ເພີ່ມໃໝ່" icon="pi pi-plus" size="small" className="bg-indigo-600 border-indigo-600" onClick={openNew} />
+                    <Button
+                        tabIndex={0}
+                        label="ເພີ່ມໃໝ່"
+                        icon="pi pi-plus"
+                        size="small"
+                        className="bg-indigo-600 border-indigo-600"
+                        onClick={openNew}
+                        disabled={!canManageCategoryAndTopic}
+                    />
                 )}
             </div>
         </div>
@@ -129,14 +218,19 @@ export default function IssuesPage() {
 
     return (
         <div className="card p-4 surface-card shadow-2 border-round">
-                   <style>{CUSTOM_TAB_CSS}</style>
+            <style>{CUSTOM_TAB_CSS}</style>
             <Toast ref={toast} position="top-center" />
             <ConfirmDialog />
             <div className="mb-4">
-                <TabMenu model={tabItems} activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)} className="custom-tabmenu" />
+                <TabMenu
+                    model={tabItems}
+                    activeIndex={activeIndex}
+                    onTabChange={(e) => setActiveIndex(e.index)}
+                    className="custom-tabmenu"
+                />
             </div>
 
-                {activeIndex === IssueTabs.ICON ? (
+            {activeIndex === IssueTabs.ICON ? (
                 <>
                     <IssuesIconTable
                         items={iconItems}
@@ -144,6 +238,7 @@ export default function IssuesPage() {
                         globalFilter={globalFilter}
                         onEdit={openIconEdit}
                         onDelete={confirmIconDelete}
+                        canManage={canManageIcons}
                     />
                     <IssuesIconCreateDialog
                         visible={isIconDialogVisible}
@@ -165,8 +260,9 @@ export default function IssuesPage() {
                         onEdit={openEdit}
                         onDelete={confirmDelete}
                         categoryMap={categoryMap}
-                        supportTeamMap={supportTeamMap}
-                        iconMap={iconMap}
+                        headCategoryMap={headCategoryMap}
+                        categoryIconMap={categoryIconMap}
+                        canManage={canManageCategoryAndTopic}
                     />
                     <IssuesCreateDialog
                         visible={isDialogVisible}
@@ -177,7 +273,7 @@ export default function IssuesPage() {
                         editData={selectedItem}
                         activeTab={activeIndex}
                         categoryOptions={categoryOptions}
-                        supportTeamOptions={supportTeamOptions}
+                        headCategoryOptions={headCategoryOptions}
                         iconOptions={iconOptions}
                     />
                 </>

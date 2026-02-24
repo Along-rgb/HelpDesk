@@ -3,51 +3,48 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
-import { IssueData, CreateIssuePayload, IssueTabs } from '../types';
+import { IssueData, CategoryData, CreateIssuePayload, CreateCategoryPayload, IssueTabs } from '../types';
 
 interface Props {
     visible: boolean;
     onHide: () => void;
-    onSave: (data: CreateIssuePayload) => void;
+    onSave: (data: CreateIssuePayload | CreateCategoryPayload) => void;
     itemNameLabel: string;
     isSaving: boolean;
-    editData?: IssueData | null;
-    activeTab: number;                         
-    categoryOptions: { label: string, value: any }[];
-    /** ໃຊ້ໃນໜ້າ SupportTeam tab 0: ເປີດໃຊ້ header ແລະ ຟິວ ທີມສະໜັບສະໜູນ */
-    headerTitle?: string;
-    /** ເມື່ອມີ ສະແດງຟິວເລືອກຕົ້ນ (ວ່າງໄດ້) */
-    optionalFirstFieldLabel?: string;
-    /** Tab 0 ໝວດໝູ່: ເລືອກທີມສະໜັບສະໜູນ */
-    supportTeamOptions?: { label: string; value: number }[];
-    /** Tab 0 ໝວດໝູ່: ເພີ່ມຮູບໄອຄອນ (ເລືອກຈາກລາຍການໄອຄອນ) */
+    editData?: IssueData | CategoryData | null;
+    activeTab: number;
+    categoryOptions: { label: string; value: number }[];
+    /** Tab 0 ໝວດໝູ່: ເລືອກທີມຊ່ວຍເຫຼືອ (from /api/headcategorys/selectheadcategory) */
+    headCategoryOptions?: { label: string; value: number }[];
+    /** Tab 0 ໝວດໝູ່: ເລືອກຮູບໄອຄອນ (from /api/categoryicons/selectcategoryicon) */
     iconOptions?: { label: string; value: number; iconUrl?: string }[];
-    /** ໃຊ້ໃນໜ້າ SupportTeam: ບໍ່ສະແດງຟິວ ເພີ່ມຮູບໄອຄອນ */
+    headerTitle?: string;
+    optionalFirstFieldLabel?: string;
     hideIconField?: boolean;
 }
 
-export default function IssueCreateDialog({ 
-    visible, 
-    onHide, 
-    onSave, 
-    itemNameLabel, 
-    isSaving, 
+export default function IssuesCreateDialog({
+    visible,
+    onHide,
+    onSave,
+    itemNameLabel,
+    isSaving,
     editData,
     activeTab,
     categoryOptions,
     headerTitle: headerTitleProp,
     optionalFirstFieldLabel,
-    supportTeamOptions = [],
+    headCategoryOptions = [],
     iconOptions = [],
-    hideIconField = false
+    hideIconField = false,
 }: Props) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [optionalFirstValue, setOptionalFirstValue] = useState('');
     const [status, setStatus] = useState<string>('ACTIVE');
     const [parentId, setParentId] = useState<number | null>(null);
-    const [supportTeamId, setSupportTeamId] = useState<number | null>(null);
-    const [iconId, setIconId] = useState<number | null>(null);
+    const [headCategoryId, setHeadCategoryId] = useState<number | null>(null);
+    const [catIconId, setCatIconId] = useState<number | null>(null);
     const [submitted, setSubmitted] = useState(false);
 
     const isTopicTab = activeTab === IssueTabs.TOPIC;
@@ -57,19 +54,19 @@ export default function IssueCreateDialog({
         if (visible) {
             if (editData) {
                 setTitle(editData.title);
-                setDescription(editData.description);
-                setStatus(editData.status);
-                setParentId(editData.parentId || null);
-                setSupportTeamId(editData.supportTeamId ?? null);
-                setIconId(editData.iconId ?? null);
+                setDescription(editData.description ?? '');
+                if ('status' in editData) setStatus((editData as IssueData).status ?? 'ACTIVE');
+                if ('parentId' in editData) setParentId((editData as IssueData).parentId ?? null);
+                if ('headCategoryId' in editData) setHeadCategoryId((editData as CategoryData).headCategoryId ?? null);
+                if ('catIconId' in editData) setCatIconId((editData as CategoryData).catIconId ?? null);
                 setOptionalFirstValue('');
             } else {
                 setTitle('');
                 setDescription('');
                 setStatus('ACTIVE');
                 setParentId(null);
-                setSupportTeamId(null);
-                setIconId(null);
+                setHeadCategoryId(null);
+                setCatIconId(null);
                 setOptionalFirstValue('');
             }
             setSubmitted(false);
@@ -81,8 +78,8 @@ export default function IssueCreateDialog({
         setDescription('');
         setStatus('ACTIVE');
         setParentId(null);
-        setSupportTeamId(null);
-        setIconId(null);
+        setHeadCategoryId(null);
+        setCatIconId(null);
         setOptionalFirstValue('');
         onHide();
     };
@@ -91,23 +88,31 @@ export default function IssueCreateDialog({
         setSubmitted(true);
         if (!title.trim()) return;
 
-        if (isTopicTab && !parentId) {
-            return; 
+        if (isCategoryTab) {
+            if (headCategoryId == null) return;
+            const payload: CreateCategoryPayload = {
+                headCategoryId,
+                title: title.trim(),
+                description: description.trim(),
+                catIconId: catIconId ?? undefined,
+            };
+            onSave(payload);
+            return;
         }
 
-        const desc = optionalFirstFieldLabel && optionalFirstValue.trim()
-            ? optionalFirstValue.trim() + '\n' + (description || '')
-            : description;
+        if (isTopicTab && !parentId) return;
 
-        const payload: CreateIssuePayload = { 
-            title, 
-            description: desc, 
+        const desc =
+            optionalFirstFieldLabel && optionalFirstValue.trim()
+                ? optionalFirstValue.trim() + '\n' + (description || '')
+                : description;
+
+        const payload: CreateIssuePayload = {
+            title: title.trim(),
+            description: desc,
             status,
             parentId: isTopicTab && parentId ? parentId : undefined,
-            supportTeamId: isCategoryTab ? (supportTeamId ?? undefined) : undefined,
-            iconId: isCategoryTab && !hideIconField ? (iconId ?? undefined) : undefined
         };
-
         onSave(payload);
     };
 
@@ -150,20 +155,23 @@ export default function IssueCreateDialog({
                 
                 {isCategoryTab && (
                     <div className="field mb-0">
-                        <label htmlFor="supportTeamId" className="font-bold block mb-2">ເລືອກທີມຊ່ວຍເຫຼືອ</label>
+                        <label htmlFor="headCategoryId" className="font-bold block mb-2">
+                            ເລືອກທີມຊ່ວຍເຫຼືອ <span className="text-red-500">*</span>
+                        </label>
                         <div className="p-inputgroup">
                             <Dropdown
-                                id="supportTeamId"
-                                value={supportTeamId}
-                                options={supportTeamOptions}
-                                onChange={(e) => setSupportTeamId(e.value)}
+                                id="headCategoryId"
+                                value={headCategoryId}
+                                options={headCategoryOptions}
+                                onChange={(e) => setHeadCategoryId(e.value)}
                                 placeholder="ເລືອກທີມຊ່ວຍເຫຼືອ"
-                                className="flex-1"
+                                className={`flex-1 ${submitted && headCategoryId == null ? 'p-invalid' : ''}`}
                                 filter
                                 showClear
                             />
-                            <Button tabIndex={0} type="button" icon="pi pi-times" className="p-button-outlined" onClick={() => setSupportTeamId(null)} tooltip="ລ້າງຄ່າ" />
+                            <Button tabIndex={0} type="button" icon="pi pi-times" className="p-button-outlined" onClick={() => setHeadCategoryId(null)} tooltip="ລ້າງຄ່າ" />
                         </div>
+                        {submitted && headCategoryId == null && <small className="text-red-500">ກະລຸນາເລືອກທີມຊ່ວຍເຫຼືອ</small>}
                     </div>
                 )}
 
@@ -184,36 +192,42 @@ export default function IssueCreateDialog({
                         </div>
                         {!hideIconField && (
                         <div className="field mb-0">
-                            <label htmlFor="iconId" className="font-bold block mb-2">ເພີ່ມຮູບໄອຄອນ</label>
+                            <label htmlFor="catIconId" className="font-bold block mb-2">ເພີ່ມຮູບໄອຄອນ</label>
                             <div className="p-inputgroup">
                                 <Dropdown
-                                    id="iconId"
-                                    value={iconId}
+                                    id="catIconId"
+                                    value={catIconId}
                                     options={iconOptions}
-                                    onChange={(e) => setIconId(e.value)}
+                                    onChange={(e) => setCatIconId(e.value)}
                                     placeholder="ເລືອກຮູບໄອຄອນ"
                                     className="flex-1"
                                     optionLabel="label"
                                     optionValue="value"
                                     valueTemplate={(val: number | null) => {
                                         if (val == null) return null;
-                                        const opt = iconOptions.find(o => o.value === val);
+                                        const opt = iconOptions.find((o) => o.value === val);
                                         return opt?.iconUrl ? (
                                             <span className="flex align-items-center gap-2">
                                                 <img src={opt.iconUrl} alt="" className="w-1rem h-1rem object-contain" />
                                                 ຮູບໄອຄອນ
                                             </span>
-                                        ) : <span>ຮູບໄອຄອນ</span>;
+                                        ) : (
+                                            <span>ຮູບໄອຄອນ</span>
+                                        );
                                     }}
-                                    itemTemplate={(opt: { label: string; value: number; iconUrl?: string }) => opt.iconUrl ? (
-                                        <span className="flex align-items-center gap-2">
-                                            <img src={opt.iconUrl} alt="" className="w-2rem h-2rem object-contain" />
-                                            ຮູບໄອຄອນ
-                                        </span>
-                                    ) : <span>{opt.label}</span>}
+                                    itemTemplate={(opt: { label: string; value: number; iconUrl?: string }) =>
+                                        opt.iconUrl ? (
+                                            <span className="flex align-items-center gap-2">
+                                                <img src={opt.iconUrl} alt="" className="w-2rem h-2rem object-contain" />
+                                                ຮູບໄອຄອນ
+                                            </span>
+                                        ) : (
+                                            <span>{opt.label}</span>
+                                        )
+                                    }
                                     showClear
                                 />
-                                <Button tabIndex={0} type="button" icon="pi pi-times" className="p-button-outlined" onClick={() => setIconId(null)} tooltip="ລ້າງຄ່າ" />
+                                <Button tabIndex={0} type="button" icon="pi pi-times" className="p-button-outlined" onClick={() => setCatIconId(null)} tooltip="ລ້າງຄ່າ" />
                             </div>
                         </div>
                         )}

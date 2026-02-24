@@ -24,6 +24,9 @@ export const env = {
   /** Path สำหรับ login (ต่อกับ helpdeskApiUrl, ເຊັ່ນ auth/login → .../helpdesk/api/auth/login) */
   helpdeskAuthLoginPath:
     getEnv('NEXT_PUBLIC_HELPDESK_AUTH_LOGIN_PATH', 'auth/login'),
+  /** Base URL สำหรับรูปที่อัปโหลด (categoryicons ແລະອື່ນ) — ຖ້າບໍ່ຕັ້ງຈະໃຊ້ helpdeskApiUrl ຕັດ /api ເປັນ /uploads */
+  helpdeskUploadBaseUrl:
+    getEnv('NEXT_PUBLIC_HELPDESK_UPLOAD_BASE_URL', 'https://api-test.edl.com.la/helpdesk/uploads'),
   /** ถ้า backend ใช้ userName (PascalCase) แทน username ให้ตั้งเป็น 'true' */
   loginUsePascalCase:
     getEnv('NEXT_PUBLIC_LOGIN_USE_PASCAL_CASE', 'false').toLowerCase() === 'true',

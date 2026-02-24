@@ -31,7 +31,7 @@ const SettingsPage = () => {
 
     const visibleItems = useMemo(() => itemsWithIcons, [itemsWithIcons]);
 
-    /** Role 1: ວິຊາການ (tabIndex=1) disabled. Role 2: ທິມສະໜັບສະໜູນ (tabIndex=0) disabled — ใน card เท่านั้น */
+    /** Role 1: ວິຊາການ (tabIndex=1) disabled. Role 2: ທິມສະໜັບສະໜູນ (tabIndex=0) disabled. ສະຖານະ (tabIndex=2) ໃຫ້ role1 ແລະ role2 ເຫັນແລະກົດໄດ້. */
     const getSubMenuDisabled = useMemo(() => {
         const r = Number(roleId);
         return (itemId: string, tabIndex: number) => {

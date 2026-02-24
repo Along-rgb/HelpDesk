@@ -9,7 +9,8 @@ export const MENU_ITEMS: MenuItem[] = [
         path: '/uikit/MenuApps/Detail-category_SupportTeam',
         subMenus: [
             { label: 'ທິມສະໜັບສະໜູນ', tabIndex: 0 },
-            { label: 'ວິຊາການ', tabIndex: 1 }
+            { label: 'ວິຊາການ', tabIndex: 1 },
+            { label: 'ສະຖານະ', tabIndex: 2 }
         ]
     },
     {

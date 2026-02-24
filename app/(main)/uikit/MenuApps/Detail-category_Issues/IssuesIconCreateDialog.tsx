@@ -22,6 +22,7 @@ export default function IssuesIconCreateDialog({
     nextSortOrder,
 }: Props) {
     const [iconUrl, setIconUrl] = useState('');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [submitted, setSubmitted] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -29,8 +30,10 @@ export default function IssuesIconCreateDialog({
         if (visible) {
             if (editData) {
                 setIconUrl(editData.iconUrl || '');
+                setSelectedFile(null);
             } else {
                 setIconUrl('');
+                setSelectedFile(null);
             }
             setSubmitted(false);
         }
@@ -39,6 +42,7 @@ export default function IssuesIconCreateDialog({
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !file.type.startsWith('image/')) return;
+        setSelectedFile(file);
         const reader = new FileReader();
         reader.onload = () => setIconUrl(reader.result as string);
         reader.readAsDataURL(file);
@@ -46,12 +50,21 @@ export default function IssuesIconCreateDialog({
 
     const handleSave = () => {
         setSubmitted(true);
-        if (!iconUrl.trim()) return;
+        const sortOrder = editData?.sortOrder ?? nextSortOrder;
+        if (editData && !selectedFile) {
+            onSave({ sortOrder });
+            return;
+        }
+        if (!selectedFile) return;
         onSave({
-            sortOrder: editData?.sortOrder ?? nextSortOrder,
-            iconUrl,
+            sortOrder,
+            iconFile: selectedFile,
         });
     };
+
+    const needFile = !editData;
+    /** โหมดแก้ไข: กดบันทึกได้เสมอ (เก็บลำดับหรือส่งรูปใหม่). โหมดเพิ่ม: ต้องมีไฟล์ก่อน */
+    const canSave = editData ? true : !!selectedFile;
 
     const renderFooter = () => (
         <div className="flex justify-content-end gap-2 pt-2">
@@ -68,6 +81,7 @@ export default function IssuesIconCreateDialog({
                 onClick={handleSave}
                 className="bg-indigo-600 border-indigo-600"
                 loading={isSaving}
+                disabled={!canSave}
             />
         </div>
     );
@@ -92,7 +106,7 @@ export default function IssuesIconCreateDialog({
                         ຮູປໄອຄອນ <span className="text-red-500">*</span>
                     </label>
                     <div
-                        className={`border-dashed border-1 border-round p-4 flex flex-column align-items-center justify-content-center cursor-pointer hover:surface-hover transition-colors ${submitted && !iconUrl ? 'border-red-500' : ''}`}
+                        className={`border-dashed border-1 border-round p-4 flex flex-column align-items-center justify-content-center cursor-pointer hover:surface-hover transition-colors ${submitted && needFile && !selectedFile ? 'border-red-500' : ''}`}
                         onClick={() => fileInputRef.current?.click()}
                     >
                         <input
@@ -109,7 +123,10 @@ export default function IssuesIconCreateDialog({
                             <span className="text-500 text-sm">ຄິກທີ່ນີ້ເພື່ອເລືອກຮູບພາບ</span>
                         )}
                     </div>
-                    {submitted && !iconUrl && <small className="text-red-500">ກະລຸນາເລືອກຮູບໄອຄອນ</small>}
+                    {submitted && needFile && !selectedFile && <small className="text-red-500">ກະລຸນາເລືອກຮູບໄອຄອນ</small>}
+                    {editData && (
+                        <small className="text-500 block mt-1">ເມື່ອແກ້ໄຂ: ກົດບັນທຶກເພື່ອເກັບລຳດັບ ຫຼື ເລືອກຮູບໃໝ່ເພື່ອປ່ຽນຮູບ.</small>
+                    )}
                 </div>
             </div>
         </Dialog>

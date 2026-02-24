@@ -56,7 +56,9 @@ function isTokenExpired(issuedAt: number): boolean {
 }
 
 function attachAuthToRequest(config: InternalAxiosRequestConfig): void {
-  config.headers.set('Content-Type', 'application/json');
+  if (!(config.data instanceof FormData)) {
+    config.headers.set('Content-Type', 'application/json');
+  }
   config.headers.set('Accept', 'application/json, text/plain, */*');
 
   const method = String(config.method ?? '').toLowerCase();
@@ -114,6 +116,17 @@ axiosClientsHelpDesk.interceptors.response.use(
       return handle401();
     }
     if (is403(error)) {
+      const config = (error as { config?: { url?: string; method?: string; baseURL?: string } }).config;
+      const method = config?.method?.toUpperCase();
+      const url = config?.url;
+      const baseURL = config?.baseURL ?? axiosClientsHelpDesk.defaults.baseURL;
+      const fullUrl = baseURL && url ? `${baseURL.replace(/\/$/, '')}/${url.replace(/^\//, '')}` : url;
+      console.warn('[403 ທ່ານບໍ່ໄດ້ຮັບອະນຸຍາດ]', {
+        method,
+        url: fullUrl ?? url,
+        status: (error as { response?: { status?: number } }).response?.status,
+        responseData: (error as { response?: { data?: unknown } }).response?.data,
+      });
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent(AUTH_FORBIDDEN_TOAST_EVENT, { detail: { message: AUTH_FORBIDDEN_MSG } }));
       }
