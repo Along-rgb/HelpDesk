@@ -252,7 +252,7 @@ export default function IssuesPage() {
             ) : (
                 <>
                     <IssuesTable
-                        items={items}
+                        items={activeIndex === 0 ? categoryItems : topicItems}
                         header={renderHeader()}
                         globalFilter={globalFilter}
                         nameColumnHeader={columnNameHeader}
