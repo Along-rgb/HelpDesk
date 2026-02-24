@@ -38,7 +38,9 @@ function IconCell({ src, alt = '' }: { src: string; alt?: string }) {
                 className="border-round"
                 style={{ width: '48px', height: '48px', objectFit: 'contain' }}
                 onError={() => {
-                    console.error('Image load failed for URL:', src);
+                    if (process.env.NODE_ENV === 'development') {
+                        console.warn('[IssuesIconTable] Image load failed (อาจเป็น CORS, 404 หรือ path บนเซิร์ฟเวอร์):', src);
+                    }
                     setError(true);
                 }}
             />

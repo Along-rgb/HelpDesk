@@ -86,9 +86,10 @@ export default function SupportTeamPage() {
     const adminUsers = isRole1(roleId) ? usersItems : adminUsersItems;
     const fetchAdminUsersRef = isRole1(roleId) ? fetchUsers : fetchAdminUsers;
     const { options: roleOptions, fetchData: fetchRoles } = useRoles(profileReady && activeIndex === SupportTeamTabs.ROLE_MANAGEMENT);
-    /** Role 1 ເທົ່ານັ້ນ ເມື່ອຢູ່ tab ສະຖານະ. */
+    /** Role 1 ແລະ Role 2 ເຂົ້າໃຊ້ tab ສະຖານະ (Role Management). ດຶງຂໍ້ມູນຈາກ /api/users ຫຼື /api/users/admin ຕາມ API.md (ບໍ່ມີ /api/user-roles). */
     const { toast: userRolesToast, items: userRoleItems, saveData: saveUserRole, deleteData: deleteUserRole, fetchData: fetchUserRoles } = useUserRoles(
-        profileReady && isRole1(roleId) && activeIndex === SupportTeamTabs.ROLE_MANAGEMENT
+        roleId,
+        profileReady && activeIndex === SupportTeamTabs.ROLE_MANAGEMENT
     );
 
     /** Role 1: full list from GET /api/headcategorys (nested department/division). Role 2: list from GET /api/headcategorys/selectheadcategory (departmentId/divisionId only), filtered by division. */
@@ -201,13 +202,14 @@ export default function SupportTeamPage() {
             setActiveIndex((prev) => (prev === SupportTeamTabs.ISSUE_CATEGORY ? SupportTeamTabs.TECHNICAL : prev));
         }
     }, [searchParams, roleId, profileReady, defaultTabIndex, tabItems.length]);
-    /** ຕາຕະລາງສະຖານະ: ຕົວເລືອກຜູ້ໃຊ້ຈາກ adminUsers */
+    /** ຕາຕະລາງສະຖານະ: ຕົວເລືອກຜູ້ໃຊ້ຈາກ adminUsers (Role 1 = /api/users, Role 2 = /api/users/admin). Label = [username] first_name last_name ເພື່ອຄົ້ນຫາດ້ວຍລະຫັດພະນັກງານ. */
     const userOptionsForRoleTab = useMemo(() => {
         const list = Array.isArray(adminUsers) ? adminUsers : [];
         return list.map((u) => {
             const first = u.employee?.first_name ?? '';
             const last = u.employee?.last_name ?? '';
-            const label = `${first} ${last}`.trim() || u.username || String(u.id);
+            const namePart = `${first} ${last}`.trim();
+            const label = namePart ? `[${u.username}] ${namePart}` : `[${u.username}]`;
             return { label, value: u.id };
         });
     }, [adminUsers]);
@@ -240,7 +242,7 @@ export default function SupportTeamPage() {
         const success = await saveUserRole(payload, id);
         if (success) {
             setDialogVisible(false);
-            await Promise.all([fetchUserRoles(), fetchRoles()]);
+            await Promise.all([fetchUserRoles(), fetchRoles(), fetchAdminUsersRef()]);
         }
         setSaving(false);
     };
@@ -381,6 +383,8 @@ export default function SupportTeamPage() {
                     editData={selectedItem && 'userId' in selectedItem && 'roleId' in selectedItem ? (selectedItem as UserRoleData) : null}
                     userOptions={userOptionsForRoleTab}
                     roleOptions={roleOptionsForRoleTab}
+                    userList={adminUsers}
+                    allowSearchById={isRole1(roleId)}
                 />
             ) : activeIndex === SupportTeamTabs.ISSUE_CATEGORY && isRole1(roleId) ? (
                 <HeadCategoryCreateDialog
