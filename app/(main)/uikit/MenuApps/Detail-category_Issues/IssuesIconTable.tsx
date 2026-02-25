@@ -4,6 +4,7 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { IconItemData } from '../types';
+import { getCategoryIconBaseUrl } from '../utils/iconUrl';
 
 interface Props {
     items: IconItemData[];
@@ -17,7 +18,7 @@ interface Props {
     isLoading?: boolean;
 }
 
-/** แสดงรูป icon ພ້ອມ fallback ເມື່ອโหลดບໍ່ได้ (ตามหลัก React: ແຍກ component ສະແດງຜົນ) */
+/** แสดงรูป icon ພ້ອມ fallback ເມື່ອโหลดບໍ່ได้; onError log ข้อมูล debug (path/CORS/404) */
 function IconCell({ src, alt = '' }: { src: string; alt?: string }) {
     const [error, setError] = useState(false);
     if (!src)
@@ -41,7 +42,17 @@ function IconCell({ src, alt = '' }: { src: string; alt?: string }) {
                 style={{ width: '48px', height: '48px', objectFit: 'contain' }}
                 onError={() => {
                     if (process.env.NODE_ENV === 'development') {
-                        console.warn('[IssuesIconTable] Image load failed (อาจเป็น CORS, 404 หรือ path บนเซิร์ฟเวอร์):', src);
+                        const base = getCategoryIconBaseUrl();
+                        const isFullUrl = src.startsWith('http://') || src.startsWith('https://');
+                        console.warn(
+                            '[IssuesIconTable] Image load failed:',
+                            {
+                                requestedUrl: src,
+                                uploadBaseUrl: base || '(empty — set NEXT_PUBLIC_HELPDESK_UPLOAD_BASE_URL)',
+                                isFullUrl,
+                                hint: 'Possible causes: CORS, 404 (file missing on server), or base URL missing /uploads',
+                            }
+                        );
                     }
                     setError(true);
                 }}

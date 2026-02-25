@@ -115,7 +115,15 @@ export const useTicketTableTechn = () => {
     [profileData]
   );
 
+  /** /api/tickets ໃຫ້ແຕ່ role 2 ເທົ່ານັ້ນ — role 3 ບໍ່ດຶງເພື່ອຫຼີກເວັ້ນ 403 Forbidden */
+  const shouldFetchTickets = roleId === 2;
+
   useEffect(() => {
+    if (!shouldFetchTickets) {
+      setTickets([]);
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     TicketService.getTickets()
@@ -133,7 +141,7 @@ export const useTicketTableTechn = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [shouldFetchTickets]);
 
   const filteredTickets = useMemo(() => {
     return tickets

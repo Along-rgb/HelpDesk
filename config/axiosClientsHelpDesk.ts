@@ -4,6 +4,13 @@ import { AUTH_KEYS, clearAppSession } from '@/utils/authHelper';
 import { UnauthorizedError, AUTH_FORBIDDEN_TOAST_EVENT, AUTH_FORBIDDEN_MSG } from '@/global/types/api';
 import { authenStore } from '@/app/store/user/loginAuthStore';
 
+const getHelpdeskBaseUrl = (): string => {
+  if (typeof window !== 'undefined' && env.useHelpdeskProxy) {
+    return '/api/proxy-helpdesk';
+  }
+  return env.helpdeskApiUrl;
+};
+
 const axiosClientsHelpDesk = axios.create({
   baseURL: env.helpdeskApiUrl,
 });
@@ -102,6 +109,7 @@ function is403(error: { response?: { status?: number } }): boolean {
 // --- Request interceptor ---
 axiosClientsHelpDesk.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
+    config.baseURL = getHelpdeskBaseUrl();
     const base = config.baseURL ?? axiosClientsHelpDesk.defaults.baseURL;
     if (!base || String(base).trim() === '') {
       return Promise.reject(

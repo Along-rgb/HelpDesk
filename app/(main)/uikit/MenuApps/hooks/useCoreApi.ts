@@ -26,12 +26,14 @@ export function useCoreApi<T, P>(
     const [items, setItems] = useState<T[]>([]);
     const [loading, setLoading] = useState(false);
 
-    const fetchData = useCallback(async () => {
+    const fetchData = useCallback(async (signal?: AbortSignal) => {
         if (!endpoint || !shouldFetch) return;
         const params = queryParamsRef.current;
         setLoading(true);
         try {
-            const response = await axiosClientsHelpDesk.get(endpoint, { params });
+            const response = await axiosClientsHelpDesk.get(endpoint, { params, signal });
+            const cancelled = signal?.aborted;
+            if (cancelled) return;
 
             if (Array.isArray(response.data)) {
                 setItems(response.data);
@@ -42,6 +44,10 @@ export function useCoreApi<T, P>(
             }
             serverErrorShownRef.current = false;
         } catch (error: unknown) {
+            const err = error as { name?: string; code?: string };
+            if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') {
+                return;
+            }
             setItems([]);
             const status = error && typeof error === 'object' && 'response' in error
                 ? (error as { response?: { status?: number } }).response?.status
@@ -62,11 +68,11 @@ export function useCoreApi<T, P>(
     }, [endpoint, shouldFetch]);
 
     useEffect(() => {
-        if (shouldFetch) {
-            setLoading(true); // ໃຫ້ loading=true ກ່ອນ fetch ເພື່ອບໍ່ໃຫ້ແສງ "ບໍ່ພົບຂໍ້ມູນ" ຕອນເປີດໜ້າ/refresh
-            fetchData();
-        }
-        // ບໍ່ລ້າງ items ເມື່ອ shouldFetch ເປັນ false — ເກັບ cache ໄວ້ເພື່ອບໍ່ໃຫ້ແສງ "ບໍ່ພົບຂໍ້ມູນ" ຕອນສະຫຼັບ tab
+        if (!shouldFetch) return;
+        const controller = new AbortController();
+        setLoading(true);
+        fetchData(controller.signal);
+        return () => controller.abort();
     }, [fetchData, triggerFetch, shouldFetch]);
 
     // 2. Save Data (Create / Update)

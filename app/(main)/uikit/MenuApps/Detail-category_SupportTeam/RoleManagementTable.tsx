@@ -25,6 +25,8 @@ export default function RoleManagementTable({
     onDelete,
     isLoading = false,
 }: Props) {
+    const safeItems = Array.isArray(items) ? items : [];
+
     const actionTemplate = (row: UserRoleData) => (
         <div className="flex gap-2 justify-content-center align-items-center">
             <Button
@@ -50,7 +52,7 @@ export default function RoleManagementTable({
 
     return (
         <DataTable
-            value={items}
+            value={safeItems}
             header={header}
             globalFilter={globalFilter}
             paginator

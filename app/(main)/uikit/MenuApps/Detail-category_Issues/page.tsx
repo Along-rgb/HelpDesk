@@ -27,7 +27,7 @@ import {
     CreateIconPayload,
 } from '../types';
 import { createDataMap } from '../utils/dataMapping';
-import { getCategoryIconFullUrl } from '../utils/iconUrl';
+import { getCategoryIconProxyUrl } from '../utils/iconUrl';
 import { CUSTOM_TAB_CSS } from '../constants/tabStyles';
 
 /** Role 2: สิทธิ์จัดการ Tab ໝວດໝູ່ & ລາຍການຫົວຂໍ້. Role 1: สิทธิ์จัดการ Tab ເພີ່ມໄອຄອນ (POST /api/categoryicons ได้ role เดียว). */
@@ -71,7 +71,7 @@ export default function IssuesPage() {
     );
     const categoryIconMap = useMemo(() => {
         const m = new Map<number, string>();
-        categoryIconSelectItems.forEach((i) => m.set(i.id, getCategoryIconFullUrl(i.catIcon ?? '')));
+        categoryIconSelectItems.forEach((i) => m.set(i.id, getCategoryIconProxyUrl(i.catIcon ?? '')));
         return m;
     }, [categoryIconSelectItems]);
     const iconOptions = useMemo(
@@ -79,7 +79,7 @@ export default function IssuesPage() {
             categoryIconSelectItems.map((i) => ({
                 label: 'ຮູບໄອຄອນ',
                 value: i.id,
-                iconUrl: getCategoryIconFullUrl(i.catIcon ?? ''),
+                iconUrl: getCategoryIconProxyUrl(i.catIcon ?? ''),
             })),
         [categoryIconSelectItems]
     );

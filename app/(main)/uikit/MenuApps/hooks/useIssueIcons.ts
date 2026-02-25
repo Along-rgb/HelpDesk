@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Toast } from 'primereact/toast';
 import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
 import { IconItemData } from '../types';
-import { getCategoryIconFullUrl } from '../utils/iconUrl';
+import { getCategoryIconProxyUrl } from '../utils/iconUrl';
 
 /** ตาม API.md: GET /api/categoryicons ได้เฉพาะ Role 1 (SuperAdmin). ใช้ select endpoint เพื่อให้ Role 2 โหลดรายการไอคอนได้ (แสดงบนการ์ดเมนู) */
 const ENDPOINT = 'categoryicons/selectcategoryicon';
@@ -12,8 +12,8 @@ function normalizeIconItem(row: { id: number; sortOrder?: number; iconUrl?: stri
     return {
         id: row.id,
         sortOrder: row.sortOrder ?? 0,
-        iconUrl: getCategoryIconFullUrl(raw),
-        catIcon: row.catIcon,
+        iconUrl: getCategoryIconProxyUrl(raw),
+        catIcon: row.catIcon ?? '',
         createdAt: row.createdAt,
     };
 }

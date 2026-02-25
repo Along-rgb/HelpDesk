@@ -43,10 +43,22 @@ export const env = {
     return getEnv('NEXT_PUBLIC_HELPDESK_AUTH_LOGIN_PATH', 'auth/login');
   },
   get helpdeskUploadBaseUrl() {
-    return getEnv('NEXT_PUBLIC_HELPDESK_UPLOAD_BASE_URL', getIsDev() ? devFallback.helpdeskUploadBaseUrl : '');
+    const explicit = getEnv('NEXT_PUBLIC_HELPDESK_UPLOAD_BASE_URL', '');
+    if (explicit.trim()) return explicit.trim().replace(/\/$/, '');
+    const apiBase = getEnv('NEXT_PUBLIC_HELPDESK_API_BASE_URL', getIsDev() ? devFallback.helpdeskApiUrl : '');
+    if (!apiBase.trim()) return getIsDev() ? devFallback.helpdeskUploadBaseUrl : '';
+    return apiBase.trim().replace(/\/api\/?$/, '').replace(/\/$/, '') + '/uploads';
   },
   get loginUsePascalCase() {
     return getEnv('NEXT_PUBLIC_LOGIN_USE_PASCAL_CASE', 'false').toLowerCase() === 'true';
+  },
+  /** Demo: save category icons to public/uploads/ and serve at /uploads/filename (no backend) */
+  get useLocalCategoryIconUpload() {
+    return getEnv('NEXT_PUBLIC_USE_LOCAL_CATEGORY_ICON_UPLOAD', 'false').toLowerCase() === 'true';
+  },
+  /** ใช้ proxy /api/proxy-helpdesk เพื่อ bypass CORS (frontend localhost → API อีก domain) */
+  get useHelpdeskProxy() {
+    return getEnv('NEXT_PUBLIC_USE_HELPDESK_PROXY', 'false').toLowerCase() === 'true';
   },
   get ticketsApiUrl() {
     return getEnv('NEXT_PUBLIC_TICKETS_API_URL', getIsDev() ? devFallback.ticketsApiUrl : '');

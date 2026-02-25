@@ -124,9 +124,10 @@ export interface CategoryIconSelectItem {
 export interface IconItemData {
     id: number;
     sortOrder: number;
+    /** Proxy URL for display, e.g. /api/proxy-category-icon?file=xxx.png */
     iconUrl: string;
-    /** ชื่อไฟล์หรือ path จาก API /api/categoryicons (ใช้แสดงรูปเมื่อไม่มี iconUrl) */
-    catIcon?: string;
+    /** Filename from API, e.g. "1771920010070-925747134.png" */
+    catIcon: string;
     createdAt?: string;
 }
 

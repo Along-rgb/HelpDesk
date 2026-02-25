@@ -32,6 +32,9 @@ yarn-error.log*
 .env.test
 !.env.example
 
+# demo uploads (local category icons)
+/public/uploads/
+
 # vercel
 .vercel
 
