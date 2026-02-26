@@ -52,24 +52,34 @@ export default function GroupProblemPage() {
           </div>
 
           <div className="grid">
-            {categoryItems.map((item) => (
-              <Link
-                key={item.id}
-                href={`/uikit/ticket?categoryId=${item.id}`}
-                className="col-12 md:col-4 p-0 no-underline"
-                style={{ display: "contents" }}
-              >
-                <MenuCard
-                  title={item.title}
-                  description={item.description}
-                  iconUrl={
-                    item.catIcon
-                      ? getCategoryIconDisplayUrl(item.catIcon)
-                      : (item.catIconId != null ? categoryIconMap.get(item.catIconId) ?? "" : "")
-                  }
-                />
-              </Link>
-            ))}
+            {categoryItems.map((item) => {
+              const iconUrl =
+                item.catIcon
+                  ? getCategoryIconDisplayUrl(item.catIcon)
+                  : (item.catIconId != null ? categoryIconMap.get(item.catIconId) ?? "" : "");
+              if (process.env.NODE_ENV === "development") {
+                console.log("[GroupProblem] category item:", {
+                  id: item.id,
+                  catIcon: item.catIcon,
+                  catIconId: item.catIconId,
+                  iconDisplayUrl: iconUrl,
+                });
+              }
+              return (
+                <Link
+                  key={item.id}
+                  href={`/uikit/ticket?categoryId=${item.id}`}
+                  className="col-12 md:col-4 p-0 no-underline"
+                  style={{ display: "contents" }}
+                >
+                  <MenuCard
+                    title={item.title}
+                    description={item.description}
+                    iconUrl={iconUrl}
+                  />
+                </Link>
+              );
+            })}
           </div>
         </div>
       </div>

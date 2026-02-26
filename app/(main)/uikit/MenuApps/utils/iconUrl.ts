@@ -55,6 +55,9 @@ export function getLocalUploadIconUrl(filename: string): string {
 /**
  * URL สำหรับแสดง icon ตาม env — โหมด local ใช้ /uploads/, โหมด API ใช้ proxy
  * ใช้ฟังก์ชันนี้ใน UI เพื่อไม่ให้เกิด 404 เมื่ออัปโหลดแบบ local แต่ยังชี้ไป proxy
+ *
+ * หมายเหตุ: ถ้า NEXT_PUBLIC_USE_LOCAL_CATEGORY_ICON_UPLOAD=true จะข้าม proxy
+ * และชี้ไป /uploads/{filename} — ถ้ารูปอยู่ที่ Backend จริง ต้องตั้งเป็น false
  */
 export function getCategoryIconDisplayUrl(filenameOrUrl: string): string {
   if (!filenameOrUrl || typeof filenameOrUrl !== 'string') return '';

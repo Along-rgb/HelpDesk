@@ -5,12 +5,12 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'api-test.edl.com.la',
-        pathname: '/helpdesk/upload/categoryicons/**',
+        pathname: '/helpdesk/upload/categoryicon/**',
       },
       {
         protocol: 'http',
         hostname: 'api-test.edl.com.la',
-        pathname: '/helpdesk/upload/categoryicons/**',
+        pathname: '/helpdesk/upload/categoryicon/**',
       },
     ],
   },
