@@ -111,7 +111,7 @@ export const useTicketTable = () => {
     setFilteredTickets(filterTickets(tickets, globalFilter, statusFilter?.value ?? null));
   }, [tickets, globalFilter, statusFilter?.value, filterTickets]);
 
-  const onCheckboxChange = (e: { checked: boolean }, rowData: Ticket) => {
+  const onCheckboxChange = (e: { checked?: boolean }, rowData: Ticket) => {
     if (e.checked) setSelectedTickets((prev) => [...prev, rowData]);
     else setSelectedTickets((prev) => prev.filter((t) => t.id !== rowData.id));
   };
