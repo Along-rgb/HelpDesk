@@ -51,3 +51,17 @@ export function getLocalUploadIconUrl(filename: string): string {
   const s = filename.trim().replace(/^\//, '');
   return s ? `/uploads/${s}` : '';
 }
+
+/**
+ * URL สำหรับแสดง icon ตาม env — โหมด local ใช้ /uploads/, โหมด API ใช้ proxy
+ * ใช้ฟังก์ชันนี้ใน UI เพื่อไม่ให้เกิด 404 เมื่ออัปโหลดแบบ local แต่ยังชี้ไป proxy
+ */
+export function getCategoryIconDisplayUrl(filenameOrUrl: string): string {
+  if (!filenameOrUrl || typeof filenameOrUrl !== 'string') return '';
+  const s = filenameOrUrl.trim();
+  if (!s) return '';
+  if (s.startsWith('http://') || s.startsWith('https://')) return s;
+  return env.useLocalCategoryIconUpload
+    ? getLocalUploadIconUrl(s)
+    : getCategoryIconProxyUrl(s);
+}

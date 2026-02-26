@@ -37,18 +37,33 @@ export const MenuCard: React.FC<MenuCardProps> = ({
           className="w-full flex align-items-center justify-content-center bg-white border-bottom-1 border-200"
           style={{ height: "160px" }}
         >
-          <img
-            src={iconUrl}
-            alt={title}
-            className="relative"
-            style={{
-              width: "80px",
-              height: "80px",
-              objectFit: "contain",
-              transform: isHovered ? "scale(1.1)" : "scale(1)",
-              transition: "transform 300ms ease",
-            }}
-          />
+          {iconUrl ? (
+            <img
+              src={iconUrl}
+              alt={title}
+              className="relative"
+              style={{
+                width: "80px",
+                height: "80px",
+                objectFit: "contain",
+                transform: isHovered ? "scale(1.1)" : "scale(1)",
+                transition: "transform 300ms ease",
+              }}
+            />
+          ) : (
+            <div
+              className="flex align-items-center justify-content-center border-1 border-200 border-round bg-gray-100"
+              style={{
+                width: "80px",
+                height: "80px",
+                transform: isHovered ? "scale(1.1)" : "scale(1)",
+                transition: "transform 300ms ease",
+              }}
+              aria-hidden
+            >
+              <i className="pi pi-image text-3xl text-400" />
+            </div>
+          )}
         </div>
 
         <div className="flex flex-column flex-grow-1 p-4 text-center mt-2 w-full">

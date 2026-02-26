@@ -4,7 +4,7 @@ import React, { useMemo } from "react";
 import Link from "next/link";
 import { useSelectCategories } from "./hooks/useSelectCategories";
 import { useCategoryIconsSelect } from "../MenuApps/hooks/useCategoryIconsSelect";
-import { getCategoryIconProxyUrl } from "../MenuApps/utils/iconUrl";
+import { getCategoryIconDisplayUrl } from "../MenuApps/utils/iconUrl";
 import { MenuCard } from "./MenuCard";
 
 export default function GroupProblemPage() {
@@ -14,7 +14,7 @@ export default function GroupProblemPage() {
   const categoryIconMap = useMemo(() => {
     const m = new Map<number, string>();
     categoryIconSelectItems.forEach((i) =>
-      m.set(i.id, getCategoryIconProxyUrl(i.catIcon ?? ""))
+      m.set(i.id, getCategoryIconDisplayUrl(i.catIcon ?? ""))
     );
     return m;
   }, [categoryIconSelectItems]);
@@ -64,7 +64,7 @@ export default function GroupProblemPage() {
                   description={item.description}
                   iconUrl={
                     item.catIcon
-                      ? getCategoryIconProxyUrl(item.catIcon)
+                      ? getCategoryIconDisplayUrl(item.catIcon)
                       : (item.catIconId != null ? categoryIconMap.get(item.catIconId) ?? "" : "")
                   }
                 />

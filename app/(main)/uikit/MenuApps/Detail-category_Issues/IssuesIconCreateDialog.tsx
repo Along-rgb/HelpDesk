@@ -113,7 +113,7 @@ export default function IssuesIconCreateDialog({
                             type="file"
                             id="icon-image-issues"
                             ref={fileInputRef}
-                            accept="image/png,image/jpeg,image/gif,image/webp"
+                            accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
                             className="hidden"
                             onChange={handleFileChange}
                         />

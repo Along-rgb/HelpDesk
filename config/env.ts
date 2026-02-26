@@ -22,7 +22,7 @@ const getIsDev = (): boolean =>
 const devFallback = {
   appUrl: 'http://localhost:3500',
   helpdeskApiUrl: 'https://api-test.edl.com.la/helpdesk/api',
-  helpdeskUploadBaseUrl: 'https://api-test.edl.com.la/helpdesk/uploads',
+  helpdeskUploadBaseUrl: 'https://api-test.edl.com.la/helpdesk/upload/categoryicons',
   ticketsApiUrl: 'http://localhost:3501',
   reportsApiUrl: 'http://localhost:3000/api',
   changePasswordApiUrl: '',
@@ -47,7 +47,7 @@ export const env = {
     if (explicit.trim()) return explicit.trim().replace(/\/$/, '');
     const apiBase = getEnv('NEXT_PUBLIC_HELPDESK_API_BASE_URL', getIsDev() ? devFallback.helpdeskApiUrl : '');
     if (!apiBase.trim()) return getIsDev() ? devFallback.helpdeskUploadBaseUrl : '';
-    return apiBase.trim().replace(/\/api\/?$/, '').replace(/\/$/, '') + '/uploads';
+    return apiBase.trim().replace(/\/api\/?$/, '').replace(/\/$/, '') + '/upload/categoryicons';
   },
   get loginUsePascalCase() {
     return getEnv('NEXT_PUBLIC_LOGIN_USE_PASCAL_CASE', 'false').toLowerCase() === 'true';

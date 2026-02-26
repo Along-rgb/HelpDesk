@@ -8,10 +8,10 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 
 const UPLOAD_DIR = join(process.cwd(), 'public', 'uploads');
-const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
 
 function safeExt(name: string): string {
-  const match = name.match(/\.(png|jpeg|jpg|gif|webp)$/i);
+  const match = name.match(/\.(png|jpeg|jpg|gif|webp|svg)$/i);
   return match ? match[1].toLowerCase() : 'png';
 }
 
