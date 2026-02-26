@@ -141,7 +141,7 @@ export const ticketService = {
     // 3. ✅ [EDITED] Create Ticket (Auto Increment ID) — requesterName = ชื่อผู้ขอ (firstName + lastName ของ user ที่ login)
     createTicket: async (formData: TicketForm, requesterName?: string) => {
         try {
-            if (!formData.category || !formData.topic) {
+            if (!formData.topic) {
                 return { success: false, message: "ກະລຸນາປ້ອນຂໍ້ມູນທີ່ຈຳເປັນ (*)" };
             }
 
@@ -176,10 +176,10 @@ export const ticketService = {
                 status: "ລໍຖ້າຮັບວຽກ",
                 priority: "ບໍ່ລະບຸ",
                 verified: false,
-                category: formData.category.name,
+                category: formData.topic.name,
                 building: formData.building?.name || "-",
                 level: formData.level?.name || "-",
-                room: formData.roomNumber?.name || "-",
+                room: formData.room || "-",
                 description: formData.description || "-"
             };
 
