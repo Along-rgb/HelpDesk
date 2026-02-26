@@ -14,19 +14,21 @@ import { TicketHeader } from "./TicketHeader";
 import { AssigneeDialog } from "./AssigneeDialog";
 
 import { TableTooltip } from "./TableTooltip";
-import { TitleBody, RequesterBody, AssigneeBody } from "./TicketColumnTemplates";
+import { TitleBody, RequesterBody, EmpCodeBody, ContactBody, AssigneeBody } from "./TicketColumnTemplates";
 
 export default function TableDemo() {
     const router = useRouter();
     const {
-        tickets, 
+        tickets,
+        loading,
+        error,
         selectedTickets,
         globalFilter, onGlobalFilterChange,
         statusFilter, setStatusFilter,
         assignFilter, setAssignFilter,
         onCheckboxChange, onPriorityChange,
         dialogVisible, currentAssignees, openAssigneeDialog, closeDialog,
-        onBulkAssign
+        onBulkAssign,
     } = useTicketTable();
 
     const [first, setFirst] = useState(0);
@@ -41,21 +43,35 @@ export default function TableDemo() {
                 <div className="card">
                     <TableTooltip target=".js-tooltip-target" dependencies={[tickets, first]} />
                     <AssigneeDialog visible={dialogVisible} onHide={closeDialog} assignees={currentAssignees} />           
-                    <TicketHeader 
+                    <TicketHeader
                         statusFilter={statusFilter} setStatusFilter={setStatusFilter}
                         assignFilter={assignFilter} setAssignFilter={setAssignFilter}
                         globalFilter={globalFilter} onGlobalFilterChange={onGlobalFilterChange}
-                        isSelectionEmpty={selectedTickets.length === 0} 
+                        isSelectionEmpty={selectedTickets.length === 0}
                         onNewTicket={() => router.push("/uikit/GroupProblem")}
-                         onNewService={() => router.push("/uikit/GroupServices")}
+                        onNewService={() => router.push("/uikit/GroupServices")}
                         onBulkAssign={onBulkAssign}
                     />
+                    {error && (
+                        <div className="flex align-items-center gap-2 p-3 mb-3 surface-100 border-round text-red-600">
+                            <i className="pi pi-exclamation-triangle" />
+                            <span>{error}</span>
+                        </div>
+                    )}
                     <DataTable
-                        value={tickets} paginator rows={10} dataKey="id" size="small"
-                        scrollable scrollHeight="flex"
-                        tableStyle={{ minWidth: '60rem' }} style={{ fontSize: '1rem' }}
-                        emptyMessage={<div className="text-center p-4">ບໍ່ພົບຂໍ້ມູນ</div>}               
-                        first={first} onPage={(e) => setFirst(e.first)}
+                        value={tickets}
+                        paginator
+                        rows={10}
+                        dataKey="id"
+                        size="small"
+                        scrollable
+                        scrollHeight="flex"
+                        loading={loading}
+                        tableStyle={{ minWidth: "60rem" }}
+                        style={{ fontSize: "1rem" }}
+                        emptyMessage={loading ? undefined : <div className="text-center p-4">ບໍ່ພົບຂໍ້ມູນ</div>}
+                        first={first}
+                        onPage={(e) => setFirst(e.first)}
                     >
                         <Column 
                             headerStyle={{ width: '3rem' }} style={{ maxWidth: '3rem' }} {...centerProps} 
@@ -74,18 +90,37 @@ export default function TableDemo() {
                             {...centerProps} 
                         /> 
 
-                        <Column field="title" header="ຫົວຂໍ້ເລື່ອງ" body={TitleBody} style={{ minWidth: "200px" }} />
+                        <Column field="title" header="ຫົວຂໍ້" body={TitleBody} style={{ minWidth: "200px" }} />
                         <Column field="date" header="ວັນທີ່ຮ້ອງຂໍ" style={{ minWidth: "170px" }} {...centerProps} />
-                        <Column field="firstname_req" header="ຜູ້ຮ້ອງຂໍ" body={RequesterBody} style={{ minWidth: "100px" }} {...centerProps} />                 
+                        <Column header="ຜູ້ຮ້ອງຂໍ" body={RequesterBody} style={{ minWidth: "120px" }} {...centerProps} />
+                        <Column header="ເລກພະນັກງານ" body={EmpCodeBody} style={{ minWidth: "100px" }} {...centerProps} />
+                        <Column header="ເບີຕິດຕໍ່" body={ContactBody} style={{ minWidth: "110px" }} {...centerProps} />
                         <Column header="ມອບໝາຍໃຫ້" style={{ minWidth: "140px" }} {...centerProps}
                             body={(rowData: Ticket) => AssigneeBody(rowData, openAssigneeDialog)}
                         />   
-                        <Column 
-                            field="status" header="ສະຖານະ" style={{ minWidth: "100px" }} {...centerProps} 
-                            body={(rowData) => <Tag value={rowData.status} severity={STATUS_MAP[rowData.status] as any} style={{ fontSize: '0.85rem' }} />}
-                        />                   
-                        <Column header="ຄວາມສຳຄັນ" style={{ minWidth: "130px" }} {...centerProps}
-                            body={(rowData) => <PrioritySelector priority={rowData.priority} onChange={(val) => onPriorityChange(rowData.id, val)} />}
+                        <Column
+                            field="status"
+                            header="ສະຖານະ"
+                            style={{ minWidth: "100px" }}
+                            {...centerProps}
+                            body={(rowData: Ticket) => (
+                                <Tag
+                                    value={rowData.status || "—"}
+                                    severity={(STATUS_MAP[rowData.status] ?? null) as any}
+                                    style={{ fontSize: "0.85rem" }}
+                                />
+                            )}
+                        />
+                        <Column
+                            header="ຄວາມສຳຄັນ"
+                            style={{ minWidth: "130px" }}
+                            {...centerProps}
+                            body={(rowData: Ticket) => (
+                                <PrioritySelector
+                                    priority={rowData.priority || "ບໍ່ລະບຸ"}
+                                    onChange={(val) => onPriorityChange(rowData.id, val)}
+                                />
+                            )}
                         />    
                         <Column header="ດຳເນີນການ" style={{ minWidth: "160px" }} {...centerProps}
                             body={(rowData) => <TicketActionMenu ticket={rowData} />} 

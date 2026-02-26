@@ -63,7 +63,13 @@ function isTokenExpired(issuedAt: number): boolean {
 }
 
 function attachAuthToRequest(config: InternalAxiosRequestConfig): void {
-  if (!(config.data instanceof FormData)) {
+  // Do NOT set Content-Type for FormData. The browser/runtime must set
+  // multipart/form-data with the correct boundary; manually setting
+  // Content-Type to multipart/form-data (without boundary) causes 500 errors
+  // because the server cannot parse the request body.
+  if (config.data instanceof FormData) {
+    config.headers.delete('Content-Type');
+  } else {
     config.headers.set('Content-Type', 'application/json');
   }
   config.headers.set('Accept', 'application/json, text/plain, */*');

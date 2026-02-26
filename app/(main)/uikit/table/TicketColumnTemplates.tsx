@@ -23,20 +23,32 @@ export const TitleBody = (rowData: Ticket) => (
     </Link>
 );
 
+/** Requester: createdBy.employee first_name + last_name (or requester fallback) */
 export const RequesterBody = (rowData: Ticket) => {
-    const firstName = rowData.firstname_req || "";
-    const lastName = rowData.lastname_req || "";
-    const requesterFull = rowData.requester || "";
-    const fullName = (firstName && lastName)
-        ? `${firstName} ${lastName}`.trim()
-        : requesterFull || firstName || lastName;
-
+    const fullName =
+        rowData.requester ||
+        [rowData.firstname_req, rowData.lastname_req].filter(Boolean).join(" ").trim() ||
+        "—";
     return (
-        <span className="js-tooltip-target cursor-pointer text-700" data-pr-tooltip={fullName} data-pr-position="top" style={{ whiteSpace: 'nowrap' }}>
+        <span className="js-tooltip-target cursor-pointer text-700" data-pr-tooltip={fullName} data-pr-position="top" style={{ whiteSpace: "nowrap" }}>
             {fullName}
         </span>
     );
 };
+
+/** Employee Code: createdBy.employee.emp_code */
+export const EmpCodeBody = (rowData: Ticket) => (
+    <span className="text-700" style={{ whiteSpace: "nowrap" }}>
+        {rowData.emp_code ?? "—"}
+    </span>
+);
+
+/** Contact: telephone */
+export const ContactBody = (rowData: Ticket) => (
+    <span className="text-700" style={{ whiteSpace: "nowrap" }}>
+        {rowData.contactPhone ?? "—"}
+    </span>
+);
 
 export const AssigneeBody = (rowData: Ticket, action: (data: Assignee[]) => void) => {
     let displayData = rowData.assignees || [];

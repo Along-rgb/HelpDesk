@@ -28,6 +28,8 @@ interface Props {
     canManage: boolean;
     /** ຕອນໂຫຼດຂໍ້ມູນ ບໍ່ໃຫ້ແສງ emptyMessage "ບໍ່ພົບຂໍ້ມູນ" */
     isLoading?: boolean;
+    /** Tab 0 only: ຊີດີໝວດໝູ່ທີ່ມີລາຍການຫົວຂໍ້ — ບໍ່ໃຫ້ລຶບ */
+    categoryIdsInUse?: Set<number>;
 }
 
 const EMPTY_MSG = <div className="text-center p-4 text-gray-500">ບໍ່ພົບຂໍ້ມູນ</div>;
@@ -45,6 +47,7 @@ export default function IssuesTable({
     categoryIconMap,
     canManage,
     isLoading = false,
+    categoryIdsInUse,
 }: Props) {
     const isCategoryTab = activeTab === 0;
     const isTopicTab = activeTab === 1;
@@ -84,30 +87,35 @@ export default function IssuesTable({
 
     const centerAlign = { textAlign: 'center' as const };
 
-    const actionTemplate = (row: RowData) => (
-        <div className="flex gap-2 justify-content-center">
-            {canManage && (
-                <>
-                    <Button
-                        icon="pi pi-pencil"
-                        rounded
-                        text
-                        className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-none"
-                        tooltip="ແກ້ໄຂ"
-                        onClick={() => onEdit(row)}
-                    />
-                    <Button
-                        icon="pi pi-trash"
-                        rounded
-                        text
-                        className="bg-red-100 text-red-700 hover:bg-red-200 border-none"
-                        tooltip="ລຶບ"
-                        onClick={() => onDelete(row)}
-                    />
-                </>
-            )}
-        </div>
-    );
+    const actionTemplate = (row: RowData) => {
+        const isCategory = isCategoryRow(row);
+        const cannotDeleteCategory = isCategoryTab && isCategory && categoryIdsInUse?.has(row.id);
+        return (
+            <div className="flex gap-2 justify-content-center">
+                {canManage && (
+                    <>
+                        <Button
+                            icon="pi pi-pencil"
+                            rounded
+                            text
+                            className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-none"
+                            tooltip="ແກ້ໄຂ"
+                            onClick={() => onEdit(row)}
+                        />
+                        <Button
+                            icon="pi pi-trash"
+                            rounded
+                            text
+                            className="bg-red-100 text-red-700 hover:bg-red-200 border-none"
+                            tooltip={cannotDeleteCategory ? 'ບໍ່ສາມາດລຶບໄດ້ ເພາະມີລາຍການຫົວຂໍ້ໃນໝວດໝູ່ນີ້' : 'ລຶບ'}
+                            onClick={() => !cannotDeleteCategory && onDelete(row)}
+                            disabled={cannotDeleteCategory}
+                        />
+                    </>
+                )}
+            </div>
+        );
+    };
 
     return (
         <DataTable

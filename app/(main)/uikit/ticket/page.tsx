@@ -1,25 +1,43 @@
 'use client';
 
-import React from 'react';
-import { useSearchParams } from 'next/navigation';
-import { getTicketsByCategory } from './ticketData';
+import React, { useMemo } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useSelectCategories } from '../GroupProblem/hooks/useSelectCategories';
+import { useSelectTickets } from './hooks/useSelectTickets';
 import { TicketCard } from './TicketCard';
 
-const CATEGORY_LABELS: Record<string, string> = {
-  PHONE: 'ການສື່ສານ (Communication)',
-  NET: 'ອິນເຕີເນັດ-ເນັດເວີກ (Internet-Network)',
-  IT: 'ຄອມພີວເຕີທົ່ວໄປ (Computer)',
-  SerCOM: 'ບໍລິການຄອມພີວເຕີທົ່ວໄປ',
-  SerSOFT: 'ບໍລິການດ້ານ Software',
-  SerOTHER: 'ບໍລິການອື່ນໆ',
-};
-
 export default function TicketListPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const category = searchParams.get('category') || '';
+  const categoryIdParam = searchParams.get('categoryId') ?? searchParams.get('issueId') ?? '';
+  const categoryId = categoryIdParam ? Number(categoryIdParam) : null;
 
-  const tickets = category ? getTicketsByCategory(category) : [];
-  const categoryLabel = category ? CATEGORY_LABELS[category] || category : '';
+  const { items: categoryItems } = useSelectCategories(!!categoryIdParam);
+  const { items: tickets, loading: ticketsLoading, error: ticketsError } = useSelectTickets(
+    categoryId,
+    !!categoryIdParam && categoryId != null && !Number.isNaN(categoryId)
+  );
+
+  const categoryLabel = useMemo(() => {
+    if (categoryId == null) return '';
+    return categoryItems.find((c) => c.id === categoryId)?.title ?? '';
+  }, [categoryItems, categoryId]);
+
+  const isLoading = ticketsLoading;
+
+  const handleCardClick = (topicId: number, title: string) => {
+    router.push(
+      `/uikit/invalidstate?ticketId=${topicId}&title=${encodeURIComponent(title)}`
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-content-center align-items-center h-screen">
+        <i className="pi pi-spin pi-spinner text-4xl" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex justify-content-center px-2">
@@ -34,9 +52,14 @@ export default function TicketListPage() {
             )}
           </div>
 
-          {!category ? (
+          {!categoryIdParam ? (
             <div className="text-center text-600 py-6">
               ກະລຸນາເລືອກຫມວດໝູ່ຈາກຫນ້າ ແຈ້ງບັນຫາ ຫຼື ບໍລິການ
+            </div>
+          ) : ticketsError ? (
+            <div className="text-center text-600 py-6">
+              <i className="pi pi-exclamation-triangle mb-2" />
+              <p className="m-0">{ticketsError}</p>
             </div>
           ) : tickets.length === 0 ? (
             <div className="text-center text-600 py-6">
@@ -44,11 +67,12 @@ export default function TicketListPage() {
             </div>
           ) : (
             <div className="grid">
-              {tickets.map((ticket) => (
+              {tickets.map((item) => (
                 <TicketCard
-                  key={ticket.id}
-                  ticket={ticket}
-                  categoryId={category}
+                  key={item.id}
+                  title={item.title}
+                  description={item.description}
+                  onClick={() => handleCardClick(item.id, item.title)}
                 />
               ))}
             </div>

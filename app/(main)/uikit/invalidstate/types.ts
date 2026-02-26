@@ -5,18 +5,28 @@ export interface City {
     code?: string;
 }
 
-// UI State (หน้าฟอร์ม)
+// UI State (หน้าฟอร์ม) — payload: ticketId, buildingId, floorId, turningId, room, numberSKT, telephone, details, hdFile, hdImgs
 export interface TicketForm {
-    category: City | null;
-    assetNumber?: string;
+    /** From URL — ຫົວຂໍ້ (display + payload ticketId) */
+    ticketId: number | null;
+    /** From URL — ຊື່ຫົວຂໍ້ for display */
     topic: City | null;
+    /** ເລກ ຊຄທ → numberSKT */
+    assetNumber: string;
     building: City | null;
-    phoneNumber?: string;
+    /** ເບີໂທ → telephone */
+    phoneNumber: string;
+    /** ເສັ້ນທາງ → turningId (route.code) */
     route: City | null;
+    /** ລະດັບຊັ້ນ → floorId (level.code) */
     level: City | null;
-    roomNumber: City | null;
+    /** ໝາຍເລກຫ້ອງ → room */
+    room: string;
+    /** ລາຍລະອຽດເພີ່ມເຕີມ → details */
     description: string;
-   attachments: File[];
+    /** ແນບໄຟລ໌ → hdFile (first file) */
+    attachments: File[];
+    /** ແນບຮູບ → hdImgs */
     images: File[];
 }
 

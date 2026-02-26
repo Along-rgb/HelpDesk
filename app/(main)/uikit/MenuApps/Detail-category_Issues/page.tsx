@@ -49,7 +49,7 @@ export default function IssuesPage() {
     );
     const { toast: issueToast, items: topicItems, loading: issueLoading, saveData: saveIssue, deleteData: deleteIssue } = useIssues(
         activeIndex,
-        profileReady && canManageCategoryAndTopic && activeIndex === 1
+        profileReady && canManageCategoryAndTopic && activeIndex <= 1
     );
     const { items: headCategorySelectItems } = useHeadCategorySelect(
         activeIndex,
@@ -86,6 +86,12 @@ export default function IssuesPage() {
 
     const categoryMap = useMemo(() => createDataMap(categoryItems, 'id', 'title'), [categoryItems]);
     const categoryOptions = useMemo(() => categoryItems.map((c) => ({ label: c.title, value: c.id })), [categoryItems]);
+
+    /** Tab 0: ໝວດໝູ່ທີ່ມີລາຍການຫົວຂໍ້ອີງ — ບໍ່ໃຫ້ລຶບ */
+    const categoryIdsInUse = useMemo(
+        () => new Set(topicItems.map((t) => t.parentId).filter((id): id is number => id != null)),
+        [topicItems]
+    );
 
     const items = activeIndex === IssueTabs.ICON ? iconItems : activeIndex === 0 ? categoryItems : topicItems;
     const toast = activeIndex === 0 ? categoryToast : activeIndex === 1 ? issueToast : iconToast;
@@ -316,6 +322,7 @@ export default function IssuesPage() {
                         categoryIconMap={categoryIconMap}
                         canManage={canManageCategoryAndTopic}
                         isLoading={tableLoading}
+                        categoryIdsInUse={activeIndex === 0 ? categoryIdsInUse : undefined}
                     />
                     <IssuesCreateDialog
                         visible={isDialogVisible}
