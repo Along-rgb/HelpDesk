@@ -268,7 +268,7 @@ export const useTicketTableTechn = () => {
         const myIds = mine
           .map((a) => a.helpdeskRequestId)
           .filter((id): id is number => typeof id === "number" && Number.isFinite(id));
-        const uniqueIds = [...new Set(myIds)];
+        const uniqueIds = Array.from(new Set(myIds));
         if (uniqueIds.length === 0) {
           setTickets([]);
           setLoading(false);
