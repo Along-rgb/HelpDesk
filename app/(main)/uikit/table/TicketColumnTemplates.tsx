@@ -57,7 +57,7 @@ export const AssigneeBody = (rowData: Ticket, action: (data: Assignee[]) => void
         displayData = [{ id: rowData.id, name: rowData.assignTo, status: 'doing' } as Assignee];
     }
 
-    if (displayData.length === 0) return <span className="text-500 text-sm italic">ຍັງບໍ່ໄດ້ມອບໝາຍ</span>;
+    if (displayData.length === 0) return <span className="text-500 text-sm italic">ວ່າງ</span>;
 
     if (displayData.length === 1) {
         const user = displayData[0];

@@ -10,18 +10,21 @@ interface Props {
     visible: boolean;
     onHide: () => void;
     assignees: Assignee[];
+    /** หัวข้อส่วนมอบหมายงาน จาก headcategory (tabIndex=1) */
+    sectionTitle?: string;
 }
 
-export const AssigneeDialog = ({ visible, onHide, assignees }: Props) => {
+export const AssigneeDialog = ({ visible, onHide, assignees, sectionTitle = "ມອບໝາຍໃຫ້" }: Props) => {
+    const header = sectionTitle ? `${sectionTitle}` : "ມອບໝາຍໃຫ້";
     return (
         <Dialog 
-            header="ມອບໝາຍໃຫ້:" visible={visible} 
+            header={header}
+            visible={visible} 
             style={{ width: '30vw', minWidth: '350px' }} 
             onHide={onHide} draggable={false}
         >
             <div className="flex flex-column gap-3 mt-2">
                 {assignees.map((user) => {
-                    // ✅ ใช้ ASSIGNEE_STATUS_MAP จาก constants.ts
                     const statusInfo = ASSIGNEE_STATUS_MAP[user.status] || ASSIGNEE_STATUS_MAP['default'];
 
                     return (

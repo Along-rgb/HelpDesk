@@ -1,15 +1,5 @@
 // table/constants.ts
-
-export const STATUS_OPTIONS = [
-    { label: 'ທັງຫມົດ', value: 'Allin', icon: 'pi pi-th-large' },
-    { label: 'ກຳລັງດຳເນີນການ', value: 'ກຳລັງດຳເນີນການ', icon: 'pi pi-spin pi-spinner' },
-    { label: 'ລໍຖ້າຮັບເລື່ອງ', value: 'ລໍຖ້າຮັບເລື່ອງ', icon: 'pi pi-bell' },
-    { label: 'ລໍຖ້າຮັບວຽກ', value: 'ລໍຖ້າຮັບວຽກ', icon: 'pi pi-clock' },
-    { label: 'ແກ້ໄຂແລ້ວ', value: 'ແກ້ໄຂແລ້ວ', icon: 'pi pi-check-circle' },
-    { label: 'ປິດວຽກແລ້ວ', value: 'ປິດວຽກແລ້ວ', icon: 'pi pi-check' },
-    { label: 'ພັກໄວ້', value: 'ພັກໄວ້', icon: 'pi pi-pause' },
-    { label: 'ຍົກເລີກ', value: 'ຍົກເລີກ', icon: 'pi pi-times' }
-];
+// statusOptions for dropdown are built from API in useTicketTable (GET helpdeskstatus/selecthelpdeskstatus)
 
 export const ASSIGNMENT_GROUPS = [
   {
@@ -36,11 +26,26 @@ export const STATUS_MAP: Record<string, "success" | "info" | "warning" | "danger
     'ກຳລັງດຳເນີນການ': 'info',
     'ລໍຖ້າຮັບເລື່ອງ': 'warning',
     'ລໍຖ້າຮັບວຽກ': 'warning',
-    'ຍົກເລີກ': 'danger',
+    'ຍົກເລິກ': 'danger',
     'ປິດວຽກແລ້ວ': 'success',
-    'ພັກໄວ້': 'warning',
+    'ພັກໃວ້': 'warning',  // ໃ API
+    'ສົ່ງອອກແປງນອກ': 'info',
     'Allin': null
 };
+
+/** Icons for status dropdown (value = status name). Use STATUS_ICON_FALLBACK for unknown statuses. */
+export const STATUS_ICON_MAP: Record<string, string> = {
+    'Allin': 'pi pi-th-large',
+    'ກຳລັງດຳເນີນການ': 'pi pi-spin pi-spinner',
+    'ລໍຖ້າຮັບເລື່ອງ': 'pi pi-bell',
+    'ລໍຖ້າຮັບວຽກ': 'pi pi-clock',
+    'ແກ້ໄຂແລ້ວ': 'pi pi-check-circle',
+    'ປິດວຽກແລ້ວ': 'pi pi-check',
+    'ພັກໃວ້': 'pi pi-pause',
+    'ຍົກເລິກ': 'pi pi-times',
+    'ສົ່ງອອກແປງນອກ': 'pi pi-external-link'
+};
+export const STATUS_ICON_FALLBACK = 'pi pi-circle';
 
 export const PRIORITY_OPTIONS = [
     { label: 'ບໍ່ລະບຸ', value: 'ບໍ່ລະບຸ' },

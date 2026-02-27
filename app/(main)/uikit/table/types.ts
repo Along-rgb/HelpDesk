@@ -7,12 +7,13 @@ export interface HelpdeskRequestTicket {
   description?: string;
 }
 
-/** Employee nested under createdBy */
+/** Employee nested under createdBy / assignedTo */
 export interface Employee {
   id?: number;
   first_name?: string;
   last_name?: string;
   emp_code?: string;
+  empimg?: string;
 }
 
 /** createdBy on helpdesk request */
@@ -26,16 +27,42 @@ export interface HelpdeskStatus {
   name: string;
 }
 
+/** Option for status dropdown (label/value from API name) */
+export type StatusOption = { label: string; value: string };
+
+/** Row from GET users/adminassign (filter roleId === 3 for Staff) */
+export interface AdminAssignUserRow {
+  id: number;
+  roleId: number;
+  employee?: { first_name?: string; last_name?: string; emp_code?: string };
+}
+
+/** Item from GET headcategorys/selectheadcategory */
+export interface HeadCategorySelectRow {
+  id: number;
+  name: string;
+}
+
+/** Option for assignee dropdown (id + display name) */
+export type AssigneeOption = { id: number; label: string };
+
 /** Priority lookup (may be null) */
 export interface Priority {
   id?: number;
   name?: string | null;
 }
 
-/** Single assignment (assignments[] item) */
+/** assignedTo from API (assignments[].assignedTo) */
+export interface AssignedTo {
+  employee?: Employee;
+}
+
+/** Single assignment (assignments[] item from /api/helpdeskrequests/admin) */
 export interface AssignmentItem {
   id?: number;
+  assignedToId?: number;
   employee?: Employee;
+  assignedTo?: AssignedTo;
   status?: string;
 }
 

@@ -25,7 +25,10 @@ export default function TableDemo() {
         selectedTickets,
         globalFilter, onGlobalFilterChange,
         statusFilter, setStatusFilter,
+        statusOptions,
+        assignOptions,
         assignFilter, setAssignFilter,
+        assignmentSectionTitle,
         onCheckboxChange, onPriorityChange,
         dialogVisible, currentAssignees, openAssigneeDialog, closeDialog,
         onBulkAssign,
@@ -42,9 +45,12 @@ export default function TableDemo() {
             <div className="col-12">
                 <div className="card">
                     <TableTooltip target=".js-tooltip-target" dependencies={[tickets, first]} />
-                    <AssigneeDialog visible={dialogVisible} onHide={closeDialog} assignees={currentAssignees} />           
+                    <AssigneeDialog visible={dialogVisible} onHide={closeDialog} assignees={currentAssignees} sectionTitle={assignmentSectionTitle} />           
                     <TicketHeader
                         statusFilter={statusFilter} setStatusFilter={setStatusFilter}
+                        statusOptions={statusOptions}
+                        assignOptions={assignOptions}
+                        assignmentSectionTitle={assignmentSectionTitle}
                         assignFilter={assignFilter} setAssignFilter={setAssignFilter}
                         globalFilter={globalFilter} onGlobalFilterChange={onGlobalFilterChange}
                         isSelectionEmpty={selectedTickets.length === 0}

@@ -121,7 +121,7 @@ export default function PageTechnDemo() {
                         <Column
                             field="assignDate"
                             header="ວັນທີມອບໝາຍ"
-                            style={{ minWidth: "120px" }}
+                            style={{ minWidth: "170px" }}
                             {...centerProps}
                             body={(rowData: TicketRow) =>
                                 rowData.assignDate || (

@@ -1,14 +1,43 @@
 // table/useTicketTable.ts
 import { useState, useEffect, useCallback } from "react";
 import axiosClientsHelpDesk from "@/config/axiosClientsHelpDesk";
-import { Ticket, Assignee } from "./types";
-import type { HelpdeskRequestRow, AssignmentItem } from "./types";
-import { ASSIGNMENT_GROUPS } from "./constants";
-import { getCurrentDateTimeString } from "@/utils/dateUtils";
+import { Ticket, Assignee, StatusOption, AssigneeOption } from "./types";
+import type { HelpdeskRequestRow, AssignmentItem, AdminAssignUserRow, HeadCategorySelectRow } from "./types";
 import { formatDateTime } from "@/utils/dateUtils";
 import { ticketService } from "@/app/services/ticketService";
 
 const ENDPOINT = "helpdeskrequests/admin";
+const STATUS_ENDPOINT = "helpdeskstatus/selecthelpdeskstatus";
+const USERS_ADMINASSIGN_ENDPOINT = "users/adminassign";
+const HEADCATEGORY_SELECT_ENDPOINT = "headcategorys/selectheadcategory";
+const ASSIGNMENTS_ENDPOINT = "assignments";
+const STAFF_ROLE_ID = 3;
+const STAFF_HEAD_CATEGORY_TAB_INDEX = 1;
+
+function normalizeStatusList(data: unknown): { id: number; name: string }[] {
+  if (Array.isArray(data)) return data as { id: number; name: string }[];
+  if (data && typeof data === "object" && "data" in data && Array.isArray((data as { data: unknown }).data)) {
+    return (data as { data: { id: number; name: string }[] }).data;
+  }
+  return [];
+}
+
+function normalizeUserList(data: unknown): AdminAssignUserRow[] {
+  if (Array.isArray(data)) return data as AdminAssignUserRow[];
+  if (data && typeof data === "object" && "data" in data && Array.isArray((data as { data: unknown }).data)) {
+    return (data as { data: AdminAssignUserRow[] }).data;
+  }
+  return [];
+}
+
+function normalizeHeadCategoryList(data: unknown): HeadCategorySelectRow[] {
+  if (Array.isArray(data)) return data as HeadCategorySelectRow[];
+  if (data && typeof data === "object" && "data" in data) {
+    const d = (data as { data: unknown }).data;
+    if (Array.isArray(d)) return d as HeadCategorySelectRow[];
+  }
+  return [];
+}
 
 function normalizeRow(row: HelpdeskRequestRow): Ticket {
   const emp = row.createdBy?.employee;
@@ -16,12 +45,14 @@ function normalizeRow(row: HelpdeskRequestRow): Ticket {
   const last = emp?.last_name ?? "";
   const requester = [first, last].filter(Boolean).join(" ").trim() || undefined;
   const assignees: Assignee[] = (row.assignments ?? []).map((a: AssignmentItem) => {
-    const e = a.employee;
+    const e = a.assignedTo?.employee ?? a.employee;
     const name = e ? [e.first_name, e.last_name].filter(Boolean).join(" ").trim() : "";
+    const id = e?.id ?? a.assignedToId ?? a.id ?? 0;
     return {
-      id: a.id ?? a.employee?.id ?? 0,
+      id,
       name: name || "—",
       status: (a.status as Assignee["status"]) || "waiting",
+      image: e?.empimg ?? undefined,
     };
   });
   return {
@@ -49,6 +80,8 @@ function normalizeResponse(data: unknown): HelpdeskRequestRow[] {
   return [];
 }
 
+const ALL_STATUS_OPTION: StatusOption = { label: "ທັງໝົດ", value: "Allin" };
+
 export const useTicketTable = () => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
@@ -56,10 +89,13 @@ export const useTicketTable = () => {
   const [error, setError] = useState<string | null>(null);
   const [globalFilter, setGlobalFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<{ value: string } | null>(null);
+  const [statusOptions, setStatusOptions] = useState<StatusOption[]>([ALL_STATUS_OPTION]);
   const [assignFilter, setAssignFilter] = useState<any[] | null>(null);
   const [selectedTickets, setSelectedTickets] = useState<Ticket[]>([]);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [currentAssignees, setCurrentAssignees] = useState<Assignee[]>([]);
+  const [assignOptions, setAssignOptions] = useState<AssigneeOption[]>([]);
+  const [assignmentSectionTitle, setAssignmentSectionTitle] = useState<string>("ມອບໝາຍໃຫ້");
 
   const filterTickets = useCallback((data: Ticket[], filterValue: string, statusVal: string | null) => {
     let out = data;
@@ -80,6 +116,54 @@ export const useTicketTable = () => {
     return out;
   }, []);
 
+  useEffect(() => {
+    axiosClientsHelpDesk
+      .get(STATUS_ENDPOINT)
+      .then((response) => {
+        const list = normalizeStatusList(response.data);
+        const options: StatusOption[] = [
+          ALL_STATUS_OPTION,
+          ...list.map((item) => {
+          const name = typeof item.name === "string" ? item.name.trim() : String(item.name ?? "").trim();
+          return { label: name, value: name };
+        }),
+        ];
+        setStatusOptions(options);
+      })
+      .catch(() => {
+        setStatusOptions([ALL_STATUS_OPTION]);
+      });
+  }, []);
+
+  useEffect(() => {
+    axiosClientsHelpDesk
+      .get(USERS_ADMINASSIGN_ENDPOINT)
+      .then((response) => {
+        const list = normalizeUserList(response.data);
+        const staff = list.filter((u) => Number(u.roleId) === STAFF_ROLE_ID);
+        const options: AssigneeOption[] = staff.map((u) => {
+          const first = u.employee?.first_name ?? "";
+          const last = u.employee?.last_name ?? "";
+          const label = [first, last].filter(Boolean).join(" ").trim() || String(u.id);
+          return { id: u.id, label };
+        });
+        setAssignOptions(options);
+      })
+      .catch(() => setAssignOptions([]));
+  }, []);
+
+  useEffect(() => {
+    axiosClientsHelpDesk
+      .get(HEADCATEGORY_SELECT_ENDPOINT)
+      .then((response) => {
+        const list = normalizeHeadCategoryList(response.data);
+        const item = list[STAFF_HEAD_CATEGORY_TAB_INDEX] ?? list[0];
+        const name = typeof item?.name === "string" ? item.name.trim() : "";
+        if (name) setAssignmentSectionTitle(name);
+      })
+      .catch(() => {});
+  }, []);
+
   const fetchData = useCallback(() => {
     setLoading(true);
     setError(null);
@@ -88,8 +172,16 @@ export const useTicketTable = () => {
       .then((response) => {
         const rawList = normalizeResponse(response.data);
         const list = rawList.map(normalizeRow).sort((a, b) => Number(b.id) - Number(a.id));
-        setTickets(list);
-        setFilteredTickets(filterTickets(list, globalFilter, statusFilter?.value ?? null));
+        const staffMap = new Map(assignOptions.map((o) => [o.id, o.label]));
+        const enriched = list.map((t) => ({
+          ...t,
+          assignees: (t.assignees ?? []).map((a) => ({
+            ...a,
+            name: !a.name || a.name === "—" || !a.name.trim() ? staffMap.get(Number(a.id)) ?? a.name : a.name,
+          })),
+        }));
+        setTickets(enriched);
+        setFilteredTickets(filterTickets(enriched, globalFilter, statusFilter?.value ?? null));
       })
       .catch((err: unknown) => {
         const msg =
@@ -101,7 +193,7 @@ export const useTicketTable = () => {
         setFilteredTickets([]);
       })
       .finally(() => setLoading(false));
-  }, [globalFilter, statusFilter?.value, filterTickets]);
+  }, [globalFilter, statusFilter?.value, filterTickets, assignOptions]);
 
   useEffect(() => {
     fetchData();
@@ -110,6 +202,20 @@ export const useTicketTable = () => {
   useEffect(() => {
     setFilteredTickets(filterTickets(tickets, globalFilter, statusFilter?.value ?? null));
   }, [tickets, globalFilter, statusFilter?.value, filterTickets]);
+
+  useEffect(() => {
+    if (assignOptions.length === 0) return;
+    const staffMap = new Map(assignOptions.map((o) => [o.id, o.label]));
+    setTickets((prev) =>
+      prev.map((t) => ({
+        ...t,
+        assignees: (t.assignees ?? []).map((a) => ({
+          ...a,
+          name: !a.name || a.name === "—" || !a.name.trim() ? staffMap.get(Number(a.id)) ?? a.name : a.name,
+        })),
+      }))
+    );
+  }, [assignOptions]);
 
   const onCheckboxChange = (e: { checked?: boolean }, rowData: Ticket) => {
     if (e.checked) setSelectedTickets((prev) => [...prev, rowData]);
@@ -134,32 +240,20 @@ export const useTicketTable = () => {
 
   const onBulkAssign = async () => {
     if (!assignFilter?.length || selectedTickets.length === 0) return;
-    const newAssignees: Assignee[] = assignFilter.map((item: any, index) => {
-      let name = item.label ?? (item.firstname ? `${item.firstname} ${item.lastname || ""}`.trim() : String(item));
-      let assignedId = item.id;
-      let phone = item.Phonenumber ?? "";
-      if (typeof item === "string") {
-        const found = ASSIGNMENT_GROUPS.flatMap((g) => g.items).find((i: any) => i.value === item || i.label === item);
-        if (found) {
-          name = found.label;
-          assignedId = found.id;
-          phone = (found as any).Phonenumber ?? "";
-        }
-      }
-      return { id: assignedId ?? Date.now() + index, name, status: "waiting" as const, phone };
-    });
+    const assignedToId = assignFilter
+      .map((item: AssigneeOption | unknown) => (item as AssigneeOption)?.id)
+      .filter((id): id is number => typeof id === "number");
+    if (assignedToId.length === 0) return;
+    const helpdeskRequestId = selectedTickets
+      .map((t) => Number(t.id))
+      .filter((id): id is number => Number.isFinite(id));
+    if (helpdeskRequestId.length === 0) return;
     try {
       setLoading(true);
-      const assignDate = getCurrentDateTimeString();
-      await Promise.all(
-        selectedTickets.map((ticket) =>
-          ticketService.updateTicket({
-            ...ticket,
-            assignees: [...(ticket.assignees || []), ...newAssignees],
-            assignDate,
-          } as any)
-        )
-      );
+      await axiosClientsHelpDesk.post(ASSIGNMENTS_ENDPOINT, {
+        helpdeskRequestId,
+        assignedToId,
+      });
       fetchData();
       setAssignFilter(null);
       setSelectedTickets([]);
@@ -182,8 +276,11 @@ export const useTicketTable = () => {
     onGlobalFilterChange,
     statusFilter,
     setStatusFilter,
+    statusOptions,
+    assignOptions,
     assignFilter,
     setAssignFilter,
+    assignmentSectionTitle,
     onCheckboxChange,
     onPriorityChange,
     onBulkAssign,

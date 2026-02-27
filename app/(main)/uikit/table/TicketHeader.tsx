@@ -4,11 +4,16 @@ import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { MultiSelect } from "primereact/multiselect";
-import { STATUS_OPTIONS, ASSIGNMENT_GROUPS } from "./constants";
+import { STATUS_ICON_MAP, STATUS_ICON_FALLBACK } from "./constants";
+import type { StatusOption, AssigneeOption } from "./types";
 
 interface TicketHeaderProps {
     statusFilter: any;
     setStatusFilter: (value: any) => void;
+    statusOptions: StatusOption[];
+    assignOptions: AssigneeOption[];
+    /** หัวข้อส่วนมอบหมาย (จาก headcategorys/selectheadcategory) */
+    assignmentSectionTitle?: string;
     assignFilter: any;
     setAssignFilter: (value: any) => void;
     globalFilter: string;
@@ -20,16 +25,23 @@ interface TicketHeaderProps {
 }
 
 export const TicketHeader = ({
-    statusFilter, setStatusFilter, assignFilter, setAssignFilter,
-    globalFilter, onGlobalFilterChange, isSelectionEmpty, onNewTicket,onNewService, onBulkAssign
+    statusFilter, setStatusFilter, statusOptions, assignOptions, assignmentSectionTitle, assignFilter, setAssignFilter,
+    globalFilter, onGlobalFilterChange, isSelectionEmpty, onNewTicket, onNewService, onBulkAssign
 }: TicketHeaderProps) => {
 
-    // ✅ ยุบรวม Function render
-    const renderStatusOption = (option: any) => {
+    const getStatusIcon = (option: StatusOption) =>
+        STATUS_ICON_MAP[option.value]
+        ?? STATUS_ICON_MAP[option.value?.trim() ?? '']
+        ?? STATUS_ICON_MAP[option.label]
+        ?? STATUS_ICON_MAP[option.label?.trim() ?? '']
+        ?? STATUS_ICON_FALLBACK;
+
+    const renderStatusOption = (option: StatusOption | null) => {
         if (!option) return <span>ເລືອກສະຖານະ</span>;
+        const iconClass = getStatusIcon(option);
         return (
             <div className="flex align-items-center gap-2">
-                <i className={option.icon}></i>
+                <i className={iconClass} />
                 <span>{option.label}</span>
             </div>
         );
@@ -51,18 +63,19 @@ export const TicketHeader = ({
             <div className="flex flex-wrap gap-2 align-items-center">
                 <Dropdown
                     value={statusFilter} onChange={(e) => setStatusFilter(e.value)}
-                    options={STATUS_OPTIONS} optionLabel="label" placeholder="ເລືອກສະຖານະ"
+                    options={statusOptions} optionLabel="label" placeholder="ເລືອກສະຖານະ"
                     className="p-inputtext-sm w-full md:w-12rem" showClear
                     itemTemplate={renderStatusOption} valueTemplate={renderStatusOption}
                 />
                 <MultiSelect
                     value={assignFilter} onChange={(e) => setAssignFilter(e.value)}
-                    options={ASSIGNMENT_GROUPS} optionLabel="firstname" optionGroupLabel="label"
-                    optionGroupChildren="items" optionGroupTemplate={(opt) => <div className="font-bold text-primary">{opt.label}</div>}
+                    options={assignOptions} optionLabel="label"
                     placeholder="ມອບໝາຍວຽກ" className="p-inputtext-sm w-full md:w-15rem"
-                    filter showSelectAll={false} panelFooterTemplate={panelFooterTemplate} display="chip"
+                    filter showSelectAll={false}
+                    panelHeaderTemplate={assignmentSectionTitle ? () => <div className="font-semibold p-2 text-center text-primary">{assignmentSectionTitle}</div> : undefined}
+                    panelFooterTemplate={panelFooterTemplate} display="chip"
                     disabled={isSelectionEmpty}
-                    itemTemplate={(option) => <div className="text-sm flex align-items-center gap-2">{option.label}</div>}
+                    itemTemplate={(option: AssigneeOption) => <div className="text-sm flex align-items-center gap-2">{option.label}</div>}
                 />
                 <Button label="ຮັບວຽກເອງ" icon="pi pi-check" severity="secondary" size="small" disabled={isSelectionEmpty} />
             </div>

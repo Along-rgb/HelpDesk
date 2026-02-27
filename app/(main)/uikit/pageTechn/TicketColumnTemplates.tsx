@@ -47,9 +47,8 @@ export const RequesterBody = (rowData: Ticket) => {
     const lastName = rowData.lastname_req || "";
     const requesterFull = rowData.requester || "";
     const fullName =
-        firstName && lastName
-            ? `${firstName} ${lastName}`.trim()
-            : requesterFull || firstName || lastName;
+        [firstName, lastName].filter(Boolean).join(" ").trim() || requesterFull || firstName || lastName;
+    const displayName = firstName.trim() || (requesterFull ? requesterFull.split(" ")[0] || requesterFull : "");
 
     return (
         <span
@@ -58,7 +57,7 @@ export const RequesterBody = (rowData: Ticket) => {
             data-pr-position="top"
             style={{ whiteSpace: "nowrap" }}
         >
-            {fullName}
+            {displayName || fullName}
         </span>
     );
 };
@@ -71,9 +70,15 @@ export const AssigneeSingleBody = (assignee: Assignee) => {
     if (statusInfo.severity === "info") textColor = "text-blue-500";
     else if (statusInfo.severity === "success") textColor = "text-green-500";
     else if (statusInfo.severity === "warning") textColor = "text-orange-500";
+    const fullName = assignee.name || "";
     return (
-        <span className={`${textColor} font-bold text-sm`} style={{ whiteSpace: "nowrap" }}>
-            {displayName || assignee.name}
+        <span
+            className={`js-tooltip-target ${textColor} font-bold text-sm`}
+            style={{ whiteSpace: "nowrap" }}
+            data-pr-tooltip={fullName}
+            data-pr-position="top"
+        >
+            {displayName || fullName}
         </span>
     );
 };
@@ -95,16 +100,11 @@ export const AssigneeBody = (rowData: Ticket, action: (data: Assignee[]) => void
     else if (statusInfoFirst.severity === "success") textColor = "text-green-500";
     else if (statusInfoFirst.severity === "warning") textColor = "text-orange-500";
 
-    // Tooltip: รายชื่อทั้งหมด พร้อมสถานะ (name | status)
-    const tooltipText =
-        displayData.length === 1
-            ? `${displayData[0].name} | ${statusInfoFirst.label}`
-            : displayData
-                  .map(
-                      (u) =>
-                          `${u.name} | ${(ASSIGNEE_STATUS_MAP[u.status] || ASSIGNEE_STATUS_MAP["default"]).label}`
-                  )
-                  .join(" • ");
+    // Tooltip: รายชื่อทั้งหมด (first_name last_name)
+    const tooltipText = displayData
+        .map((u) => u.name || "")
+        .filter((name) => !!name && !!name.trim())
+        .join(" • ");
 
     // แสดงเป็นรายชื่อ (ไม่ใช้ AvatarGroup)
     const nameList =
