@@ -117,14 +117,18 @@ export default function SupportTeamPage() {
 
     const issueCategoryMap = useMemo(() => createDataMap(headCategoryItemsForDisplay, 'id', 'name'), [headCategoryItemsForDisplay]);
 
-    /** แถวสำหรับ tab ວິຊາການ: ສະແດງແຕ່ section ທີ່ມີຜູ້ໃຊ້ກົງກັບ departmentId/divisionId ເທົ່ານັ້ນ, ແລະແຕ່ລະຄົນໃຊ້ໃນແຕ່ section ດຽວ (ບໍ່ຊ້ຳ). */
+    /** แถวสำหรับ tab ວິຊາການ: หัวข้อ section ຈາກ headcategorys/selectheadcategory (name), ຜູ້ໃຊ້ຈາກ users/adminassign ແຕ່ roleId=3 (Staff) ກົງກັບ departmentId/divisionId ເທົ່ານັ້ນ. */
+    const STAFF_ROLE_ID = 3;
     const technicalTabRows = useMemo((): SupportTeamTechnicalRow[] => {
         const rows: SupportTeamTechnicalRow[] = [];
         let headList = Array.isArray(headCategorySelectItems) ? headCategorySelectItems : [];
         if (canAccessTechnical && userDepartmentId != null) {
-            headList = headList.filter((h) => h.departmentId === userDepartmentId);
+            const filtered = headList.filter((h) => h.departmentId === userDepartmentId);
+            if (filtered.length > 0) headList = filtered;
         }
-        const userList = Array.isArray(adminAssignItems) ? adminAssignItems : [];
+        const userList = Array.isArray(adminAssignItems)
+            ? adminAssignItems.filter((u) => Number(u.roleId) === STAFF_ROLE_ID)
+            : [];
         const addedUserIds = new Set<number>();
 
         for (const head of headList) {
@@ -138,7 +142,6 @@ export default function SupportTeamPage() {
                 const matchDiv = headDivId != null && uDivId != null && uDivId === headDivId;
                 return matchDept || matchDiv;
             });
-            if (usersInSection.length === 0) continue;
             rows.push({ type: 'section', headCategoryId: head.id, name: head.name, divisionId: head.divisionId, departmentId: head.departmentId });
             for (const u of usersInSection) {
                 addedUserIds.add(u.id);

@@ -1,6 +1,8 @@
 // pageTechn/useTicketTableTechn.ts
 // Role 2: /tickets (TicketService). Role 3: ดึงรายการ helpdeskRequestId จาก GET /api/assignments (role 3 เรียก admin ไม่ได้) แล้วดึง GET helpdeskrequests/[id] ต่อรายการ
 import { useState, useEffect, useCallback, useMemo } from "react";
+import type { RefObject } from "react";
+import type { Toast } from "primereact/toast";
 import axiosClientsHelpDesk from "@/config/axiosClientsHelpDesk";
 import { formatDateTime } from "@/utils/dateUtils";
 import { Ticket, TicketRow, Assignee } from "./types";
@@ -11,6 +13,13 @@ import { useUserProfileStore } from "@/app/store/user/userProfileStore";
 const ASSIGNMENTS_ENDPOINT = "assignments";
 /** GET /api/helpdeskrequests/[id] — ดึงรายละเอียดใบแจ้งตาม helpdeskRequestId (role 3 ใช้ได้แค่ endpoint นี้) */
 const getHelpdeskRequestByIdPath = (id: number) => `helpdeskrequests/${id}`;
+/** GET /api/helpdeskstatus/selecthelpdeskstatus — ດຶງລາຍສະຖານະເພື່ອ filter (ໃຫ້ຕົງກັບ uikit/table) */
+const STATUS_ENDPOINT = "helpdeskstatus/selecthelpdeskstatus";
+/** ກຳລັງດຳເນີນການ — ໃຊ້ເມື່ອຮັບວຽກເອງ */
+const HELPDESK_STATUS_IN_PROGRESS = 2;
+/** ລໍຖ້າຮັບວຽກ — ໃຫ້ເບິ່ງ checkbox ເທົ່ານີ້ ເມື່ອປ່ຽນສະຖານະແລ້ວໃຫ້ checkbox ຫາຍໄປ */
+const STATUS_WAITING_ACCEPT = "ລໍຖ້າຮັບວຽກ";
+const getUpdateHelpdeskStatusPath = (id: number) => `helpdeskrequests/updatehelpdeskstatus/${id}`;
 
 /** Raw assignment (จาก GET helpdeskrequests/[id] หรือจาก assignments API) */
 interface RawAssignment {
@@ -106,6 +115,16 @@ function helpdeskDetailToTicket(detail: HelpdeskRequestDetail): Ticket {
 
 type StatusFilterOption = { label: string; value: string; icon?: string } | null;
 
+function normalizeStatusList(data: unknown): { id: number; name: string }[] {
+  if (Array.isArray(data)) return data as { id: number; name: string }[];
+  if (data && typeof data === "object" && "data" in data && Array.isArray((data as { data: unknown }).data)) {
+    return (data as { data: { id: number; name: string }[] }).data;
+  }
+  return [];
+}
+
+const ALL_STATUS_OPTION = { label: "ທັງໝົດ", value: "Allin" };
+
 function matchesGlobalFilter(ticket: Ticket, query: string): boolean {
   if (!query.trim()) return true;
   const q = query.toLowerCase().trim();
@@ -195,11 +214,12 @@ function normalizeTicket(raw: Record<string, unknown>): Ticket {
   };
 }
 
-export const useTicketTableTechn = () => {
+export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilterOption>(null);
+  const [statusOptions, setStatusOptions] = useState<{ label: string; value: string }[]>([ALL_STATUS_OPTION]);
   const [selectedTickets, setSelectedTickets] = useState<Ticket[]>([]);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [currentAssignees, setCurrentAssignees] = useState<Assignee[]>([]);
@@ -218,6 +238,57 @@ export const useTicketTableTechn = () => {
   /** Role 2: /api/tickets. Role 3: helpdeskrequests/admin แล้วกรองเฉพาะที่มอบหมายให้ current user */
   const shouldFetchTicketsRole2 = roleId === 2;
   const shouldFetchTicketsRole3 = roleId === 3;
+
+  useEffect(() => {
+    axiosClientsHelpDesk
+      .get(STATUS_ENDPOINT)
+      .then((response) => {
+        const list = normalizeStatusList(response.data);
+        const options: { label: string; value: string }[] = [
+          ALL_STATUS_OPTION,
+          ...list.map((item) => {
+            const name = typeof item.name === "string" ? item.name.trim() : String(item.name ?? "").trim();
+            return { label: name, value: name };
+          }),
+        ];
+        setStatusOptions(options);
+      })
+      .catch(() => setStatusOptions([ALL_STATUS_OPTION]));
+  }, []);
+
+  /** Role 3: ດຶງລາຍການຈາກ assignments ແລະ helpdeskrequests/[id] — ໃຊ້ທັງໃນ useEffect ແລະໃນ refetch */
+  const fetchRole3Tickets = useCallback(async () => {
+    if (!currentUserId) return;
+    setLoading(true);
+    try {
+      const response = await axiosClientsHelpDesk.get(ASSIGNMENTS_ENDPOINT, {
+        params: { assignedToId: currentUserId },
+      });
+      const list = normalizeAssignmentsResponse(response.data);
+      const mine = list.filter((a) => Number(a.assignedToId) === Number(currentUserId));
+      const myIds = mine
+        .map((a) => a.helpdeskRequestId)
+        .filter((id): id is number => typeof id === "number" && Number.isFinite(id));
+      const uniqueIds = Array.from(new Set(myIds));
+      if (uniqueIds.length === 0) {
+        setTickets([]);
+        return;
+      }
+      const details = await Promise.all(
+        uniqueIds.map((helpdeskRequestId) =>
+          axiosClientsHelpDesk
+            .get<HelpdeskRequestDetail>(getHelpdeskRequestByIdPath(helpdeskRequestId))
+            .then((res) => res.data)
+        )
+      );
+      const sorted = (details as HelpdeskRequestDetail[]).map(helpdeskDetailToTicket).sort((a, b) => Number(b.id) - Number(a.id));
+      setTickets(sorted);
+    } catch {
+      setTickets([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUserId]);
 
   useEffect(() => {
     if (!shouldFetchTicketsRole2) {
@@ -257,46 +328,39 @@ export const useTicketTableTechn = () => {
       }
       return;
     }
-    let cancelled = false;
-    setLoading(true);
-    axiosClientsHelpDesk
-      .get(ASSIGNMENTS_ENDPOINT, { params: { assignedToId: currentUserId } })
-      .then((response) => {
-        if (cancelled) return;
-        const list = normalizeAssignmentsResponse(response.data);
-        const mine = list.filter((a) => Number(a.assignedToId) === Number(currentUserId));
-        const myIds = mine
-          .map((a) => a.helpdeskRequestId)
-          .filter((id): id is number => typeof id === "number" && Number.isFinite(id));
-        const uniqueIds = Array.from(new Set(myIds));
-        if (uniqueIds.length === 0) {
-          setTickets([]);
-          setLoading(false);
-          return;
-        }
-        return Promise.all(
-          uniqueIds.map((helpdeskRequestId) =>
-            axiosClientsHelpDesk
-              .get<HelpdeskRequestDetail>(getHelpdeskRequestByIdPath(helpdeskRequestId))
-              .then((res) => res.data)
-          )
-        );
-      })
-      .then((details) => {
-        if (cancelled || !details) return;
-        const list = (details as HelpdeskRequestDetail[]).map(helpdeskDetailToTicket).sort((a, b) => Number(b.id) - Number(a.id));
-        setTickets(list);
-      })
-      .catch(() => {
-        if (!cancelled) setTickets([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+    fetchRole3Tickets();
+  }, [shouldFetchTicketsRole3, currentUserId, fetchRole3Tickets]);
+
+  const onAcceptSelf = useCallback(async () => {
+    const ids = Array.from(new Set(selectedTickets.map((t) => Number(t.id)).filter((id) => Number.isFinite(id))));
+    if (ids.length === 0) return;
+    try {
+      setLoading(true);
+      await Promise.all(
+        ids.map((id) =>
+          axiosClientsHelpDesk.put(getUpdateHelpdeskStatusPath(id), {
+            helpdeskStatusId: HELPDESK_STATUS_IN_PROGRESS,
+          })
+        )
+      );
+      setSelectedTickets([]);
+      await fetchRole3Tickets();
+      toastRef?.current?.show({
+        severity: "success",
+        summary: "ສຳເລັດ",
+        detail: "ຮັບວຽກເອງສຳເລັດ ສະຖານະເປັນກຳລັງດຳເນີນການ",
+        life: 3000,
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [shouldFetchTicketsRole3, currentUserId]);
+    } catch {
+      setLoading(false);
+      toastRef?.current?.show({
+        severity: "error",
+        summary: "ຜິດພາດ",
+        detail: "ຮັບວຽກເອງບໍ່ສຳເລັດ",
+        life: 4000,
+      });
+    }
+  }, [selectedTickets, fetchRole3Tickets, toastRef]);
 
   const filteredTickets = useMemo(() => {
     return tickets
@@ -333,11 +397,15 @@ export const useTicketTableTechn = () => {
     return rows;
   }, [filteredTickets, roleId]);
 
+  /** ສຳລັບ role 3: ໃຫ້ເບິ່ງ checkbox ເມື່ອຍັງລໍຖ້າຮັບວຽກເທົ່ານັ້ນ — ເມື່ອຮັບວຽກເອງແລ້ວ ແລະ ສະຖານະປ່ຽນແລ້ວ ໃຫ້ checkbox ຫາຍໄປ */
   const showCheckbox = useCallback(
     (row: TicketRow): boolean => {
       if (roleId === 1 || roleId === 2) return true;
       if (!row.rowAssignee) return false;
-      return isCurrentUserAssignee(row.rowAssignee.name, currentUserDisplayName);
+      const isMine = isCurrentUserAssignee(row.rowAssignee.name, currentUserDisplayName);
+      if (!isMine) return false;
+      const status = (row.status ?? "").trim();
+      return status === STATUS_WAITING_ACCEPT;
     },
     [roleId, currentUserDisplayName]
   );
@@ -394,6 +462,7 @@ export const useTicketTableTechn = () => {
     onGlobalFilterChange,
     statusFilter,
     setStatusFilter,
+    statusOptions,
     onCheckboxChange,
     onPriorityChange,
     dialogVisible,
@@ -403,5 +472,7 @@ export const useTicketTableTechn = () => {
     showCheckbox,
     showAction,
     getTicketFromRow,
+    refetch: fetchRole3Tickets,
+    onAcceptSelf,
   };
 };

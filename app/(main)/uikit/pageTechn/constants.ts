@@ -33,7 +33,8 @@ export const PRIORITY_MAP: Record<string, "success" | "info" | "warning" | "dang
     'ສູງ': 'danger',
     'ກາງ': 'warning',
     'ຕ່ຳ': 'success',
-    'ບໍ່ລະບຸ': null
+    'ບໍ່ລະບຸ': null,
+    'ທຳມະດາ': null,
 };
 
 export const ASSIGNEE_STATUS_MAP: Record<string, { label: string; severity: string }> = {

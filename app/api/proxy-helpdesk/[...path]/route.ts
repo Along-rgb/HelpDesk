@@ -9,18 +9,27 @@ function getBackendBaseUrl(): string {
   return base || 'https://api-test.edl.com.la/helpdesk/api';
 }
 
+/** Base for upload endpoints: .../helpdesk/upload (hdfile, hdimage) */
+function getUploadBaseUrl(): string {
+  const apiBase = (process.env.NEXT_PUBLIC_HELPDESK_API_BASE_URL ?? '').trim().replace(/\/$/, '');
+  const base = apiBase ? apiBase.replace(/\/api\/?$/, '').replace(/\/+$/, '') + '/upload' : 'https://api-test.edl.com.la/helpdesk/upload';
+  return base;
+}
+
 async function proxy(
   request: NextRequest,
   pathSegments: string[],
   method: string
 ): Promise<NextResponse> {
-  const base = getBackendBaseUrl();
   const path = pathSegments.filter(Boolean).join('/');
   if (!path) {
     return NextResponse.json({ error: 'Missing path' }, { status: 400 });
   }
+  const isUpload = path.startsWith('upload/');
+  const base = isUpload ? getUploadBaseUrl() : getBackendBaseUrl();
+  const targetPath = isUpload ? path.slice(7) : path; // upload/hdFile → hdFile
   const url = new URL(request.url);
-  const targetUrl = `${base}/${path}${url.search}`;
+  const targetUrl = `${base}/${targetPath}${url.search}`;
 
   const headers = new Headers();
   const auth = request.headers.get('Authorization');

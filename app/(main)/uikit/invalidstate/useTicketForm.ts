@@ -6,6 +6,12 @@ import { ticketService } from '@/app/services/ticketService';
 import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
 import { useUserProfileStore } from '@/app/store/user/userProfileStore';
 
+/** Endpoint: POST .../helpdesk/api/helpdeskrequests (baseURL มาจาก axiosClientsHelpDesk) */
+const HELPDESK_REQUESTS_PATH = 'helpdeskrequests';
+
+/** ข้อความเมื่อเจอ 413 Payload Too Large */
+const ERROR_413_MESSAGE = 'ขนาดไฟล์ใหญ่เกินไป กรุณาติดต่อ Admin เพื่อขยายสิทธิ์ Nginx';
+
 const INITIAL_FORM: TicketForm = {
     ticketId: null,
     topic: null,
@@ -110,14 +116,10 @@ export const useTicketForm = () => {
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             const newFiles = Array.from(e.target.files);
-            const allowedDocTypes = [
-                'application/pdf',
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            ];
+            const allowedDocTypes = ['application/pdf'];
             const hasInvalidFile = newFiles.some((file) => !allowedDocTypes.includes(file.type));
             if (hasInvalidFile) {
-                toastRef.current?.show({ severity: 'warn', summary: 'ແຈ້ງເຕືອນ', detail: 'ອະນຸຍາດແຕ່ PDF, DOCX ແລະ XLSX', life: 4000 });
+                toastRef.current?.show({ severity: 'warn', summary: 'ແຈ້ງເຕືອນ', detail: 'ອະນຸຍາດແຕ່ PDF', life: 4000 });
                 if (fileInputRef.current) fileInputRef.current.value = '';
                 return;
             }
@@ -126,7 +128,7 @@ export const useTicketForm = () => {
                 toastRef.current?.show({ severity: 'warn', summary: 'ແຈ້ງເຕືອນ', detail: 'ແນບໄຟລ໌ໄດ້ສູງສຸດ 2 ໄຟລ໌', life: 4000 });
                 return;
             }
-            const MAX_SIZE_MB = 30;
+            const MAX_SIZE_MB = 3;
             const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
             const totalSizeCurrent = currentFiles.reduce((acc, file) => acc + file.size, 0);
             const totalSizeNew = newFiles.reduce((acc, file) => acc + file.size, 0);
@@ -146,6 +148,8 @@ export const useTicketForm = () => {
         }));
     };
 
+    const IMAGE_MAX_SIZE_MB = 2;
+    const IMAGE_MAX_TOTAL_MB = 5;
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             const newFiles = Array.from(e.target.files);
@@ -159,6 +163,32 @@ export const useTicketForm = () => {
             const totalImages = form.images.length + newFiles.length;
             if (totalImages > 6) {
                 toastRef.current?.show({ severity: 'warn', summary: 'ແຈ້ງເຕືອນ', detail: 'ແນບຮູບໄດ້ສູງສຸດ 6 ຮູບ', life: 4000 });
+                return;
+            }
+            const maxPerImage = IMAGE_MAX_SIZE_MB * 1024 * 1024;
+            const maxTotalImages = IMAGE_MAX_TOTAL_MB * 1024 * 1024;
+            const currentTotal = form.images.reduce((acc, f) => acc + f.size, 0);
+            for (const file of newFiles) {
+                if (file.size > maxPerImage) {
+                    toastRef.current?.show({
+                        severity: 'warn',
+                        summary: 'ແຈ້ງເຕືອນ',
+                        detail: `ແນບຮູບຕໍ່ຮູບບໍ່ເກີນ ${IMAGE_MAX_SIZE_MB} MB`,
+                        life: 4000,
+                    });
+                    if (imageInputRef.current) imageInputRef.current.value = '';
+                    return;
+                }
+            }
+            const newTotal = newFiles.reduce((acc, f) => acc + f.size, 0);
+            if (currentTotal + newTotal > maxTotalImages) {
+                toastRef.current?.show({
+                    severity: 'warn',
+                    summary: 'ແຈ້ງເຕືອນ',
+                    detail: `ຂະໜາດຮູບລວມບໍ່ເກີນ ${IMAGE_MAX_TOTAL_MB} MB`,
+                    life: 4000,
+                });
+                if (imageInputRef.current) imageInputRef.current.value = '';
                 return;
             }
             setForm((prev) => ({ ...prev, images: [...prev.images, ...newFiles] }));
@@ -186,14 +216,30 @@ export const useTicketForm = () => {
 
     const handleCancel = () => router.back();
 
+    const PAYLOAD_MAX_MB = 8;
     const handleSubmit = async () => {
         if (form.ticketId == null) {
             toastRef.current?.show({ severity: 'warn', summary: 'ແຈ້ງເຕືອນ', detail: 'ກະລຸນາເລືອກຫົວຂໍ້ຈາກຫນ້າ ແຈ້ງບັນຫາ', life: 4000 });
             return;
         }
+        const totalFileSize =
+            form.attachments.reduce((acc, f) => acc + f.size, 0) +
+            form.images.reduce((acc, f) => acc + f.size, 0);
+        if (totalFileSize > PAYLOAD_MAX_MB * 1024 * 1024) {
+            toastRef.current?.show({
+                severity: 'warn',
+                summary: 'ແຈ້ງເຕືອນ',
+                detail: `ຂະໜາດໄຟລ໌+ຮູບລວມບໍ່ເກີນ ${PAYLOAD_MAX_MB} MB (ປ້ອງກັນ error 413)`,
+                life: 5000,
+            });
+            return;
+        }
 
         setIsSubmitting(true);
         try {
+            // FormData: Key hdFile = PDF 1 ไฟล์, Key hdImgs = append ซ้ำสำหรับหลายรูป
+            // baseURL = .../helpdesk/api (หรือ proxy), path = helpdeskrequests → POST multipart/form-data
+            // Authorization: ใส่โดย interceptor ใน axiosClientsHelpDesk (Bearer token)
             const formData = new FormData();
             formData.append('ticketId', String(form.ticketId));
             if (form.building?.code) formData.append('buildingId', form.building.code);
@@ -211,7 +257,7 @@ export const useTicketForm = () => {
                 formData.append('hdImgs', file);
             });
 
-            await axiosClientsHelpDesk.post('helpdeskrequests', formData);
+            await axiosClientsHelpDesk.post(HELPDESK_REQUESTS_PATH, formData);
 
             toastRef.current?.show({
                 severity: 'success',
@@ -228,10 +274,23 @@ export const useTicketForm = () => {
                     : '/auth/login';
             setTimeout(() => router.push(path), 800);
         } catch (err: unknown) {
-            const msg = err && typeof err === 'object' && 'response' in err
-                ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
-                : null;
-            const detail = typeof msg === 'string' ? msg : 'ເກີດຂໍ້ຜິດພາດໃນການສົ່ງຄຳຮ້ອງຂໍ';
+            const res = err && typeof err === 'object' && 'response' in err
+                ? (err as { response?: { status?: number; data?: { message?: string } } }).response
+                : undefined;
+            const status = res?.status;
+            const serverMsg = res?.data?.message;
+
+            if (status === 413) {
+                toastRef.current?.show({
+                    severity: 'error',
+                    summary: 'ເກີດຂໍ້ຜິດພາດ',
+                    detail: ERROR_413_MESSAGE,
+                    life: 6000,
+                });
+                return;
+            }
+
+            const detail = typeof serverMsg === 'string' ? serverMsg : 'ເກີດຂໍ້ຜິດພາດໃນການສົ່ງຄຳຮ້ອງຂໍ';
             toastRef.current?.show({
                 severity: 'error',
                 summary: 'ເກີດຂໍ້ຜິດພາດ',

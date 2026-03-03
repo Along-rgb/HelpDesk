@@ -1,9 +1,10 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Tag } from "primereact/tag";
 import { Checkbox } from "primereact/checkbox";
+import { Toast } from "primereact/toast";
 import { useRouter } from "next/navigation";
 import { useTicketTableTechn } from "./useTicketTableTechn";
 import { TicketRow } from "./types";
@@ -16,6 +17,7 @@ import { TitleBody, RequesterBody, AssigneeBody, AssigneeSingleBody } from "./Ti
 
 export default function PageTechnDemo() {
     const router = useRouter();
+    const toastRef = useRef<Toast>(null);
     const {
         displayRows,
         loading,
@@ -24,6 +26,7 @@ export default function PageTechnDemo() {
         onGlobalFilterChange,
         statusFilter,
         setStatusFilter,
+        statusOptions,
         onCheckboxChange,
         dialogVisible,
         currentAssignees,
@@ -32,7 +35,8 @@ export default function PageTechnDemo() {
         showCheckbox,
         showAction,
         getTicketFromRow,
-    } = useTicketTableTechn();
+        onAcceptSelf,
+    } = useTicketTableTechn(toastRef);
 
     const [first, setFirst] = useState(0);
 
@@ -40,6 +44,7 @@ export default function PageTechnDemo() {
 
     return (
         <div className="grid">
+            <Toast ref={toastRef} position="top-center" />
             <style dangerouslySetInnerHTML={{ __html: CUSTOM_TOOLTIP_CSS }} />
 
             <div className="col-12">
@@ -53,10 +58,11 @@ export default function PageTechnDemo() {
                     <TicketHeaderTechn
                         statusFilter={statusFilter}
                         setStatusFilter={setStatusFilter}
+                        statusOptions={statusOptions}
                         globalFilter={globalFilter}
                         onGlobalFilterChange={onGlobalFilterChange}
                         isSelectionEmpty={selectedTickets.length === 0}
-                        onAcceptSelf={() => {}}
+                        onAcceptSelf={onAcceptSelf}
                         onNewTicket={() => router.push("/uikit/GroupProblem")}
                         onNewService={() => router.push("/uikit/GroupServices")}
                     />
@@ -64,7 +70,10 @@ export default function PageTechnDemo() {
                         value={displayRows}
                         loading={loading}
                         paginator
-                        rows={10}
+                        rows={15}
+                        rowsPerPageOptions={[15, 25, 50]}
+                        paginatorTemplate="CurrentPageReport FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+                        currentPageReportTemplate="ສະແດງ {first} ເຖີງ {last} ຈາກທັງໝົດ {totalRecords} ລາຍການ"
                         dataKey="rowId"
                         size="small"
                         scrollable
@@ -163,18 +172,22 @@ export default function PageTechnDemo() {
                             header="ລຳດັບຄວາມສຳຄັນ"
                             style={{ minWidth: "130px" }}
                             {...centerProps}
-                            body={(rowData: TicketRow) => (
-                                <Tag
-                                    value={rowData.priority || "ບໍ່ລະບຸ"}
-                                    severity={PRIORITY_MAP[rowData.priority] as any}
-                                    style={{
-                                        fontSize: "0.95rem",
-                                        padding: "0.15rem 0.5rem",
-                                        backgroundColor: rowData.priority === "ບໍ່ລະບຸ" ? "#6c757d" : undefined,
-                                        color: rowData.priority === "ບໍ່ລະບຸ" ? "#fff" : undefined,
-                                    }}
-                                />
-                            )}
+                            body={(rowData: TicketRow) => {
+                                const p = rowData.priority || "ບໍ່ລະບຸ";
+                                const isNeutral = p === "ບໍ່ລະບຸ" || p === "ທຳມະດາ";
+                                return (
+                                    <Tag
+                                        value={p}
+                                        severity={(PRIORITY_MAP[p] ?? null) as any}
+                                        style={{
+                                            fontSize: "0.95rem",
+                                            padding: "0.15rem 0.5rem",
+                                            backgroundColor: isNeutral ? "#6c757d" : undefined,
+                                            color: isNeutral ? "#fff" : undefined,
+                                        }}
+                                    />
+                                );
+                            }}
                         />
 
                         <Column

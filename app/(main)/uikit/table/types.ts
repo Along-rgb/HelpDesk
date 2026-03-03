@@ -7,12 +7,13 @@ export interface HelpdeskRequestTicket {
   description?: string;
 }
 
-/** Employee nested under createdBy / assignedTo */
+/** Employee nested under createdBy / assignedTo (field ອີເມວ ตรงกับ profileUser: employee.email) */
 export interface Employee {
   id?: number;
   first_name?: string;
   last_name?: string;
   emp_code?: string;
+  email?: string;
   empimg?: string;
 }
 
@@ -105,6 +106,7 @@ export interface Ticket {
   assignDate?: string;
   status: string;
   priority: string;
+  priorityId?: number;
   verified: boolean;
   employeeId?: number | string;
   description?: string;
@@ -112,6 +114,10 @@ export interface Ticket {
   building?: string;
   level?: string;
   room?: string;
+  /** ອອກລິບມາ — turning.name จาก API */
+  turning?: string;
+  /** ເລກ ຊຄທ — numberSKT จาก API */
+  numberSKT?: string;
   division?: string;
   department?: string;
   email?: string;

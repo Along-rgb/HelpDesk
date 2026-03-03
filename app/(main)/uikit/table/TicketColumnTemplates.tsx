@@ -3,7 +3,7 @@ import React from "react";
 import Link from "next/link"; 
 import { Ticket, Assignee } from "./types";
 import { AssigneeAvatarGroup } from "./AssigneeAvatarGroup";
-import { ASSIGNEE_STATUS_MAP } from "./constants";
+import { ASSIGNEE_STATUS_MAP, STATUS_MAP } from "./constants";
 
 // ... (TitleBody และ RequesterBody เหมือนเดิม ไม่ต้องแก้)
 export const TitleBody = (rowData: Ticket) => (
@@ -23,15 +23,16 @@ export const TitleBody = (rowData: Ticket) => (
     </Link>
 );
 
-/** Requester: createdBy.employee first_name + last_name (or requester fallback) */
+/** Requester: แสดงแค่ชื่อในเซลล์, tooltip แสดงชื่อ + นามสกุล */
 export const RequesterBody = (rowData: Ticket) => {
     const fullName =
         rowData.requester ||
         [rowData.firstname_req, rowData.lastname_req].filter(Boolean).join(" ").trim() ||
         "—";
+    const displayName = rowData.firstname_req ?? (fullName !== "—" ? fullName.split(/\s+/)[0] ?? fullName : "—");
     return (
         <span className="js-tooltip-target cursor-pointer text-700" data-pr-tooltip={fullName} data-pr-position="top" style={{ whiteSpace: "nowrap" }}>
-            {fullName}
+            {displayName}
         </span>
     );
 };
@@ -57,48 +58,48 @@ export const AssigneeBody = (rowData: Ticket, action: (data: Assignee[]) => void
         displayData = [{ id: rowData.id, name: rowData.assignTo, status: 'doing' } as Assignee];
     }
 
-    if (displayData.length === 0) return <span className="text-500 text-sm italic">ວ່າງ</span>;
+    if (displayData.length === 0) return <span className="text-500 text-sm italic">ຍັງບໍ່ໄດ້ມອບໝາຍ</span>;
 
     if (displayData.length === 1) {
         const user = displayData[0];
         const statusInfo = ASSIGNEE_STATUS_MAP[user.status] || ASSIGNEE_STATUS_MAP['default'];
-        
-        // ✅ [FIXED] แก้ไข logic การตัดชื่อ
+        // ใช้สีตาม helpdesk status (จาก updatehelpdeskstatus) ให้ตรงกับคอลัมน์ ສະຖານະ
+        const helpdeskSeverity = rowData.status ? (STATUS_MAP[rowData.status] ?? null) : null;
+        let textColor = "text-700";
+        if (helpdeskSeverity === "info") textColor = "text-blue-500";
+        else if (helpdeskSeverity === "success") textColor = "text-green-500";
+        else if (helpdeskSeverity === "warning") textColor = "text-orange-500";
+        else if (helpdeskSeverity === "danger") textColor = "text-red-500";
+        else {
+            if (statusInfo.severity === "info") textColor = "text-blue-500";
+            else if (statusInfo.severity === "success") textColor = "text-green-500";
+            else if (statusInfo.severity === "warning") textColor = "text-orange-500";
+        }
+        const statusLabel = rowData.status || statusInfo.label;
+
         let displayName = user.name;
         if (displayName) {
-            // 1. Trim ช่องว่างซ้ายขวาก่อน (เผื่อใน DB มีเว้นวรรคหน้าชื่อ)
             const cleanName = displayName.trim();
             const parts = cleanName.split(' ');
-
-            // 2. เช็คว่าคำแรกเป็นคำนำหน้าชื่อหรือไม่ (เช่น ท., น., Mr., Ms., Dr.)
-            // หรือถ้า parts[0] มีจุด (.) อยู่ด้วย ให้เดาว่าเป็นคำนำหน้า
             const isTitle = parts[0] === 'ທ.' || parts[0] === 'ນ.' || parts[0].includes('.');
-
             if (parts.length > 1 && isTitle) {
-                // ถ้าเป็นคำนำหน้า ให้เอาคำที่ 2 (ชื่อจริง) มาต่อด้วย เช่น "ທ. ແສງປີຊາ"
                 displayName = `${parts[0]} ${parts[1]}`;
             } else {
-                // ถ้าไม่ใช่คำนำหน้า ให้เอาแค่คำแรกตามปกติ
                 displayName = parts[0];
             }
         }
-        
-        let textColor = "text-700";
-        if (statusInfo.severity === 'info') textColor = "text-blue-500";
-        else if (statusInfo.severity === 'success') textColor = "text-green-500";
-        else if (statusInfo.severity === 'warning') textColor = "text-orange-500";
-        
+
         return (
-            <div 
+            <div
                 className={`js-tooltip-target ${textColor} font-bold cursor-pointer text-sm`}
                 onClick={() => action(displayData)}
                 style={{ whiteSpace: 'nowrap' }}
-                data-pr-tooltip={`${user.name} | ${statusInfo.label}`} 
+                data-pr-tooltip={`${user.name} | ${statusLabel}`}
                 data-pr-position="bottom"
             >
                 {displayName}
             </div>
         );
     }
-    return <AssigneeAvatarGroup assignees={displayData} onClick={() => action(displayData)} />;
+    return <AssigneeAvatarGroup assignees={displayData} ticketStatus={rowData.status} onClick={() => action(displayData)} />;
 };

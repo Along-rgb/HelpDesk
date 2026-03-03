@@ -5,8 +5,8 @@ import { Column } from 'primereact/column';
 import { ColumnGroup } from 'primereact/columngroup';
 import { Row } from 'primereact/row';
 import { Tooltip } from 'primereact/tooltip';
-import { getGroupConfig, getViewConfig } from './utils/reportConfig';
-import { ReportItem } from './types';
+import { getGroupConfig, getViewConfig } from '../utils/reportConfig';
+import { ReportItem } from '../types';
 
 interface Props {
     data: ReportItem[];

@@ -8,7 +8,7 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { useReportData } from './hooks/useReportData';
 import { ReportHeaderControls } from './ReportHeaderControls';
-import { ReportTable } from './ReportTable';
+import { ReportTable } from './hooks/ReportTable';
 import { MENU_ITEMS } from './utils/reportConfig';
 import { ReportItem } from './types';
 import { saveAs } from 'file-saver';

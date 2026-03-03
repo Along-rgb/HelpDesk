@@ -7,10 +7,12 @@ import { ASSIGNEE_STATUS_MAP } from "./constants";
 
 interface Props {
     assignees: Assignee[];
+    /** helpdesk status (จาก updatehelpdeskstatus) ใช้แสดงใน tooltip ให้ตรงกับคอลัมน์ ສະຖານະ */
+    ticketStatus?: string;
     onClick: () => void;
 }
 
-export const AssigneeAvatarGroup = ({ assignees, onClick }: Props) => {
+export const AssigneeAvatarGroup = ({ assignees, ticketStatus, onClick }: Props) => {
     
     const safeAssignees = assignees || [];
 
@@ -36,7 +38,7 @@ export const AssigneeAvatarGroup = ({ assignees, onClick }: Props) => {
                 {safeAssignees.slice(0, 3).map((user) => {
                     // Logic Tooltip: ชื่อ | สถานะ
                     const statusInfo = ASSIGNEE_STATUS_MAP[user.status] || ASSIGNEE_STATUS_MAP['default'];
-                    const tooltipText = `${user.name} | ${statusInfo.label}`;
+                    const tooltipText = ticketStatus ? `${user.name} | ${ticketStatus}` : `${user.name} | ${statusInfo.label}`;
 
                     return (
                         <Avatar 

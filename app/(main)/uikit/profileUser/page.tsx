@@ -121,7 +121,7 @@ const ProfilePage = () => {
             />
             <FormInput
               label="ອີເມວ "
-              value={profileData?.email || ''}
+              value={profileData?.email ?? ''}
               disabled
               readOnly
             />

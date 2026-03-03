@@ -3,11 +3,14 @@ import React from "react";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
-import { STATUS_OPTIONS } from "./constants";
+import { STATUS_ICON_MAP, STATUS_ICON_FALLBACK } from "../table/constants";
+
+type StatusOption = { label: string; value: string };
 
 interface TicketHeaderTechnProps {
-    statusFilter: any;
-    setStatusFilter: (value: any) => void;
+    statusFilter: StatusOption | null;
+    setStatusFilter: (value: StatusOption | null) => void;
+    statusOptions: StatusOption[];
     globalFilter: string;
     onGlobalFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
     isSelectionEmpty?: boolean;
@@ -19,6 +22,7 @@ interface TicketHeaderTechnProps {
 export const TicketHeaderTechn = ({
     statusFilter,
     setStatusFilter,
+    statusOptions,
     globalFilter,
     onGlobalFilterChange,
     isSelectionEmpty = true,
@@ -26,11 +30,17 @@ export const TicketHeaderTechn = ({
     onNewTicket,
     onNewService
 }: TicketHeaderTechnProps) => {
-    const renderStatusOption = (option: any) => {
+    const getStatusIcon = (option: StatusOption | null) =>
+        option
+            ? STATUS_ICON_MAP[option.value] ?? STATUS_ICON_MAP[option.value?.trim() ?? ""] ?? STATUS_ICON_MAP[option.label] ?? STATUS_ICON_MAP[option.label?.trim() ?? ""] ?? STATUS_ICON_FALLBACK
+            : STATUS_ICON_FALLBACK;
+
+    const renderStatusOption = (option: StatusOption | null) => {
         if (!option) return <span>ເລືອກສະຖານະ</span>;
+        const iconClass = getStatusIcon(option);
         return (
             <div className="flex align-items-center gap-2">
-                <i className={option.icon}></i>
+                <i className={iconClass} />
                 <span>{option.label}</span>
             </div>
         );
@@ -42,7 +52,7 @@ export const TicketHeaderTechn = ({
                 <Dropdown
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.value)}
-                    options={STATUS_OPTIONS}
+                    options={statusOptions}
                     optionLabel="label"
                     placeholder="ເລືອກສະຖານະ"
                     className="p-inputtext-sm w-full md:w-12rem"

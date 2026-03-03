@@ -43,6 +43,8 @@ const RequestForm = () => {
   }, [profileData]);
 
   const grayFieldStyle = { backgroundColor: "#f4f4f4", fontWeight: "500" };
+  const grayDropdownStyle = { backgroundColor: "#f4f4f4", color: "#000", fontWeight: "500" };
+  const whiteFieldStyle = { backgroundColor: "#fff", color: "#000", fontWeight: "500" };
 
   return (
     <div className="relative pb-8">
@@ -85,7 +87,7 @@ const RequestForm = () => {
                 value={form.assetNumber}
                 onChange={(e) => updateField("assetNumber", e.target.value)}
                 className="w-full"
-                style={grayFieldStyle}
+                style={whiteFieldStyle}
                 placeholder="ກະລຸນາເພີ່ມເລກ ຊຄທ"
               />
             </div>
@@ -98,6 +100,7 @@ const RequestForm = () => {
               value={form.building}
               options={masterData?.buildings ?? []}
               onChange={(e) => handleBuildingChange(e.value)}
+              style={grayDropdownStyle}
             />
             <FormDropdown
               className="field col-12 md:col-4"
@@ -106,6 +109,7 @@ const RequestForm = () => {
               options={levelOptions}
               onChange={(e) => handleLevelChange(e.value)}
               disabled={!form.building}
+              style={grayDropdownStyle}
             />
             <div className="field col-12 md:col-4">
               <label htmlFor="room" className="font-bold block mb-2">
@@ -116,7 +120,7 @@ const RequestForm = () => {
                 value={form.room}
                 onChange={(e) => updateField("room", e.target.value)}
                 className="w-full"
-                style={grayFieldStyle}
+                style={whiteFieldStyle}
                 placeholder="ກະລຸນາປ້ອນໝາຍເລກຫ້ອງ"
               />
             </div>
@@ -131,7 +135,7 @@ const RequestForm = () => {
               value={form.phoneNumber ?? ""}
               onChange={(e) => updateField("phoneNumber", e.target.value)}
               className="w-full"
-              style={grayFieldStyle}
+              style={whiteFieldStyle}
               placeholder="ກະລຸນາເພີ່ມເບີໂທ"
             />
           </div>
@@ -143,6 +147,7 @@ const RequestForm = () => {
               onChange={(e) => updateField("route", e.value)}
               placeholder="ກະລຸນາເລືອກເສັ້ນທາງ"
               showClear
+              style={grayDropdownStyle}
             />
           </div>
 
@@ -156,7 +161,7 @@ const RequestForm = () => {
               onChange={(e) => updateField("description", e.target.value ?? "")}
               rows={5}
               className="w-full"
-              style={grayFieldStyle}
+              style={whiteFieldStyle}
               placeholder="ກະລຸນາປ້ອນລາຍລະອຽດ"
             />
           </div>
@@ -178,7 +183,7 @@ const RequestForm = () => {
                 className="hidden"
                 multiple
                 onChange={handleFileSelect}
-                accept=".pdf,.docx,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                accept=".pdf,application/pdf"
               />
               {form.attachments.length === 0 && (
                 <span className="text-500 text-sm">ຄິກທີ່ນີ້ເພື່ອແນບໄຟລ໌</span>

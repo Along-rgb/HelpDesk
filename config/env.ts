@@ -77,6 +77,12 @@ export const env = {
   get useLocalCategoryIconUpload() {
     return getEnv('NEXT_PUBLIC_USE_LOCAL_CATEGORY_ICON_UPLOAD', 'false').toLowerCase() === 'true';
   },
+  /** Base สำหรับอัปโหลด hdfile / hdimage: .../helpdesk/upload (ไม่รวม /api) */
+  get helpdeskUploadRequestBaseUrl() {
+    const apiBase = getEnv('NEXT_PUBLIC_HELPDESK_API_BASE_URL', getIsDev() ? devFallback.helpdeskApiUrl : '');
+    if (!apiBase.trim()) return getIsDev() ? 'https://api-test.edl.com.la/helpdesk/upload' : '';
+    return apiBase.trim().replace(/\/api\/?$/, '').replace(/\/+$/, '') + '/upload';
+  },
   /** ใช้ proxy /api/proxy-helpdesk เพื่อ bypass CORS (frontend localhost → API อีก domain) */
   get useHelpdeskProxy() {
     return getEnv('NEXT_PUBLIC_USE_HELPDESK_PROXY', 'false').toLowerCase() === 'true';

@@ -1,18 +1,34 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "primereact/button";
 import { Panel } from "primereact/panel";
-import { Tag } from "primereact/tag";
 import { Dropdown } from "primereact/dropdown";
 import { TabView, TabPanel } from "primereact/tabview";
+import { Toast } from "primereact/toast";
 import { Ticket } from "@/app/(main)/uikit/table/types";
-import { ticketService } from "@/app/services/ticketService";
-import { STATUS_MAP } from "@/app/(main)/uikit/table/constants";
+import { STATUS_MAP, STATUS_ICON_MAP, STATUS_ICON_FALLBACK } from "@/app/(main)/uikit/table/constants";
+import { normalizeHelpdeskRow, unwrapHelpdeskResponse } from "@/app/(main)/uikit/table/normalizeHelpdeskRow";
+import type { HelpdeskRowInput } from "@/app/(main)/uikit/table/normalizeHelpdeskRow";
+import axiosClientsHelpDesk from "@/config/axiosClientsHelpDesk";
+import { useUserProfileStore } from "@/app/store/user/userProfileStore";
+
+/** Role 3 = Staff — ບໍ່ໃຫ້ເຫັນ ມອບໝາຍວຽກ */
+const ROLE_ID_STAFF = 3;
+/** ສະຖານະທີ່ໃຫ້ເຫັນປຸ່ມ ຮັບວຽກເອງ (ເມື່ອປ່ຽນແລ້ວປຸ່ມຫາຍ — ໃຫ້ຕົງກັບ pageTechn checkbox) */
+const STATUS_WAITING_ACCEPT = "ລໍຖ້າຮັບວຽກ";
+/** ກຳລັງດຳເນີນການ — ໃຊ້ເມື່ອຮັບວຽກເອງ (เหมือน pageTechn) */
+const HELPDESK_STATUS_IN_PROGRESS = 2;
+const getUpdateHelpdeskStatusPath = (id: number) => `helpdeskrequests/updatehelpdeskstatus/${id}`;
+
+const HELPDESK_REQUEST_BY_ID = (id: string | number) => `helpdeskrequests/${id}`;
+/** Endpoint เดียวกับ uikit/profileUser — ใช้ดึง ອີເມວ (employee.email) */
+const USER_PROFILE_BY_ID = (id: string | number) => `users/${id}`;
 
 export default function TicketDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const roleId = useUserProfileStore((s) => s.currentUser?.roleId ?? null);
     const [ticket, setTicket] = useState<Ticket | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -22,17 +38,78 @@ export default function TicketDetailPage() {
     const [technicians, setTechnicians] = useState([]);
     const [selectedAssignee, setSelectedAssignee] = useState(null);
 
+    /** ອີເມວ: ดึงจาก endpoint เดียวกับ profileUser (GET users/:id) */
+    const [requesterEmail, setRequesterEmail] = useState<string>("");
+    const [acceptLoading, setAcceptLoading] = useState(false);
+    const toastRef = useRef<Toast | null>(null);
+
+    const fetchTicket = useCallback((id: string) => {
+        setLoading(true);
+        return axiosClientsHelpDesk
+            .get(HELPDESK_REQUEST_BY_ID(id))
+            .then((response) => {
+                const row = unwrapHelpdeskResponse<HelpdeskRowInput>(response.data);
+                const normalized = row ? normalizeHelpdeskRow(row) : null;
+                setTicket(normalized);
+            })
+            .catch(() => setTicket(null))
+            .finally(() => setLoading(false));
+    }, []);
+
     useEffect(() => {
         const id = params.id;
-        if (id) {
-            setLoading(true);
-            ticketService.getTickets().then((data) => {
-                const foundTicket = (data as Ticket[]).find(t => t.id.toString() === id.toString());
-                setTicket(foundTicket || null);
-                setLoading(false);
-            });
+        if (!id || typeof id !== "string") return;
+        fetchTicket(id);
+    }, [params.id, fetchTicket]);
+
+    const handleAcceptWork = useCallback(() => {
+        if (!ticket || ticket.status !== STATUS_WAITING_ACCEPT) return;
+        const id = Number(ticket.id);
+        if (!Number.isFinite(id)) return;
+        setAcceptLoading(true);
+        axiosClientsHelpDesk
+            .put(getUpdateHelpdeskStatusPath(id), { helpdeskStatusId: HELPDESK_STATUS_IN_PROGRESS })
+            .then(() => {
+                toastRef.current?.show({
+                    severity: "success",
+                    summary: "ສຳເລັດ",
+                    detail: "ຮັບວຽກເອງສຳເລັດ ສະຖານະເປັນກຳລັງດຳເນີນການ",
+                    life: 3000,
+                });
+                return fetchTicket(String(id));
+            })
+            .catch(() => {
+                toastRef.current?.show({
+                    severity: "error",
+                    summary: "ຜິດພາດ",
+                    detail: "ຮັບວຽກເອງບໍ່ສຳເລັດ",
+                    life: 4000,
+                });
+            })
+            .finally(() => setAcceptLoading(false));
+    }, [ticket, fetchTicket]);
+
+    /** ดึง ອີເມວ จาก GET users/:id (endpoint เดียวกับ profileUser) */
+    useEffect(() => {
+        if (!ticket?.employeeId) {
+            setRequesterEmail("");
+            return;
         }
-    }, [params.id]);
+        const userId = String(ticket.employeeId);
+        axiosClientsHelpDesk
+            .get(USER_PROFILE_BY_ID(userId), {
+                params: { _ts: Date.now() },
+                headers: { "Cache-Control": "no-store", Pragma: "no-cache" },
+            })
+            .then((res) => {
+                const raw = res.data?.data ?? res.data;
+                const email =
+                    (raw && typeof raw === "object" && (raw as { employee?: { email?: string } }).employee?.email) ??
+                    (raw && typeof raw === "object" ? (raw as { email?: string }).email : null);
+                setRequesterEmail(email != null && String(email).trim() !== "" ? String(email).trim() : "");
+            })
+            .catch(() => setRequesterEmail(""));
+    }, [ticket?.employeeId]);
 
     if (loading) return <div className="p-4 text-xl">ກໍາລັງໂຫຼດຂໍ້ມູນ...</div>;
     if (!ticket) return <div className="p-4 text-xl">ບໍ່ພົບຂໍ້ມູນ Ticket ID: {params.id}</div>;
@@ -41,6 +118,7 @@ export default function TicketDetailPage() {
 
     return (
         <div className="surface-ground px-4 py-5 md:px-6 lg:px-8">
+            <Toast ref={toastRef} position="top-center" />
             <div className="surface-card shadow-2 border-round bg-white overflow-hidden">
                 <div className="grid list-none m-0">
 
@@ -57,21 +135,28 @@ export default function TicketDetailPage() {
                                     className="border-1 border-300 text-700"
                                     onClick={() => router.back()}
                                 />
-                                <Dropdown
-                                    value={selectedAssignee}
-                                    onChange={(e) => setSelectedAssignee(e.value)}
-                                    options={technicians}
-                                    optionLabel="name"
-                                    placeholder="ມອບໝາຍວຽກ"
-                                    className="w-16rem"
-                                    emptyMessage="ບໍ່ພົບລາຍຊື່"
-                                    pt={{ root: { className: 'border-1 border-300' } }}
-                                />
-                                <Button
-                                    label="ຮັບວຽກເອງ"
-                                    icon="pi pi-check"
-                                    className="surface-700 border-none text-white hover:surface-800"
-                                />
+                                {roleId !== ROLE_ID_STAFF && (
+                                    <Dropdown
+                                        value={selectedAssignee}
+                                        onChange={(e) => setSelectedAssignee(e.value)}
+                                        options={technicians}
+                                        optionLabel="name"
+                                        placeholder="ມອບໝາຍວຽກ"
+                                        className="w-16rem"
+                                        emptyMessage="ບໍ່ພົບລາຍຊື່"
+                                        pt={{ root: { className: 'border-1 border-300' } }}
+                                    />
+                                )}
+                                {ticket.status === STATUS_WAITING_ACCEPT && (
+                                    <Button
+                                        label="ຮັບວຽກເອງ"
+                                        icon="pi pi-check"
+                                        className="surface-700 border-none text-white hover:surface-800"
+                                        loading={acceptLoading}
+                                        disabled={acceptLoading}
+                                        onClick={handleAcceptWork}
+                                    />
+                                )}
                             </div>
 
                             <div className="flex align-items-center gap-2 mt-3 md:mt-0 w-full md:w-auto justify-content-end">
@@ -99,7 +184,7 @@ export default function TicketDetailPage() {
                         <div className="mb-4">
                             <h2 className="m-0 text-900 font-bold text-3xl mb-2">#{ticket.id} {ticket.title}</h2>
                             <span className="text-600 text-base">
-                                ໂດຍ: [{ticket.employeeId}]-{requesterName} | ເວລາ: {ticket.date}
+                                ໂດຍ: [{ticket.emp_code ?? ''}]-{requesterName} | ເວລາ: {ticket.date}
                             </span>
                         </div>
 
@@ -154,13 +239,18 @@ export default function TicketDetailPage() {
                                 <ul className="list-none p-0 m-0 text-base">
                                     <li className="flex align-items-center py-3 border-bottom-1 surface-border">
                                         <span className="text-900 font-medium w-6rem">ສະຖານະ:</span>
-                                        <div className="flex-1">
-                                            <Tag
-                                                icon="pi pi-clock"
-                                                value={ticket.status}
-                                                severity={STATUS_MAP[ticket.status] as any}
-                                                className="px-2 py-1 text-base"
-                                            />
+                                        <div className="flex-1 flex align-items-center gap-2">
+                                            {(() => {
+                                                const severity = STATUS_MAP[ticket.status] ?? null;
+                                                const iconClass = STATUS_ICON_MAP[ticket.status] ?? STATUS_ICON_MAP[ticket.status?.trim() ?? ''] ?? STATUS_ICON_FALLBACK;
+                                                const textColor = severity === 'success' ? 'text-green-600' : severity === 'info' ? 'text-blue-600' : severity === 'warning' ? 'text-orange-600' : severity === 'danger' ? 'text-red-600' : 'text-700';
+                                                return (
+                                                    <>
+                                                        <i className={`${iconClass} ${textColor}`} style={{ fontSize: '1rem' }} />
+                                                        <span className={`font-medium ${textColor}`}>{ticket.status || '—'}</span>
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     </li>
                                     <li className="flex align-items-start py-3 border-bottom-1 surface-border">
@@ -169,7 +259,7 @@ export default function TicketDetailPage() {
                                     </li>
                                     <li className="flex align-items-start py-3 border-bottom-1 surface-border">
                                         <span className="text-900 font-medium w-6rem">ຜູ້ຮ້ອງຂໍ:</span>
-                                        <span className="text-700 flex-1">[{ticket.id}]-{requesterName}</span>
+                                        <span className="text-700 flex-1">[{ticket.emp_code ?? ''}]-{requesterName}</span>
                                     </li>
                                     <li className="flex align-items-start py-3 border-bottom-1 surface-border">
                                         <span className="text-900 font-medium w-6rem">ຝ່າຍ:</span>
@@ -178,6 +268,10 @@ export default function TicketDetailPage() {
                                     <li className="flex align-items-start py-3 border-bottom-1 surface-border">
                                         <span className="text-900 font-medium w-6rem">ພະແນກ:</span>
                                         <span className="text-700 flex-1">{ticket.division || '-'}</span>
+                                    </li>
+                                    <li className="flex align-items-start py-3 border-bottom-1 surface-border">
+                                        <span className="text-900 font-medium w-6rem">ເລກ ຊຄທ :</span>
+                                        <span className="text-700 flex-1">{ticket.numberSKT ?? '-'}</span>
                                     </li>
                                     <li className="flex align-items-start py-3 border-bottom-1 surface-border">
                                         <span className="text-900 font-medium w-6rem">ສະຖານທີ່:</span>
@@ -194,13 +288,17 @@ export default function TicketDetailPage() {
                                         <span className="text-700 font-bold flex-1">{ticket.room || '502'}</span>
                                     </li>
                                     <li className="flex align-items-start py-3 border-bottom-1 surface-border">
+                                        <span className="text-900 font-medium w-6rem">ອອກລິບມາ:</span>
+                                        <span className="text-700 flex-1">{ticket.turning ?? '-'}</span>
+                                    </li>
+                                    <li className="flex align-items-start py-3 border-bottom-1 surface-border">
                                         <span className="text-900 font-medium w-6rem">ເບີໂທ:</span>
                                         <span className="text-700 flex-1">{ticket.contactPhone || '020 9999 9999'}</span>
                                     </li>
                                     <li className="flex align-items-start py-3">
-                                        <span className="text-900 font-medium w-6rem">ອີເມວ:</span>
+                                        <span className="text-900 font-medium w-6rem">ອີເມວ :</span>
                                         <span className="text-700 flex-1" style={{ wordBreak: 'break-all' }}>
-                                            {ticket.email || 'viengkhongkc@gmail.com'}
+                                            {requesterEmail}
                                         </span>
                                     </li>
                                 </ul>
