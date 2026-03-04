@@ -27,11 +27,12 @@ yarn-error.log*
 
 # local env files (ห้าม commit ค่าจริง/ความลับ)
 .env
+.env*
+!.env.example
 .env*.local
 .env.development
 .env.production
 .env.test
-!.env.example
 
 # demo uploads (local category icons)
 /public/uploads/

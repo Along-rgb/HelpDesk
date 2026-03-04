@@ -21,10 +21,10 @@ const getIsDev = (): boolean =>
 /** Path ตาม Backend: subdomain/upload/categoryicon (ไม่มี s ท้าย categoryicon) */
 const UPLOAD_CATEGORYICON_PATH = '/upload/categoryicon';
 
-/** ค่า fallback เฉพาะตอน development — ไม่ใส่ URL production; ตั้งใน .env.local */
+/** ค่า fallback เมื่อ process.env ไม่ตั้ง — ใช้เมื่อ .env.local ไม่มีหรือว่าง (dev/test) */
 const devFallback = {
   appUrl: 'http://localhost:3500',
-  helpdeskApiUrl: '',
+  helpdeskApiUrl: 'https://api-test.edl.com.la/helpdesk/api',
   helpdeskUploadBaseUrl: '',
   ticketsApiUrl: 'http://localhost:3501',
   reportsApiUrl: 'http://localhost:3000/api',
@@ -39,6 +39,7 @@ export const env = {
   get ogImageUrl() {
     return getEnv('NEXT_PUBLIC_OG_IMAGE_URL', '');
   },
+  /** อ่านจาก process.env.NEXT_PUBLIC_HELPDESK_API_BASE_URL; fallback localhost เฉพาะโหมด development */
   get helpdeskApiUrl() {
     return getEnv('NEXT_PUBLIC_HELPDESK_API_BASE_URL', getIsDev() ? devFallback.helpdeskApiUrl : '');
   },
