@@ -46,9 +46,6 @@ export default function Loginform(props: ILoginformProps) {
       const resp: any = await loginUser(data);
       if (resp.status == 201 || resp.status === 200) {
         showMessage("success", "ຂໍຄວາມກະລຸນາ", "ສຳເລັດ");
-        localStorage.setItem('token', resp?.data?.data?.accessToken);
-        document.cookie = '';
-        localStorage.setItem('lastime', Date.now().toString());
         setAuthData(resp?.data?.data);
         setTimeout(() => {
           router.push('/');

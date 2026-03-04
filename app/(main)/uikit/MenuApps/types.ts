@@ -87,30 +87,6 @@ export interface CreateIssuePayload {
     iconId?: number;
 }
 
-// --- Service Request Types ---
-export interface ServiceRequestData {
-    id: number;
-    name: string;
-    description: string;
-    status: string;
-    createdAt?: string;
-    parentId?: number;    
-    parentName?: string;
-    supportTeamId?: number;
-    supportTeamName?: string;
-    iconId?: number;
-    iconUrl?: string;
-}
-
-export interface CreateServiceRequestPayload {
-    name: string;
-    description: string;
-    status: string;
-    parentId?: number;
-    supportTeamId?: number;
-    iconId?: number;
-}
-
 // --- Icon (Tab ເພີ່ມໄອຄອນ) - ใช้ร่วม Service Request & Issue ---
 /** Response from GET /api/categoryicons/selectcategoryicon — ใช้ map id → catIcon (ชื่อไฟล์/URL) */
 export interface CategoryIconSelectItem {
@@ -237,12 +213,6 @@ export enum BuildingTabs {
 }
 
 export enum IssueTabs {
-    CATEGORY = 0,
-    TOPIC = 1,
-    ICON = 2
-}
-
-export enum ServiceRequestTabs {
     CATEGORY = 0,
     TOPIC = 1,
     ICON = 2

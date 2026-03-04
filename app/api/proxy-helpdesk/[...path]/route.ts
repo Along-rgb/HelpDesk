@@ -5,15 +5,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 function getBackendBaseUrl(): string {
-  const base = (process.env.NEXT_PUBLIC_HELPDESK_API_BASE_URL ?? '').trim().replace(/\/$/, '');
-  return base || 'https://api-test.edl.com.la/helpdesk/api';
+  return (process.env.NEXT_PUBLIC_HELPDESK_API_BASE_URL ?? '').trim().replace(/\/$/, '');
 }
 
 /** Base for upload endpoints: .../helpdesk/upload (hdfile, hdimage) */
 function getUploadBaseUrl(): string {
   const apiBase = (process.env.NEXT_PUBLIC_HELPDESK_API_BASE_URL ?? '').trim().replace(/\/$/, '');
-  const base = apiBase ? apiBase.replace(/\/api\/?$/, '').replace(/\/+$/, '') + '/upload' : 'https://api-test.edl.com.la/helpdesk/upload';
-  return base;
+  if (!apiBase) return '';
+  return apiBase.replace(/\/api\/?$/, '').replace(/\/+$/, '') + '/upload';
 }
 
 async function proxy(
@@ -27,6 +26,12 @@ async function proxy(
   }
   const isUpload = path.startsWith('upload/');
   const base = isUpload ? getUploadBaseUrl() : getBackendBaseUrl();
+  if (!base) {
+    return NextResponse.json(
+      { error: 'Proxy not configured. Set NEXT_PUBLIC_HELPDESK_API_BASE_URL in .env' },
+      { status: 503 }
+    );
+  }
   const targetPath = isUpload ? path.slice(7) : path; // upload/hdFile → hdFile
   const url = new URL(request.url);
   const targetUrl = `${base}/${targetPath}${url.search}`;

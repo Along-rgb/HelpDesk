@@ -55,10 +55,6 @@ export async function GET(request: NextRequest) {
   const file = request.nextUrl.searchParams.get('file');
   const base = getUploadBaseUrl();
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[proxy-icon] file:', file ?? '(missing)', '| base:', base || '(empty — set NEXT_PUBLIC_HELPDESK_UPLOAD_BASE_URL)');
-  }
-
   if (!file || typeof file !== 'string' || !file.trim()) {
     return NextResponse.json(
       { error: 'Missing or invalid file parameter' },
@@ -67,9 +63,6 @@ export async function GET(request: NextRequest) {
   }
 
   const url = resolveImageUrl(file, base);
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[proxy-icon] url (resolveImageUrl):', url ?? '(null)');
-  }
 
   if (!url) {
     return NextResponse.json(
@@ -80,10 +73,6 @@ export async function GET(request: NextRequest) {
 
   const name = safeFilename(file.trim().replace(/^\//, ''));
   const isSimpleFilename = name && !name.includes('/');
-
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[proxy-icon] Final Proxy URL:', url);
-  }
 
   try {
     const res = await fetch(url, { cache: 'force-cache', next: { revalidate: 3600 } });
@@ -100,10 +89,6 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    if (process.env.NODE_ENV === 'development') {
-      console.error('[proxy-icon] Fetch not OK — status:', res.status, '| url:', url);
-    }
-
     if (res.status === 404 && isSimpleFilename) {
       const filenameOnly = toSimpleFilename(name);
       const subdomain = base.replace(/\/upload\/categoryicon\/?$/i, '');
@@ -112,9 +97,6 @@ export async function GET(request: NextRequest) {
         try {
           const resFallback = await fetch(fallbackUrl, { cache: 'no-store' });
           if (resFallback.ok) {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('[proxy-icon] Served from fallback URL:', fallbackUrl);
-            }
             let contentType = resFallback.headers.get('content-type') || 'image/svg+xml';
             if (contentType.includes(';')) contentType = contentType.split(';')[0].trim();
             const body = await resFallback.arrayBuffer();
@@ -150,14 +132,8 @@ export async function GET(request: NextRequest) {
     if (process.env.NODE_ENV === 'development') payload.attemptedUrl = url;
     return NextResponse.json(payload, { status: 404 });
   } catch (err) {
-    if (process.env.NODE_ENV === 'development') {
-      const message = err instanceof Error ? err.message : String(err);
-      const name = err instanceof Error ? err.name : 'Error';
-      console.error('[proxy-icon] Proxy fetch failed — url:', url, '| error:', name, message);
-      if (err instanceof Error && err.cause) {
-        console.error('[proxy-icon] cause:', err.cause);
-      }
-    }
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[proxy-icon] Proxy fetch failed:', message);
     return NextResponse.json({ error: 'Proxy fetch failed' }, { status: 502 });
   }
 }

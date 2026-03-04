@@ -171,22 +171,18 @@ export const useUserProfileStore = create<UserProfileState>()(
         // =========================================
         fetchUserProfile: async () => {
           const { currentUser } = get();
-          const LOG = (msg: string, data?: unknown) => { console.log('[profileUser]', msg, data !== undefined ? data : ''); };
 
           if (hasFullRelations(currentUser)) {
-            LOG('fetchUserProfile: ໃຊ້ currentUser ໃນ store (relations ຄົບ)');
             const profileData = mapUserToProfileData(currentUser!);
             set({ profileData, loading: false, error: null });
             return;
           }
 
           set({ loading: true, error: null });
-          LOG('fetchUserProfile start', { hasCurrentUser: !!currentUser });
 
           try {
             const token = getTokenFromStorage();
             if (!token) {
-              LOG('fetchUserProfile: ບໍ່ມີ token');
               set({ error: 'ກະລຸນາເຂົ້າລະບົບກ່ອນ', loading: false });
               return;
             }
@@ -199,10 +195,8 @@ export const useUserProfileStore = create<UserProfileState>()(
                 auth?.employeeId ??
                 ''
             );
-            LOG('auth ids', { userId, empId });
 
             if (!empId && !userId) {
-              console.warn('[profileUser] fetchUserProfile: ບໍ່ພົບ userId/employeeId');
               set({ error: 'ບໍ່ພົບຂໍ້ມູນຜູ້ໃຊ້ ກະລຸນາ Login ໃໝ່', loading: false });
               clearAppSession();
               return;
@@ -210,7 +204,6 @@ export const useUserProfileStore = create<UserProfileState>()(
 
             let userData: UserProfile.UserLoginResponse | null = null;
             const idsToTry = userId ? [userId, empId].filter(Boolean) : [empId];
-            LOG('GET users/:id ລອງລຳດັບ', idsToTry);
 
             for (const id of idsToTry) {
               if (!id) continue;
@@ -224,19 +217,15 @@ export const useUserProfileStore = create<UserProfileState>()(
                   const normalized = normalizeUserResponse(raw);
                   if (normalized?.employee) {
                     userData = normalized;
-                    LOG('GET users/:id ok', { id, userId: (userData as { id?: number }).id });
                     break;
                   }
                 }
-              } catch (e) {
-                const err = e as { response?: { status?: number }; message?: string };
-                console.warn('[profileUser] GET users/' + id + ' failed', err?.response?.status ?? err?.message);
+              } catch {
                 continue;
               }
             }
 
             if (!userData) {
-              LOG('fallback: GET users (list)');
               const response = await axiosClientsHelpDesk.get('users', {
                 params: { _ts: Date.now() },
                 headers: { 'Cache-Control': 'no-store', Pragma: 'no-cache' },
@@ -254,7 +243,6 @@ export const useUserProfileStore = create<UserProfileState>()(
                       String(u.id) === empId)
                   ) {
                     userData = u;
-                    LOG('GET users list ພົບ user', { empId });
                     break;
                   }
                 }
@@ -268,7 +256,6 @@ export const useUserProfileStore = create<UserProfileState>()(
                 (userId != null && String((userData as { id?: number }).id) === userId));
             if (idMatches && userData?.employee) {
               const profileData = mapUserToProfileData(userData);
-              LOG('fetchUserProfile success', { fullName: profileData?.fullName });
               set({
                 currentUser: userData,
                 profileData,
@@ -276,7 +263,6 @@ export const useUserProfileStore = create<UserProfileState>()(
                 error: null,
               });
             } else {
-              console.warn('[profileUser] fetchUserProfile: ບໍ່ພົບຂໍ້ມູນຜູ້ໃຊ້ໃນລະບົບ', { userId, empId });
               set({
                 error: 'ບໍ່ພົບຂໍ້ມູນຜູ້ໃຊ້ໃນລະບົບ',
                 loading: false,
@@ -289,7 +275,7 @@ export const useUserProfileStore = create<UserProfileState>()(
               err?.response?.data?.message ||
               (err instanceof Error ? err.message : null) ||
               (err?.response?.status === 403 ? 'ບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນ' : 'ບໍ່ສາມາດດຶງຂໍ້ມູນໄດ້');
-            console.error('[profileUser] fetchUserProfile error', { message, status: err?.response?.status, data: err?.response?.data });
+            console.error('[profileUser] fetchUserProfile error:', message, 'status:', err?.response?.status);
             set({ error: message, loading: false });
           }
         },

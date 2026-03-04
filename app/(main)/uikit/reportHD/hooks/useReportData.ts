@@ -38,10 +38,11 @@ export function useReportData(activeIndex: number, dateRange: Date[] | any) {
                 if (!controller.signal.aborted) {
                     setData(result);
                 }
-            } catch (err: any) {
-                // กรอง Error ที่เกิดจากการ Cancel ทิ้งไป
-                if (!controller.signal.aborted && err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED') {
-                    console.error(err);
+            } catch (err: unknown) {
+                const e = err as { name?: string; code?: string };
+                if (!controller.signal.aborted && e.name !== 'CanceledError' && e.code !== 'ERR_CANCELED') {
+                    const message = err instanceof Error ? err.message : String(err);
+                    console.error('Report fetch error:', message);
                     setError("ເກີດຂໍ້ຜິດພາດກະລຸນາລໍຖ້າ");
                     setData([]);
                 }

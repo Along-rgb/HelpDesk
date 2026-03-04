@@ -33,16 +33,5 @@ export const MENU_ITEMS: MenuItem[] = [
             { label: 'ລາຍການຫົວຂໍ້', tabIndex: 1 },
             { label: 'ເພີ່ມໄອຄອນ', tabIndex: 2 }
         ]
-    },
-    {
-        id: 'services',
-        title: 'ການຮ້ອງຂໍບໍລິການ',
-        icon: 'pi pi-shopping-cart',
-        path: '/uikit/MenuApps/Detail-category_Service_Requests',
-        subMenus: [
-            { label: 'ໝວດໝູ່', tabIndex: 0 },
-            { label: 'ລາຍການຫົວຂໍ້', tabIndex: 1 },
-            { label: 'ເພີ່ມໄອຄອນ', tabIndex: 2 }
-        ]
-    } 
+    }
 ];

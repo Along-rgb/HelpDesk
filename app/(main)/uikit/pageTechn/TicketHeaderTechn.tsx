@@ -13,10 +13,6 @@ interface TicketHeaderTechnProps {
     statusOptions: StatusOption[];
     globalFilter: string;
     onGlobalFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    isSelectionEmpty?: boolean;
-    onAcceptSelf?: () => void;
-    onNewTicket: () => void;
-    onNewService: () => void;
 }
 
 export const TicketHeaderTechn = ({
@@ -24,11 +20,7 @@ export const TicketHeaderTechn = ({
     setStatusFilter,
     statusOptions,
     globalFilter,
-    onGlobalFilterChange,
-    isSelectionEmpty = true,
-    onAcceptSelf,
-    onNewTicket,
-    onNewService
+    onGlobalFilterChange
 }: TicketHeaderTechnProps) => {
     const getStatusIcon = (option: StatusOption | null) =>
         option
@@ -60,14 +52,6 @@ export const TicketHeaderTechn = ({
                     itemTemplate={renderStatusOption}
                     valueTemplate={renderStatusOption}
                 />
-                <Button
-                    label="ຮັບວຽກເອງ"
-                    icon="pi pi-check"
-                    severity="secondary"
-                    size="small"
-                    disabled={isSelectionEmpty}
-                    onClick={onAcceptSelf}
-                />
             </div>
             <div className="flex flex-wrap gap-2 align-items-center justify-content-end">
                 <span className="p-input-icon-left w-full md:w-auto">
@@ -79,8 +63,6 @@ export const TicketHeaderTechn = ({
                         className="p-inputtext-sm w-full md:w-15rem"
                     />
                 </span>
-                <Button label="ແຈ້ງບັນຫາໃໝ່" icon="pi pi-send" severity="danger" size="small" onClick={onNewTicket} />
-                <Button label="ຂໍບໍລິການໃໝ່" icon="pi pi-shopping-cart" severity="success" size="small" onClick={onNewService} />
             </div>
         </div>
     );

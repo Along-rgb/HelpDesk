@@ -4,12 +4,18 @@ import React, { useMemo } from "react";
 import Link from "next/link";
 import { useSelectCategories } from "./hooks/useSelectCategories";
 import { useCategoryIconsSelect } from "../MenuApps/hooks/useCategoryIconsSelect";
+import { useTicketCountByCategory } from "./hooks/useTicketCountByCategory";
 import { getCategoryIconDisplayUrl } from "../MenuApps/utils/iconUrl";
 import { MenuCard } from "./MenuCard";
 
 export default function GroupProblemPage() {
   const { items: categoryItems, loading: categoryLoading, error: categoryError } = useSelectCategories(true);
   const { items: categoryIconSelectItems } = useCategoryIconsSelect(null, true);
+  const categoryIds = useMemo(() => categoryItems.map((c) => c.id), [categoryItems]);
+  const { countByCategory } = useTicketCountByCategory(
+    categoryIds,
+    !categoryLoading && categoryItems.length > 0
+  );
 
   const categoryIconMap = useMemo(() => {
     const m = new Map<number, string>();
@@ -57,14 +63,6 @@ export default function GroupProblemPage() {
                 item.catIcon
                   ? getCategoryIconDisplayUrl(item.catIcon)
                   : (item.catIconId != null ? categoryIconMap.get(item.catIconId) ?? "" : "");
-              if (process.env.NODE_ENV === "development") {
-                console.log("[GroupProblem] category item:", {
-                  id: item.id,
-                  catIcon: item.catIcon,
-                  catIconId: item.catIconId,
-                  iconDisplayUrl: iconUrl,
-                });
-              }
               return (
                 <Link
                   key={item.id}
@@ -76,6 +74,7 @@ export default function GroupProblemPage() {
                     title={item.title}
                     description={item.description}
                     iconUrl={iconUrl}
+                    ticketCount={countByCategory[item.id]}
                   />
                 </Link>
               );

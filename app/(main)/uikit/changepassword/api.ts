@@ -1,11 +1,9 @@
-// api.ts
-import axios from 'axios';
+// api.ts — ใช้ createAuthAxios เพื่อให้ 401 clear session เหมือน Helpdesk
 import { env, isConfigured } from '@/config/env';
-import { getTokenFromStorage } from '@/config/axiosClientsHelpDesk';
+import { createAuthAxios } from '@/config/createAuthAxios';
+import { UnauthorizedError } from '@/global/types/api';
 
-const API_URL = env.changePasswordApiUrl;
-
-export const validateForm = (data: any) => {
+export const validateForm = (data: { currentPassword?: string; newPassword?: string; confirmPassword?: string }) => {
   if (!data.currentPassword || !data.newPassword || !data.confirmPassword) {
     return { isValid: false, message: 'ກະລຸນາຕື່ມຂໍ້ມູນໃຫ້ຄົບຖ້ວນ (Please fill all fields)' };
   }
@@ -18,24 +16,25 @@ export const validateForm = (data: any) => {
   return { isValid: true, message: '' };
 };
 
-export const changePasswordAPI = async (data: any) => {
+export const changePasswordAPI = async (data: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
   if (!isConfigured('changePasswordApiUrl')) {
     throw new Error('ລະບົບຍັງບໍ່ໄດ້ຕັ້ງຄ່າ API ປ່ຽນລະຫັດຜ່ານ — ກະລຸນາຕັ້ງ NEXT_PUBLIC_CHANGE_PASSWORD_API_URL ใน .env');
   }
-  const token = getTokenFromStorage();
+  const baseUrl = env.changePasswordApiUrl.trim().replace(/\/+$/, '');
+  const client = createAuthAxios(baseUrl);
 
   try {
-    const response = await axios.post(API_URL, {
+    const response = await client.post('', {
       currentPassword: data.currentPassword,
-      newPassword: data.newPassword
-    }, {
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json'
-      }
+      newPassword: data.newPassword,
     });
     return response.data;
-  } catch (error: any) {
-    throw new Error(error.response?.data?.message || 'ລະບົບມີບັນຫາ ຫຼື ບໍ່ສາມາດເຊື່ອມຕໍ່ລະບົບໄດ້ ');
+  } catch (error: unknown) {
+    if (error instanceof UnauthorizedError) throw error;
+    const msg =
+      error && typeof error === 'object' && 'response' in error
+        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+        : null;
+    throw new Error(typeof msg === 'string' ? msg : 'ລະບົບມີບັນຫາ ຫຼື ບໍ່ສາມາດເຊື່ອມຕໍ່ລະບົບໄດ້');
   }
 };

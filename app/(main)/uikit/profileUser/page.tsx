@@ -4,26 +4,17 @@
  * หน้า Profile — แสดงข้อมูลของคนที่ login เท่านั้น (read-only).
  * ຕຳແໜ່ງ, ຝ່າຍ, ພະແນກ/ສູນ/ສາຂາ, ໜ່ວຍງານ ดึงจาก profileData (GET /users/:id) เท่านั้น ไม่เรียก endpoint อื่น.
  */
-import React, { useEffect } from 'react';
+import React from 'react';
 import './Profile.css';
 import FormInput from './components/FormInput';
 import { useProfile } from './hooks/useProfile';
 import { Card } from 'primereact/card';
 import { UserProfileHeader } from '../MainBoard/UserProfileHeader';
 
-const LOG = (msg: string, data?: unknown) => {
-  console.log('[profileUser]', msg, data !== undefined ? data : '');
-};
-
 const ProfilePage = () => {
   const { loading, error, profileData } = useProfile();
 
-  useEffect(() => {
-    LOG('page state', { loading, error: error ?? null, hasProfileData: !!profileData });
-  }, [loading, error, profileData]);
-
   if (loading) {
-    LOG('render: loading');
     return (
       <div className="profile-container">
         <div className="text-center py-8">
@@ -35,7 +26,6 @@ const ProfilePage = () => {
   }
 
   if (error) {
-    console.warn('[profileUser] render: error', error);
     return (
       <div className="profile-container">
         <div style={{ color: 'red', textAlign: 'center', padding: '2rem' }}>

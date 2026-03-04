@@ -5,8 +5,8 @@ import { useEventListener, useUnmountEffect } from 'primereact/hooks';
 import React, { useContext, useEffect, useRef } from 'react';
 import { classNames } from 'primereact/utils';
 import AppFooter from './AppFooter';
-import AppSidebar from './AppSidebar';
 import AppTopbar from './AppTopbar';
+import AppTopMenu from './AppTopMenu';
 import AppConfig from './AppConfig';
 import { LayoutContext } from './context/layoutcontext';
 import { ChildContainerProps, LayoutState, AppTopbarRef } from '@/types';
@@ -111,7 +111,7 @@ const Layout = ({ children }: ChildContainerProps) => {
         unbindProfileMenuOutsideClickListener();
     });
 
-    const containerClass = classNames('layout-wrapper', {
+    const containerClass = classNames('layout-wrapper', 'layout-topmenu-mode', {
         'layout-overlay': layoutConfig.menuMode === 'overlay',
         'layout-static': layoutConfig.menuMode === 'static',
         'layout-static-inactive': layoutState.staticMenuDesktopInactive && layoutConfig.menuMode === 'static',
@@ -125,9 +125,7 @@ const Layout = ({ children }: ChildContainerProps) => {
         <React.Fragment>
             <div className={containerClass}>
                 <AppTopbar ref={topbarRef} />
-                <div ref={sidebarRef} className="layout-sidebar">
-                    <AppSidebar />
-                </div>
+                <AppTopMenu />
                 <div className="layout-main-container">
                     
                     {/* แก้ไขตรงนี้: เพิ่ม style เพื่อให้ขยายเต็ม 100% */}

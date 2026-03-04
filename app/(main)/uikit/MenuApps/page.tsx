@@ -21,8 +21,12 @@ const SettingsPage = () => {
     const canManageIcons = isRole1(roleId);
     const profileReady = roleId === 1 || roleId === 2;
 
-    /** ทุกการ์ดใช้ PrimeReact icon จาก MENU_ITEMS เท่านั้น — ไม่ใช้รูปจาก API เพื่อหลีกเลี่ยง placeholder/รูปโหลดไม่ขึ้น */
-    const visibleItems = useMemo(() => MENU_ITEMS.map((item) => ({ ...item, iconUrl: undefined })), []);
+    /** ทุกการ์ดใช้ PrimeReact icon จาก MENU_ITEMS เท่านั้น — ไม่ใช้รูปจาก API เพื่อหลีกเลี่ยง placeholder/รูปโหลดไม่ขึ้น. Role 2 ບໍ່ເຫັນກາດ ອາຄານສະຖານທີ່ (locations). */
+    const visibleItems = useMemo(() => {
+        const base = MENU_ITEMS.map((item) => ({ ...item, iconUrl: undefined }));
+        if (roleId === 2) return base.filter((item) => item.id !== 'locations');
+        return base;
+    }, [roleId]);
 
     /** Role 1: tab ໝວດໝູ່, ລາຍການຫົວຂໍ້ (0,1) disabled. Role 2: tab ເພີ່ມໄອຄອນ (2) disabled.
      * ການແຈ້ງບັນຫາ/ການຮ້ອງຂໍ: Role 1 ກົດໄດ້ແຕ່ ເພີ່ມໄອຄອນ (tabIndex=2). Role 2 ກົດໄດ້ແຕ່ ໝວດໝູ່, ລາຍການຫົວຂໍ້ (tabIndex=0,1). */
@@ -34,7 +38,7 @@ const SettingsPage = () => {
                 if (r === 2 && tabIndex === 0) return true;
                 return false;
             }
-            if (itemId === 'issues' || itemId === 'services') {
+            if (itemId === 'issues') {
                 if (r === 1 && (tabIndex === 0 || tabIndex === 1)) return true;
                 if (r === 2 && tabIndex === 2) return true;
                 return false;
@@ -48,13 +52,13 @@ const SettingsPage = () => {
         return (itemId: string): boolean => {
             if (itemId === 'users') return !profileReady;
             if (itemId === 'locations') return !profileReady || !isRole1(roleId);
-            if (itemId === 'issues' || itemId === 'services') return !(canManageCategoryAndTopic || canManageIcons);
+            if (itemId === 'issues') return !(canManageCategoryAndTopic || canManageIcons);
             return false;
         };
     }, [profileReady, roleId, canManageCategoryAndTopic, canManageIcons]);
 
     const handleSubMenuClick = (itemId: string, label: string, mainPath: string, tabIndex?: number) => {
-        if (tabIndex !== undefined && (itemId === 'issues' || itemId === 'services')) {
+        if (tabIndex !== undefined && itemId === 'issues') {
             if (!canManageCategoryAndTopic && (tabIndex === 0 || tabIndex === 1)) return;
             if (!canManageIcons && tabIndex === 2) return;
         }

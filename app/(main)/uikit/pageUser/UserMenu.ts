@@ -20,14 +20,6 @@ export const useMenu = () => {
             icon: "/layout/images/error.png",
             color: "bg-blue-gradient",
             path: "/uikit/GroupProblem"
-        },
-        {
-            id: 3,
-            title: "ການຂໍຮ້ອງບໍລິການໃຫມ່",
-            description: "",
-            icon: "/layout/images/services.png",
-            color: "bg-orange-gradient",
-            path: "/uikit/GroupServices"
         }
     ]);
 

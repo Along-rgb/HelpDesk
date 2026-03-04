@@ -1,7 +1,7 @@
 // src/uikit/MenuApps/Detail-category_Buildings/page.tsx
 'use client';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { TabMenu } from 'primereact/tabmenu';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
@@ -12,12 +12,22 @@ import { useBuilding } from '../hooks/useBuilding';
 import { BuildingData, CreateBuildingPayload, BuildingTabs } from '../types';
 import { createDataMap } from '../utils/dataMapping';
 import { CUSTOM_TAB_CSS } from '../constants/tabStyles';
+import { useUserProfile } from '@/types/useUserProfile';
 
+/** Role 2 (Admin) ບໍ່ມີສິດເຂົ້າເບິ່ງ ອາຄານສະຖານທີ່ — ເຫັນແຕ່ Role 1 (SuperAdmin). */
 export default function BuildingsPage() {
+    const router = useRouter();
     const searchParams = useSearchParams();
+    const { roleId } = useUserProfile();
     const [activeIndex, setActiveIndex] = useState<number>(BuildingTabs.BUILDING);
-    
+
+    useEffect(() => {
+        if (roleId === 2) router.replace('/uikit/MenuApps');
+    }, [roleId, router]);
+
     const { toast, items, buildingOptions, saveData, deleteData, deleteBuildingCascade } = useBuilding(activeIndex);
+
+    if (roleId === 2) return null;
 
     // [Optimization] ສ້າງ Map ຂອງ Building ເພື່ອສົ່ງໃຫ້ Table lookup (O(1))
     const buildingMap = useMemo(() => {

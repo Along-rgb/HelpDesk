@@ -8,9 +8,9 @@
       "department": "206",
       "division": "20609",
       "position": "A5.1",
-      "email": "dal.som@edl.com.la",
-      "contactPhone": "20 5995 1199",
-      "appPhone": "20 5995 1199"
+      "email": "user@example.com",
+      "contactPhone": "000-000-0000",
+      "appPhone": "000-000-0000"
     }
   ],
   "departments": [
@@ -804,21 +804,21 @@
           "name": "ທະນູຄຳ ວັນລາສີ",
           "status": "waiting",
           "image": "",
-          "phone": "020 55422254"
+          "phone": "000-000-0000"
         },
         {
           "id": "1002",
           "name": " ແສງປີຊາ ທຳມະວົງ",
           "status": "waiting",
           "image": "",
-          "phone": "020 51735702"
+          "phone": "000-000-0000"
         },
         {
           "id": "1003",
           "name": "ສອນປະດິດ ສີຫາວົງ",
           "status": "waiting",
           "image": "",
-          "phone": "020 55518311"
+          "phone": "000-000-0000"
         }
       ],
       "status": "ລໍຖ້າຮັບວຽກ",
@@ -841,14 +841,14 @@
           "name": "ທະນູຄຳ ວັນລາສີ",
           "status": "waiting",
           "image": "",
-          "phone": "020 55422254"
+          "phone": "000-000-0000"
         },
         {
           "id": "1002",
           "name": " ແສງປີຊາ ທຳມະວົງ",
           "status": "waiting",
           "image": "",
-          "phone": "020 51735702"
+          "phone": "000-000-0000"
         }
       ],
       "status": "ລໍຖ້າຮັບວຽກ",
@@ -1003,21 +1003,21 @@
           "name": " ແສງປີຊາ ທຳມະວົງ",
           "status": "waiting",
           "image": "",
-          "phone": "020 51735702"
+          "phone": "000-000-0000"
         },
         {
           "id": "1001",
           "name": "ທະນູຄຳ ວັນລາສີ",
           "status": "waiting",
           "image": "",
-          "phone": "020 55422254"
+          "phone": "000-000-0000"
         },
         {
           "id": "1003",
           "name": "ສອນປະດິດ ສີຫາວົງ",
           "status": "waiting",
           "image": "",
-          "phone": "020 55518311"
+          "phone": "000-000-0000"
         }
       ],
       "status": "ລໍຖ້າຮັບວຽກ",

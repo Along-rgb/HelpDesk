@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useTicketTable } from "./useTicketTable";
 import { Ticket } from "./types";
 import { STATUS_MAP, CUSTOM_TOOLTIP_CSS } from "./constants";
+import { sanitizeStyleContent } from "@/utils/sanitizeHtml";
 import { TicketActionMenu } from "@/app/components/TicketActionMenu";
 import { PrioritySelector } from "./PrioritySelector";
 import { TicketHeader } from "./TicketHeader";
@@ -43,7 +44,7 @@ export default function TableDemo() {
     return (
         <div className="grid">
             <Toast ref={toastRef} position="top-center" />
-            <style dangerouslySetInnerHTML={{__html: CUSTOM_TOOLTIP_CSS}} />
+            <style dangerouslySetInnerHTML={{ __html: sanitizeStyleContent(CUSTOM_TOOLTIP_CSS) }} />
 
             <div className="col-12">
                 <div className="card">
@@ -57,8 +58,6 @@ export default function TableDemo() {
                         assignFilter={assignFilter} setAssignFilter={setAssignFilter}
                         globalFilter={globalFilter} onGlobalFilterChange={onGlobalFilterChange}
                         isSelectionEmpty={selectedTickets.length === 0}
-                        onNewTicket={() => router.push("/uikit/GroupProblem")}
-                        onNewService={() => router.push("/uikit/GroupServices")}
                         onBulkAssign={onBulkAssign}
                     />
                     {error && (

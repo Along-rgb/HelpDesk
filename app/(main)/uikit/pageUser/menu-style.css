@@ -131,7 +131,10 @@
     border-right: none;
 }
 
-/* ลบเงาและขอบของตารางที่อาจจะมาจาก Card class เดิม */
+/* ลบเงาและขอบของตารางที่อาจจะมาจาก Card class เดิม • ขอบดำต่อจากปุ่มให้เป็นกล่องเดียว */
 .table-content-wrapper {
     box-shadow: none !important;
+    border-left: 2px solid #000000;
+    border-right: 2px solid #000000;
+    border-bottom: 2px solid #000000;
 }

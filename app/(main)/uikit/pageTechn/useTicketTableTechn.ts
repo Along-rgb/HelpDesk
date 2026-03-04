@@ -4,22 +4,18 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import type { RefObject } from "react";
 import type { Toast } from "primereact/toast";
 import axiosClientsHelpDesk from "@/config/axiosClientsHelpDesk";
+import { HELPDESK_ENDPOINTS } from "@/config/endpoints";
+import { useHelpdeskStatusOptions } from "@/app/hooks/useHelpdeskStatusOptions";
+import { normalizeDataList } from "@/utils/apiNormalizers";
 import { formatDateTime } from "@/utils/dateUtils";
 import { Ticket, TicketRow, Assignee } from "./types";
 import { TicketService } from "@/app/services/ticket.service";
 import { useUserProfileStore } from "@/app/store/user/userProfileStore";
 
-/** GET /api/assignments — role 3 ใช้ดึงรายการที่มอบหมายให้ตัวเอง (assignedToId=currentUser) */
-const ASSIGNMENTS_ENDPOINT = "assignments";
-/** GET /api/helpdeskrequests/[id] — ดึงรายละเอียดใบแจ้งตาม helpdeskRequestId (role 3 ใช้ได้แค่ endpoint นี้) */
-const getHelpdeskRequestByIdPath = (id: number) => `helpdeskrequests/${id}`;
-/** GET /api/helpdeskstatus/selecthelpdeskstatus — ດຶງລາຍສະຖານະເພື່ອ filter (ໃຫ້ຕົງກັບ uikit/table) */
-const STATUS_ENDPOINT = "helpdeskstatus/selecthelpdeskstatus";
 /** ກຳລັງດຳເນີນການ — ໃຊ້ເມື່ອຮັບວຽກເອງ */
 const HELPDESK_STATUS_IN_PROGRESS = 2;
 /** ລໍຖ້າຮັບວຽກ — ໃຫ້ເບິ່ງ checkbox ເທົ່ານີ້ ເມື່ອປ່ຽນສະຖານະແລ້ວໃຫ້ checkbox ຫາຍໄປ */
 const STATUS_WAITING_ACCEPT = "ລໍຖ້າຮັບວຽກ";
-const getUpdateHelpdeskStatusPath = (id: number) => `helpdeskrequests/updatehelpdeskstatus/${id}`;
 
 /** Raw assignment (จาก GET helpdeskrequests/[id] หรือจาก assignments API) */
 interface RawAssignment {
@@ -65,15 +61,6 @@ interface AssignmentListItem {
   assignedToId?: number;
 }
 
-/** ดึงรายการจาก GET /api/assignments (อาจเป็น array ตรงๆ หรือ { data: [] }) */
-function normalizeAssignmentsResponse(data: unknown): AssignmentListItem[] {
-  if (Array.isArray(data)) return data as AssignmentListItem[];
-  if (data && typeof data === "object" && "data" in data && Array.isArray((data as { data: unknown }).data)) {
-    return (data as { data: AssignmentListItem[] }).data;
-  }
-  return [];
-}
-
 /** แปลง response GET helpdeskrequests/[id] เป็น Ticket (เฉพาะ field ที่ pageTechn ใช้) */
 function helpdeskDetailToTicket(detail: HelpdeskRequestDetail): Ticket {
   const emp = detail.createdBy?.employee;
@@ -114,14 +101,6 @@ function helpdeskDetailToTicket(detail: HelpdeskRequestDetail): Ticket {
 }
 
 type StatusFilterOption = { label: string; value: string; icon?: string } | null;
-
-function normalizeStatusList(data: unknown): { id: number; name: string }[] {
-  if (Array.isArray(data)) return data as { id: number; name: string }[];
-  if (data && typeof data === "object" && "data" in data && Array.isArray((data as { data: unknown }).data)) {
-    return (data as { data: { id: number; name: string }[] }).data;
-  }
-  return [];
-}
 
 const ALL_STATUS_OPTION = { label: "ທັງໝົດ", value: "Allin" };
 
@@ -219,10 +198,21 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilterOption>(null);
-  const [statusOptions, setStatusOptions] = useState<{ label: string; value: string }[]>([ALL_STATUS_OPTION]);
   const [selectedTickets, setSelectedTickets] = useState<Ticket[]>([]);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [currentAssignees, setCurrentAssignees] = useState<Assignee[]>([]);
+
+  const { list: statusList } = useHelpdeskStatusOptions();
+  const statusOptions = useMemo(
+    () => [
+      ALL_STATUS_OPTION,
+      ...statusList.map((item) => {
+        const name = typeof item.name === "string" ? item.name.trim() : String(item.name ?? "").trim();
+        return { label: name, value: name };
+      }),
+    ],
+    [statusList]
+  );
 
   const roleId = useUserProfileStore((s) => s.currentUser?.roleId ?? 0);
   const currentUserId = useUserProfileStore((s) => s.currentUser?.id ?? 0);
@@ -239,32 +229,15 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
   const shouldFetchTicketsRole2 = roleId === 2;
   const shouldFetchTicketsRole3 = roleId === 3;
 
-  useEffect(() => {
-    axiosClientsHelpDesk
-      .get(STATUS_ENDPOINT)
-      .then((response) => {
-        const list = normalizeStatusList(response.data);
-        const options: { label: string; value: string }[] = [
-          ALL_STATUS_OPTION,
-          ...list.map((item) => {
-            const name = typeof item.name === "string" ? item.name.trim() : String(item.name ?? "").trim();
-            return { label: name, value: name };
-          }),
-        ];
-        setStatusOptions(options);
-      })
-      .catch(() => setStatusOptions([ALL_STATUS_OPTION]));
-  }, []);
-
   /** Role 3: ດຶງລາຍການຈາກ assignments ແລະ helpdeskrequests/[id] — ໃຊ້ທັງໃນ useEffect ແລະໃນ refetch */
   const fetchRole3Tickets = useCallback(async () => {
     if (!currentUserId) return;
     setLoading(true);
     try {
-      const response = await axiosClientsHelpDesk.get(ASSIGNMENTS_ENDPOINT, {
+      const response = await axiosClientsHelpDesk.get(HELPDESK_ENDPOINTS.ASSIGNMENTS, {
         params: { assignedToId: currentUserId },
       });
-      const list = normalizeAssignmentsResponse(response.data);
+      const list = normalizeDataList<AssignmentListItem>(response.data);
       const mine = list.filter((a) => Number(a.assignedToId) === Number(currentUserId));
       const myIds = mine
         .map((a) => a.helpdeskRequestId)
@@ -277,7 +250,7 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
       const details = await Promise.all(
         uniqueIds.map((helpdeskRequestId) =>
           axiosClientsHelpDesk
-            .get<HelpdeskRequestDetail>(getHelpdeskRequestByIdPath(helpdeskRequestId))
+            .get<HelpdeskRequestDetail>(HELPDESK_ENDPOINTS.requestById(helpdeskRequestId))
             .then((res) => res.data)
         )
       );
@@ -290,6 +263,19 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
     }
   }, [currentUserId]);
 
+  const fetchRole2Tickets = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await TicketService.getTickets();
+      const list = Array.isArray(data) ? data : [];
+      setTickets(list.map((item) => normalizeTicket(item as unknown as Record<string, unknown>)));
+    } catch {
+      setTickets([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!shouldFetchTicketsRole2) {
       if (roleId !== 3) {
@@ -298,24 +284,8 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
       }
       return;
     }
-    let cancelled = false;
-    setLoading(true);
-    TicketService.getTickets()
-      .then((data) => {
-        if (cancelled) return;
-        const list = Array.isArray(data) ? data : [];
-        setTickets(list.map((item) => normalizeTicket(item as unknown as Record<string, unknown>)));
-      })
-      .catch(() => {
-        if (!cancelled) setTickets([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [shouldFetchTicketsRole2, roleId]);
+    fetchRole2Tickets();
+  }, [shouldFetchTicketsRole2, roleId, fetchRole2Tickets]);
 
   /**
    * Role 3: ບໍ່ສາມາດເອີ້ນ /api/helpdeskrequests/admin ได้ — ໃຊ້ GET /api/assignments?assignedToId=currentUserId ເພື່ອດຶງລາຍການ helpdeskRequestId ທີ່ມອບໝາຍໃຫ້ຕົນເອງ ແລ້ວເອີ້ນ GET /api/helpdeskrequests/[id] ຕໍ່ລາຍການ.
@@ -338,7 +308,7 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
       setLoading(true);
       await Promise.all(
         ids.map((id) =>
-          axiosClientsHelpDesk.put(getUpdateHelpdeskStatusPath(id), {
+          axiosClientsHelpDesk.put(HELPDESK_ENDPOINTS.updateHelpdeskStatus(id), {
             helpdeskStatusId: HELPDESK_STATUS_IN_PROGRESS,
           })
         )
@@ -454,6 +424,34 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
     setDialogVisible(false);
   }, []);
 
+  const updateTicketStatus = useCallback(
+    async (ticketId: string | number, helpdeskStatusId: number) => {
+      const id = Number(ticketId);
+      if (!Number.isFinite(id)) return;
+      try {
+        setLoading(true);
+        await axiosClientsHelpDesk.put(HELPDESK_ENDPOINTS.updateHelpdeskStatus(id), { helpdeskStatusId });
+        if (roleId === 2) await fetchRole2Tickets();
+        else if (roleId === 3) await fetchRole3Tickets();
+        toastRef?.current?.show({
+          severity: "success",
+          summary: "ສຳເລັດ",
+          detail: "ອັບເດດສະຖານະສຳເລັດ",
+          life: 3000,
+        });
+      } catch {
+        setLoading(false);
+        toastRef?.current?.show({
+          severity: "error",
+          summary: "ຜິດພາດ",
+          detail: "ອັບເດດສະຖານະບໍ່ສຳເລັດ",
+          life: 4000,
+        });
+      }
+    },
+    [roleId, fetchRole2Tickets, fetchRole3Tickets, toastRef]
+  );
+
   return {
     displayRows,
     loading,
@@ -474,5 +472,7 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
     getTicketFromRow,
     refetch: fetchRole3Tickets,
     onAcceptSelf,
+    statusList,
+    updateTicketStatus,
   };
 };

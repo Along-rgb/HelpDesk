@@ -11,7 +11,9 @@ import { STATUS_MAP, STATUS_ICON_MAP, STATUS_ICON_FALLBACK } from "@/app/(main)/
 import { normalizeHelpdeskRow, unwrapHelpdeskResponse } from "@/app/(main)/uikit/table/normalizeHelpdeskRow";
 import type { HelpdeskRowInput } from "@/app/(main)/uikit/table/normalizeHelpdeskRow";
 import axiosClientsHelpDesk from "@/config/axiosClientsHelpDesk";
+import { HELPDESK_ENDPOINTS } from "@/config/endpoints";
 import { useUserProfileStore } from "@/app/store/user/userProfileStore";
+import { sanitizeHtml } from "@/utils/sanitizeHtml";
 
 /** Role 3 = Staff — ບໍ່ໃຫ້ເຫັນ ມອບໝາຍວຽກ */
 const ROLE_ID_STAFF = 3;
@@ -19,11 +21,6 @@ const ROLE_ID_STAFF = 3;
 const STATUS_WAITING_ACCEPT = "ລໍຖ້າຮັບວຽກ";
 /** ກຳລັງດຳເນີນການ — ໃຊ້ເມື່ອຮັບວຽກເອງ (เหมือน pageTechn) */
 const HELPDESK_STATUS_IN_PROGRESS = 2;
-const getUpdateHelpdeskStatusPath = (id: number) => `helpdeskrequests/updatehelpdeskstatus/${id}`;
-
-const HELPDESK_REQUEST_BY_ID = (id: string | number) => `helpdeskrequests/${id}`;
-/** Endpoint เดียวกับ uikit/profileUser — ใช้ดึง ອີເມວ (employee.email) */
-const USER_PROFILE_BY_ID = (id: string | number) => `users/${id}`;
 
 export default function TicketDetailPage() {
     const params = useParams();
@@ -46,7 +43,7 @@ export default function TicketDetailPage() {
     const fetchTicket = useCallback((id: string) => {
         setLoading(true);
         return axiosClientsHelpDesk
-            .get(HELPDESK_REQUEST_BY_ID(id))
+            .get(HELPDESK_ENDPOINTS.requestById(id))
             .then((response) => {
                 const row = unwrapHelpdeskResponse<HelpdeskRowInput>(response.data);
                 const normalized = row ? normalizeHelpdeskRow(row) : null;
@@ -68,7 +65,7 @@ export default function TicketDetailPage() {
         if (!Number.isFinite(id)) return;
         setAcceptLoading(true);
         axiosClientsHelpDesk
-            .put(getUpdateHelpdeskStatusPath(id), { helpdeskStatusId: HELPDESK_STATUS_IN_PROGRESS })
+            .put(HELPDESK_ENDPOINTS.updateHelpdeskStatus(id), { helpdeskStatusId: HELPDESK_STATUS_IN_PROGRESS })
             .then(() => {
                 toastRef.current?.show({
                     severity: "success",
@@ -97,7 +94,7 @@ export default function TicketDetailPage() {
         }
         const userId = String(ticket.employeeId);
         axiosClientsHelpDesk
-            .get(USER_PROFILE_BY_ID(userId), {
+            .get(HELPDESK_ENDPOINTS.USER_BY_ID(userId), {
                 params: { _ts: Date.now() },
                 headers: { "Cache-Control": "no-store", Pragma: "no-cache" },
             })
@@ -107,7 +104,7 @@ export default function TicketDetailPage() {
                     (raw && typeof raw === "object" && (raw as { employee?: { email?: string } }).employee?.email) ??
                     (raw && typeof raw === "object" ? (raw as { email?: string }).email : null);
                 setRequesterEmail(email != null && String(email).trim() !== "" ? String(email).trim() : "");
-            })
+            }) 
             .catch(() => setRequesterEmail(""));
     }, [ticket?.employeeId]);
 
@@ -196,7 +193,7 @@ export default function TicketDetailPage() {
                                     <Panel header="ລາຍລະອຽດ" toggleable className="border-top-1 border-yellow-500 shadow-none border-1 surface-border border-round-none">
                                         <div className="m-0 text-700 line-height-3 text-base px-3 md:px-4">
                                             {ticket.description ? (
-                                                <div dangerouslySetInnerHTML={{ __html: ticket.description }} />
+                                                <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(ticket.description) }} />
                                             ) : (
                                                 <div className="text-500">ບໍ່ມີລາຍລະອຽດເພີ່ມເຕີມ</div>
                                             )}
@@ -217,12 +214,6 @@ export default function TicketDetailPage() {
 
                                 </div>
                             </TabPanel>
-
-                            <TabPanel header="ປະຫວັດ" leftIcon="pi pi-history mr-2">
-                                <div className="p-3 border-1 surface-border border-round mt-3 text-base">
-                                    <p>ປະຫວັດການດໍາເນີນງານ...</p>
-                                </div>
-                            </TabPanel>
                         </TabView>
                     </div>
 
@@ -237,69 +228,65 @@ export default function TicketDetailPage() {
                                 </div>
 
                                 <ul className="list-none p-0 m-0 text-base">
-                                    <li className="flex align-items-center py-3 border-bottom-1 surface-border">
-                                        <span className="text-900 font-medium w-6rem">ສະຖານະ:</span>
-                                        <div className="flex-1 flex align-items-center gap-2">
+                                    <li className="flex align-items-center gap-2 py-3 border-bottom-1 surface-border">
+                                        <span className="text-900 font-bold flex-shrink-0">ສະຖານະ </span>
+                                        <div className="flex align-items-center gap-2 flex-1 min-w-0">
                                             {(() => {
                                                 const severity = STATUS_MAP[ticket.status] ?? null;
                                                 const iconClass = STATUS_ICON_MAP[ticket.status] ?? STATUS_ICON_MAP[ticket.status?.trim() ?? ''] ?? STATUS_ICON_FALLBACK;
                                                 const textColor = severity === 'success' ? 'text-green-600' : severity === 'info' ? 'text-blue-600' : severity === 'warning' ? 'text-orange-600' : severity === 'danger' ? 'text-red-600' : 'text-700';
                                                 return (
                                                     <>
-                                                        <i className={`${iconClass} ${textColor}`} style={{ fontSize: '1rem' }} />
-                                                        <span className={`font-medium ${textColor}`}>{ticket.status || '—'}</span>
+                                                        <i className={`${iconClass} ${textColor} flex-shrink-0`} style={{ fontSize: '1rem' }} />
+                                                        <span className={`font-medium ${textColor} min-w-0`}>{ticket.status || '—'}</span>
                                                     </>
                                                 );
                                             })()}
                                         </div>
                                     </li>
-                                    <li className="flex align-items-start py-3 border-bottom-1 surface-border">
-                                        <span className="text-900 font-medium w-6rem">ວັນທີຮ້ອງຂໍ:</span>
-                                        <span className="text-700 flex-1">{ticket.date}</span>
+                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                        <span className="text-900 font-bold flex-shrink-0">ວັນທີຮ້ອງຂໍ : </span>
+                                        <span className="text-700 flex-1 min-w-0">{ticket.date}</span>
                                     </li>
-                                    <li className="flex align-items-start py-3 border-bottom-1 surface-border">
-                                        <span className="text-900 font-medium w-6rem">ຜູ້ຮ້ອງຂໍ:</span>
-                                        <span className="text-700 flex-1">[{ticket.emp_code ?? ''}]-{requesterName}</span>
+                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                        <span className="text-900 font-bold flex-shrink-0">ຜູ້ຮ້ອງຂໍ : </span>
+                                        <span className="text-700 flex-1 min-w-0">[{ticket.emp_code ?? ''}]-{requesterName}</span>
                                     </li>
-                                    <li className="flex align-items-start py-3 border-bottom-1 surface-border">
-                                        <span className="text-900 font-medium w-6rem">ຝ່າຍ:</span>
-                                        <span className="text-700 flex-1">{ticket.department || '-'}</span>
+                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                        <span className="text-900 font-bold flex-shrink-0">ຝ່າຍ : </span>
+                                        <span className="text-700 flex-1 min-w-0">{ticket.department || '-'}</span>
                                     </li>
-                                    <li className="flex align-items-start py-3 border-bottom-1 surface-border">
-                                        <span className="text-900 font-medium w-6rem">ພະແນກ:</span>
-                                        <span className="text-700 flex-1">{ticket.division || '-'}</span>
+                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                        <span className="text-900 font-bold flex-shrink-0">ພະແນກ :</span>
+                                        <span className="text-700 flex-1 min-w-0">{ticket.division || '-'}</span>
                                     </li>
-                                    <li className="flex align-items-start py-3 border-bottom-1 surface-border">
-                                        <span className="text-900 font-medium w-6rem">ເລກ ຊຄທ :</span>
-                                        <span className="text-700 flex-1">{ticket.numberSKT ?? '-'}</span>
+                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                        <span className="text-900 font-bold flex-shrink-0">ເລກ ຊຄທ : </span>
+                                        <span className="text-700 flex-1 min-w-0">{ticket.numberSKT ?? '-'}</span>
                                     </li>
-                                    <li className="flex align-items-start py-3 border-bottom-1 surface-border">
-                                        <span className="text-900 font-medium w-6rem">ສະຖານທີ່:</span>
-                                        <span className="text-700 flex-1">
-                                            {ticket.building || 'ຕຶກສໍານັກງານໃຫຍ່'}
-                                        </span>
+                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                        <span className="text-900 font-bold flex-shrink-0">ສະຖານທີ່ :</span>
+                                        <span className="text-700 flex-1 min-w-0">{ticket.building || 'ຕຶກສໍານັກງານໃຫຍ່'}</span>
                                     </li>
-                                    <li className="flex align-items-start py-3 border-bottom-1 surface-border">
-                                        <span className="text-900 font-medium w-6rem">ຊັ້ນ:</span>
-                                        <span className="text-700 flex-1">{ticket.level || 'ຊັ້ນ-05'}</span>
+                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                        <span className="text-900 font-bold flex-shrink-0">ຊັ້ນ :</span>
+                                        <span className="text-700 flex-1 min-w-0">{ticket.level || 'ຊັ້ນ-05'}</span>
                                     </li>
-                                    <li className="flex align-items-start py-3 border-bottom-1 surface-border">
-                                        <span className="text-900 font-medium w-6rem">ຫ້ອງ:</span>
-                                        <span className="text-700 font-bold flex-1">{ticket.room || '502'}</span>
+                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                        <span className="text-900 font-bold flex-shrink-0">ຫ້ອງ :</span>
+                                        <span className="text-700 font-bold flex-1 min-w-0">{ticket.room || '502'}</span>
                                     </li>
-                                    <li className="flex align-items-start py-3 border-bottom-1 surface-border">
-                                        <span className="text-900 font-medium w-6rem">ອອກລິບມາ:</span>
-                                        <span className="text-700 flex-1">{ticket.turning ?? '-'}</span>
+                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                        <span className="text-900 font-bold flex-shrink-0">ອອກລິບມາ :</span>
+                                        <span className="text-700 flex-1 min-w-0">{ticket.turning ?? '-'}</span>
                                     </li>
-                                    <li className="flex align-items-start py-3 border-bottom-1 surface-border">
-                                        <span className="text-900 font-medium w-6rem">ເບີໂທ:</span>
-                                        <span className="text-700 flex-1">{ticket.contactPhone || '020 9999 9999'}</span>
+                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                        <span className="text-900 font-bold flex-shrink-0">ເບີໂທ :</span>
+                                        <span className="text-700 flex-1 min-w-0">{ticket.contactPhone || '020 9999 9999'}</span>
                                     </li>
-                                    <li className="flex align-items-start py-3">
-                                        <span className="text-900 font-medium w-6rem">ອີເມວ :</span>
-                                        <span className="text-700 flex-1" style={{ wordBreak: 'break-all' }}>
-                                            {requesterEmail}
-                                        </span>
+                                    <li className="flex align-items-start gap-2 py-3">
+                                        <span className="text-900 font-bold flex-shrink-0">ອີເມວ :</span>
+                                        <span className="text-700 flex-1 min-w-0" style={{ wordBreak: 'break-all' }}>{requesterEmail}</span>
                                     </li>
                                 </ul>
                             </div>

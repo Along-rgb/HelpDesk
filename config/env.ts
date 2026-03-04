@@ -21,11 +21,11 @@ const getIsDev = (): boolean =>
 /** Path ตาม Backend: subdomain/upload/categoryicon (ไม่มี s ท้าย categoryicon) */
 const UPLOAD_CATEGORYICON_PATH = '/upload/categoryicon';
 
-/** ค่า fallback เฉพาะตอน development — ใช้เมื่อไม่ได้ตั้งใน .env.local */
+/** ค่า fallback เฉพาะตอน development — ไม่ใส่ URL production; ตั้งใน .env.local */
 const devFallback = {
   appUrl: 'http://localhost:3500',
-  helpdeskApiUrl: 'https://api-test.edl.com.la/helpdesk/api',
-  helpdeskUploadBaseUrl: 'https://api-test.edl.com.la/helpdesk/upload/categoryicon',
+  helpdeskApiUrl: '',
+  helpdeskUploadBaseUrl: '',
   ticketsApiUrl: 'http://localhost:3501',
   reportsApiUrl: 'http://localhost:3000/api',
   changePasswordApiUrl: '',
@@ -45,30 +45,14 @@ export const env = {
   get helpdeskAuthLoginPath() {
     return getEnv('NEXT_PUBLIC_HELPDESK_AUTH_LOGIN_PATH', 'auth/login');
   },
-  /** Subdomain ตัวอย่าง: https://api-test.edl.com.la/helpdesk — ต่อกับ UPLOAD_CATEGORYICON_PATH แล้วไม่ซ้ำ path */
+  /** Subdomain จาก env — ต่อกับ UPLOAD_CATEGORYICON_PATH */
   get helpdeskUploadBaseUrl() {
     const explicit = getEnv('NEXT_PUBLIC_HELPDESK_UPLOAD_BASE_URL', '');
-    if (explicit.trim()) {
-      const value = explicit.trim().replace(/\/+$/, '');
-      if (getIsDev()) {
-        console.log('[env] helpdeskUploadBaseUrl (explicit):', value);
-      }
-      return value;
-    }
+    if (explicit.trim()) return explicit.trim().replace(/\/+$/, '');
     const apiBase = getEnv('NEXT_PUBLIC_HELPDESK_API_BASE_URL', getIsDev() ? devFallback.helpdeskApiUrl : '');
-    if (!apiBase.trim()) {
-      const fallback = getIsDev() ? devFallback.helpdeskUploadBaseUrl : '';
-      if (getIsDev()) {
-        console.log('[env] helpdeskUploadBaseUrl (fallback, no apiBase):', fallback);
-      }
-      return fallback;
-    }
+    if (!apiBase.trim()) return getIsDev() ? devFallback.helpdeskUploadBaseUrl : '';
     const subdomain = apiBase.trim().replace(/\/api\/?$/, '').replace(/\/+$/, '');
-    const value = subdomain + UPLOAD_CATEGORYICON_PATH;
-    if (getIsDev()) {
-      console.log('[env] helpdeskUploadBaseUrl (derived):', value, '| subdomain:', subdomain);
-    }
-    return value;
+    return subdomain + UPLOAD_CATEGORYICON_PATH;
   },
   get loginUsePascalCase() {
     return getEnv('NEXT_PUBLIC_LOGIN_USE_PASCAL_CASE', 'false').toLowerCase() === 'true';
@@ -80,7 +64,7 @@ export const env = {
   /** Base สำหรับอัปโหลด hdfile / hdimage: .../helpdesk/upload (ไม่รวม /api) */
   get helpdeskUploadRequestBaseUrl() {
     const apiBase = getEnv('NEXT_PUBLIC_HELPDESK_API_BASE_URL', getIsDev() ? devFallback.helpdeskApiUrl : '');
-    if (!apiBase.trim()) return getIsDev() ? 'https://api-test.edl.com.la/helpdesk/upload' : '';
+    if (!apiBase.trim()) return '';
     return apiBase.trim().replace(/\/api\/?$/, '').replace(/\/+$/, '') + '/upload';
   },
   /** ใช้ proxy /api/proxy-helpdesk เพื่อ bypass CORS (frontend localhost → API อีก domain) */

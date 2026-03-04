@@ -14,7 +14,11 @@ const MENU_MODEL: MenuItemWithRole[] = [
     { label: 'ໜ້າຫຼັກ', icon: 'pi pi-fw pi-home', to: '/uikit/pageTechn', allowedRoles: [ROLE_ID.Staff] },
     { label: 'ຫນ້າຫຼັກ', icon: 'pi pi-fw pi-home', to: '/uikit/MainBoard', allowedRoles: [ROLE_ID.SuperAdmin, ROLE_ID.Admin] },
     { label: 'ລາຍງານ', icon: 'pi pi-fw pi-th-large', to: '/uikit/reportHD', allowedRoles: [ROLE_ID.SuperAdmin, ROLE_ID.Admin, ROLE_ID.Staff] },
+    /** ການຮ້ອງຂໍ — เฉพาะ Role 1 (SuperAdmin) ແລະ Role 2 (Admin) */
     { label: 'ການຮ້ອງຂໍ', icon: 'pi pi-fw pi-ticket', to: '/uikit/table', allowedRoles: [ROLE_ID.SuperAdmin, ROLE_ID.Admin] },
+    { label: 'ການແຈ້ງບັນຫາໃໝ່', icon: 'pi pi-fw pi-send', to: '/uikit/GroupProblem', allowedRoles: [ROLE_ID.SuperAdmin, ROLE_ID.Admin, ROLE_ID.Staff] },
+    { label: 'ປະຫວັດການຊ້ອມແປງ', icon: 'pi pi-fw pi-folder-open', to: '/uikit/repair-history', allowedRoles: [ROLE_ID.SuperAdmin, ROLE_ID.Admin, ROLE_ID.Staff] },
+    /** Role 3 (Staff) เห็นเมนูเหมือน Role 2 แต่ไม่เห็นรายการนี้ */
     { label: 'ການຕັ້ງຄ່າ ແລະ ຈັດການຂໍ້ມູນ', icon: 'pi pi-fw pi-wrench', to: '/uikit/MenuApps', allowedRoles: [ROLE_ID.SuperAdmin, ROLE_ID.Admin] },
     { label: 'ກ່ຽວກັບລະບົບ', icon: 'pi pi-fw pi-info-circle', to: '/uikit/Aboutsystem' }
 ];

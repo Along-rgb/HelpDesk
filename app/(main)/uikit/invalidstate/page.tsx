@@ -16,6 +16,7 @@ const RequestForm = () => {
     levelOptions,
     loadingMaster,
     isSubmitting,
+    canSubmit,
     updateField,
     handleBuildingChange,
     handleLevelChange,
@@ -119,9 +120,10 @@ const RequestForm = () => {
                 id="room"
                 value={form.room}
                 onChange={(e) => updateField("room", e.target.value)}
+                inputMode="numeric"
                 className="w-full"
                 style={whiteFieldStyle}
-                placeholder="ກະລຸນາປ້ອນໝາຍເລກຫ້ອງ"
+                placeholder=""
               />
             </div>
           </div>
@@ -134,9 +136,10 @@ const RequestForm = () => {
               id="telephone"
               value={form.phoneNumber ?? ""}
               onChange={(e) => updateField("phoneNumber", e.target.value)}
+              inputMode="numeric"
               className="w-full"
               style={whiteFieldStyle}
-              placeholder="ກະລຸນາເພີ່ມເບີໂທ"
+              placeholder="ກະລຸນາເພີ່ມເບີໂທ "
             />
           </div>
           <div className="field mb-3">
@@ -291,6 +294,7 @@ const RequestForm = () => {
           className="w-11rem"
           onClick={handleSubmit}
           loading={isSubmitting}
+          disabled={isSubmitting || !canSubmit}
         />
       </div>
     </div>

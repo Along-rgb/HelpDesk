@@ -3,39 +3,66 @@ import React, { useState, useRef } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Tag } from "primereact/tag";
-import { Checkbox } from "primereact/checkbox";
 import { Toast } from "primereact/toast";
-import { useRouter } from "next/navigation";
 import { useTicketTableTechn } from "./useTicketTableTechn";
 import { TicketRow } from "./types";
+import { Ticket } from "./types";
 import { STATUS_MAP, CUSTOM_TOOLTIP_CSS, PRIORITY_MAP } from "./constants";
+import { sanitizeStyleContent } from "@/utils/sanitizeHtml";
 import { TicketActionMenu } from "@/app/components/TicketActionMenu";
+import type { TicketActionMenuItem } from "@/app/components/TicketActionMenu";
 import { TicketHeaderTechn } from "./TicketHeaderTechn";
 import { AssigneeDialog } from "./AssigneeDialog";
 import { TableTooltip } from "./TableTooltip";
 import { TitleBody, RequesterBody, AssigneeBody, AssigneeSingleBody } from "./TicketColumnTemplates";
 
+/** ລຳດັບສະຖານະໃນ dropdown ລາຍລະອຽດ: ແກ້ໄຂແລ້ວ, ພັກໃວ້, ສົ່ງອອກແປງນອກ, ປິດວຽກແລ້ວ (id 6 = Dis — กดไม่ได้) */
+const DETAIL_STATUS_ORDER = [3, 5, 4, 6];
+const DETAIL_STATUS_ICONS: Record<number, string> = {
+    3: "pi pi-check",
+    5: "pi pi-pause",
+    4: "pi pi-send",
+    6: "pi pi-times-circle",
+};
+/** id ປິດວຽກແລ້ວ — ໃຫ້ Dis (disabled) กดไม่ได้ */
+const DETAIL_STATUS_DISABLED_ID = 6;
+
+function buildDetailMenuItems(
+    ticket: Ticket,
+    statusList: { id: number; name: string }[],
+    updateTicketStatus: (ticketId: string | number, helpdeskStatusId: number) => Promise<void>
+): TicketActionMenuItem[] {
+    const byId = new Map(statusList.map((s) => [s.id, s]));
+    return DETAIL_STATUS_ORDER.filter((id) => byId.has(id)).map((id) => {
+        const s = byId.get(id)!;
+        const isDisabled = id === DETAIL_STATUS_DISABLED_ID;
+        return {
+            label: s.name,
+            icon: DETAIL_STATUS_ICONS[id] ?? "pi pi-circle",
+            command: isDisabled ? () => {} : () => updateTicketStatus(ticket.id, id),
+            disabled: isDisabled, // ປິດວຽກແລ້ວ (id 6) = Dis กดไม่ได้
+        };
+    });
+}
+
 export default function PageTechnDemo() {
-    const router = useRouter();
     const toastRef = useRef<Toast>(null);
     const {
         displayRows,
         loading,
-        selectedTickets,
         globalFilter,
         onGlobalFilterChange,
         statusFilter,
         setStatusFilter,
         statusOptions,
-        onCheckboxChange,
         dialogVisible,
         currentAssignees,
         openAssigneeDialog,
         closeDialog,
-        showCheckbox,
         showAction,
         getTicketFromRow,
-        onAcceptSelf,
+        statusList,
+        updateTicketStatus,
     } = useTicketTableTechn(toastRef);
 
     const [first, setFirst] = useState(0);
@@ -45,7 +72,7 @@ export default function PageTechnDemo() {
     return (
         <div className="grid">
             <Toast ref={toastRef} position="top-center" />
-            <style dangerouslySetInnerHTML={{ __html: CUSTOM_TOOLTIP_CSS }} />
+            <style dangerouslySetInnerHTML={{ __html: sanitizeStyleContent(CUSTOM_TOOLTIP_CSS) }} />
 
             <div className="col-12">
                 <div className="card">
@@ -61,10 +88,6 @@ export default function PageTechnDemo() {
                         statusOptions={statusOptions}
                         globalFilter={globalFilter}
                         onGlobalFilterChange={onGlobalFilterChange}
-                        isSelectionEmpty={selectedTickets.length === 0}
-                        onAcceptSelf={onAcceptSelf}
-                        onNewTicket={() => router.push("/uikit/GroupProblem")}
-                        onNewService={() => router.push("/uikit/GroupServices")}
                     />
                     <DataTable
                         value={displayRows}
@@ -84,24 +107,6 @@ export default function PageTechnDemo() {
                         first={first}
                         onPage={(e) => setFirst(e.first)}
                     >
-                        <Column
-                            headerStyle={{ width: "3rem" }}
-                            style={{ maxWidth: "3rem" }}
-                            {...centerProps}
-                            body={(rowData: TicketRow) =>
-                                showCheckbox(rowData) ? (
-                                    <div className="flex justify-content-center">
-                                        <Checkbox
-                                            checked={selectedTickets.some(
-                                                (t) => t.id === getTicketFromRow(rowData).id
-                                            )}
-                                            onChange={(e) => onCheckboxChange(e, rowData)}
-                                        />
-                                    </div>
-                                ) : null
-                            }
-                        />
-
                         <Column
                             field="id"
                             header="ລະຫັດ"
@@ -196,7 +201,15 @@ export default function PageTechnDemo() {
                             {...centerProps}
                             body={(rowData: TicketRow) =>
                                 showAction(rowData) ? (
-                                    <TicketActionMenu ticket={getTicketFromRow(rowData)} />
+                                    <TicketActionMenu
+                                        ticket={getTicketFromRow(rowData)}
+                                        variant="techn"
+                                        menuItems={buildDetailMenuItems(
+                                            getTicketFromRow(rowData),
+                                            statusList,
+                                            updateTicketStatus
+                                        )}
+                                    />
                                 ) : null
                             }
                         />

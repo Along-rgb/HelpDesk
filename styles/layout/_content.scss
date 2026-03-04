@@ -7,6 +7,14 @@
     transition: margin-left $transitionDuration;
 }
 
+/* Top Menu mode: no sidebar, menu under topbar — เพิ่มระยะระหว่าง Top Menu กับ body */
+.layout-topmenu-mode .layout-main-container {
+    margin-left: 0 !important;
+    padding-top: 10rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
+
 .layout-main {
     flex: 1 1 auto;
 }

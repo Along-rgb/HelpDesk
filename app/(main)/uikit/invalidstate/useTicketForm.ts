@@ -4,13 +4,14 @@ import type { Toast } from 'primereact/toast';
 import { TicketForm, MasterData, City } from './types';
 import { ticketService } from '@/app/services/ticketService';
 import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
+import { HELPDESK_ENDPOINTS } from '@/config/endpoints';
 import { useUserProfileStore } from '@/app/store/user/userProfileStore';
 
-/** Endpoint: POST .../helpdesk/api/helpdeskrequests (baseURL มาจาก axiosClientsHelpDesk) */
+/** Endpoint: POST .../helpdesk/api/helpdeskrequests */
 const HELPDESK_REQUESTS_PATH = 'helpdeskrequests';
 
-/** ข้อความเมื่อเจอ 413 Payload Too Large */
-const ERROR_413_MESSAGE = 'ขนาดไฟล์ใหญ่เกินไป กรุณาติดต่อ Admin เพื่อขยายสิทธิ์ Nginx';
+/** ข้อความเมื่อเจอ 413 (Nginx/เซิร์ฟเวอร์จำกัดขนาด request) */
+const ERROR_413_MESSAGE = 'ขนาดไฟล์+รูปใหญ่เกินที่เซิร์ฟเวอร์อนุญาต (413) — ลดขนาดหรือจำนวนไฟล์/รูป หรือติดต่อ Admin เพื่อขยาย client_max_body_size';
 
 const INITIAL_FORM: TicketForm = {
     ticketId: null,
@@ -25,6 +26,13 @@ const INITIAL_FORM: TicketForm = {
     attachments: [],
     images: [],
 };
+
+/** ເບີໂທ ແລະ ໝາຍເລກຫ້ອງ: ອະນຸຍາດແຕ່ຕົວເລກເທົ່ານັ້ນ */
+function keepNumbersOnly(value: unknown): string {
+    if (value === null || value === undefined) return '';
+    const s = String(value).trim();
+    return s.replace(/\D/g, '');
+}
 
 function getInitialFormFromParams(searchParams: ReturnType<typeof useSearchParams>): Partial<Pick<TicketForm, 'ticketId' | 'topic'>> {
     const ticketIdParam = searchParams.get('ticketId');
@@ -56,6 +64,7 @@ export const useTicketForm = () => {
 
     const ticketIdParam = searchParams.get('ticketId');
     const titleParam = searchParams.get('title');
+    const editIdParam = searchParams.get('id');
 
     useEffect(() => {
         let isMounted = true;
@@ -66,11 +75,49 @@ export const useTicketForm = () => {
                 if (!isMounted) return;
                 setMasterData(data);
                 const next = getInitialFormFromParams(searchParams);
-                setForm((prev) => ({
-                    ...prev,
-                    ticketId: next.ticketId ?? prev.ticketId,
-                    topic: next.topic ?? prev.topic,
-                }));
+                let nextForm: Partial<TicketForm> = {
+                    ticketId: next.ticketId ?? null,
+                    topic: next.topic ?? null,
+                };
+                if (editIdParam) {
+                    try {
+                        const res = await axiosClientsHelpDesk.get(HELPDESK_ENDPOINTS.requestById(editIdParam));
+                        const row = (res.data?.data ?? res.data) as Record<string, unknown>;
+                        const ticket = row.ticket as { id?: number; title?: string } | undefined;
+                        const buildingId = row.buildingId != null ? String(row.buildingId) : undefined;
+                        const floorId = row.floorId != null ? String(row.floorId) : undefined;
+                        const turningId = row.turningId != null ? String(row.turningId) : undefined;
+                        const building = buildingId ? (data.buildings ?? []).find((b) => b.code === buildingId) ?? null : null;
+                        let level: City | null = null;
+                        if (buildingId && floorId) {
+                            const floors = await ticketService.getFloorsByBuilding(buildingId);
+                            if (!isMounted) return;
+                            level = floors.find((f) => f.code === floorId) ?? null;
+                        }
+                        const route = turningId ? (data.routes ?? []).find((r) => r.code === turningId) ?? null : null;
+                        nextForm = {
+                            ticketId: ticket?.id ?? next.ticketId ?? null,
+                            topic: ticket?.title ? { name: ticket.title } : next.topic ?? null,
+                            assetNumber: (row.numberSKT != null ? String(row.numberSKT) : '') || '',
+                            building: building ?? null,
+                            level,
+                            route: route ?? null,
+                            room: (row.room != null ? String(row.room) : '') || '',
+                            phoneNumber: keepNumbersOnly(row.telephone),
+                            description: (row.details != null ? String(row.details) : '') || '',
+                            attachments: [],
+                            images: [],
+                        };
+                    } catch {
+                        if (isMounted) nextForm = { ...nextForm, ticketId: next.ticketId ?? null, topic: next.topic ?? null };
+                    }
+                }
+                if (isMounted) {
+                    setForm((prev) => ({
+                        ...prev,
+                        ...nextForm,
+                    }));
+                }
             } catch {
                 if (isMounted) {
                     const next = getInitialFormFromParams(searchParams);
@@ -86,7 +133,7 @@ export const useTicketForm = () => {
         };
         initData();
         return () => { isMounted = false; };
-    }, [ticketIdParam, titleParam, searchParams]);
+    }, [ticketIdParam, titleParam, editIdParam, searchParams]);
 
     useEffect(() => {
         const buildingId = form.building?.code;
@@ -102,8 +149,19 @@ export const useTicketForm = () => {
     }, [form.building?.code]);
 
     const updateField = (field: keyof TicketForm, value: unknown) => {
+        if (field === 'phoneNumber' || field === 'room') {
+            setForm((prev) => ({ ...prev, [field]: keepNumbersOnly(value) }));
+            return;
+        }
         setForm((prev) => ({ ...prev, [field]: value }));
     };
+
+    /** ກົດສົ່ງໄດ້ກໍ່ຕໍ່ເມື່ອເລືອກ ຕຶກ/ອາຄານ, ລະດັບຊັ້ນ, ເສັ້ນທາງ ຄົບຖ້ວນ */
+    const canSubmit =
+        form.ticketId != null &&
+        form.building != null &&
+        form.level != null &&
+        form.route != null;
 
     const handleBuildingChange = (building: City | null) => {
         setForm((prev) => ({ ...prev, building, level: null }));
@@ -216,8 +274,18 @@ export const useTicketForm = () => {
 
     const handleCancel = () => router.back();
 
-    const PAYLOAD_MAX_MB = 8;
+    const PAYLOAD_MAX_MB = 2;
     const handleSubmit = async () => {
+        if (isSubmitting) return;
+        if (!canSubmit) {
+            toastRef.current?.show({
+                severity: 'warn',
+                summary: 'ແຈ້ງເຕືອນ',
+                detail: 'ກະລຸນາເລືອກ ຕຶກ/ອາຄານ, ລະດັບຊັ້ນ ແລະ ເສັ້ນທາງ ໃຫ້ຄົບຖ້ວນກ່ອນສົ່ງຄຳຮ້ອງຂໍ',
+                life: 4000,
+            });
+            return;
+        }
         if (form.ticketId == null) {
             toastRef.current?.show({ severity: 'warn', summary: 'ແຈ້ງເຕືອນ', detail: 'ກະລຸນາເລືອກຫົວຂໍ້ຈາກຫນ້າ ແຈ້ງບັນຫາ', life: 4000 });
             return;
@@ -257,12 +325,16 @@ export const useTicketForm = () => {
                 formData.append('hdImgs', file);
             });
 
-            await axiosClientsHelpDesk.post(HELPDESK_REQUESTS_PATH, formData);
+            if (editIdParam) {
+                await axiosClientsHelpDesk.put(HELPDESK_ENDPOINTS.requestById(editIdParam), formData);
+            } else {
+                await axiosClientsHelpDesk.post(HELPDESK_REQUESTS_PATH, formData);
+            }
 
             toastRef.current?.show({
                 severity: 'success',
                 summary: 'ສຳເລັດ',
-                detail: 'ບັນທຶກຄຳຮ້ອງຂໍສຳເລັດ',
+                detail: editIdParam ? 'ແກ້ໄຂຄຳຮ້ອງຂໍສຳເລັດ' : 'ບັນທຶກຄຳຮ້ອງຂໍສຳເລັດ',
                 life: 3000,
             });
 
@@ -270,17 +342,23 @@ export const useTicketForm = () => {
             const path =
                 roleId === 1 || roleId === 2 ? '/uikit/table'
                     : roleId === 3 ? '/uikit/pageTechn'
-                    : roleId === 4 ? '/uikit/pageUser'
+                    : roleId === 4 ? '/uikit/request-history'
                     : '/auth/login';
             setTimeout(() => router.push(path), 800);
         } catch (err: unknown) {
             const res = err && typeof err === 'object' && 'response' in err
-                ? (err as { response?: { status?: number; data?: { message?: string } } }).response
+                ? (err as { response?: { status?: number; data?: unknown } }).response
                 : undefined;
             const status = res?.status;
-            const serverMsg = res?.data?.message;
+            const data = res?.data;
+            const serverMsg =
+                data && typeof data === 'object' && data !== null && 'message' in data && typeof (data as { message?: unknown }).message === 'string'
+                    ? (data as { message: string }).message
+                    : undefined;
+            const errMsg = err && typeof err === 'object' && 'message' in err ? String((err as { message?: unknown }).message) : '';
 
-            if (status === 413) {
+            const is413 = status === 413 || /413|Request Entity Too Large|Payload Too Large/i.test(errMsg);
+            if (is413) {
                 toastRef.current?.show({
                     severity: 'error',
                     summary: 'ເກີດຂໍ້ຜິດພາດ',
@@ -290,12 +368,23 @@ export const useTicketForm = () => {
                 return;
             }
 
-            const detail = typeof serverMsg === 'string' ? serverMsg : 'ເກີດຂໍ້ຜິດພາດໃນການສົ່ງຄຳຮ້ອງຂໍ';
+            const isCors = !res && /CORS|Access-Control|blocked/i.test(errMsg);
+            const is500 = status === 500;
+            let detail: string;
+            if (isCors) {
+                detail = 'ເຊີບເວີບລ็อກການຮັບຂໍ້ມູນ (CORS) — ກະລຸນາຕັ້ງ NEXT_PUBLIC_USE_HELPDESK_PROXY=true ໃນ .env.local ແລ້ວ restart dev server';
+            } else if (typeof serverMsg === 'string' && serverMsg.trim()) {
+                detail = serverMsg;
+            } else if (is500) {
+                detail = 'ເຊີບເວີຕອບ 500 (Internal Server Error) — ກະລຸນາກວດສອບຂໍ້ມູນທີ່ສົ່ງ (ຫົວຂໍ້, ອາຄານ, ຊັ້ນ, ທາງ) ແລະເບິ່ງ log ເຊີບເວີ';
+            } else {
+                detail = 'ເກີດຂໍ້ຜິດພາດໃນການສົ່ງຄຳຮ້ອງຂໍ';
+            }
             toastRef.current?.show({
                 severity: 'error',
                 summary: 'ເກີດຂໍ້ຜິດພາດ',
                 detail,
-                life: 5000,
+                life: 7000,
             });
         } finally {
             setIsSubmitting(false);
@@ -308,6 +397,7 @@ export const useTicketForm = () => {
         levelOptions,
         loadingMaster,
         isSubmitting,
+        canSubmit,
         updateField,
         handleBuildingChange,
         handleLevelChange,

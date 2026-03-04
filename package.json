@@ -11,17 +11,19 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
-    "axios": "^1.13.2",
+    "axios": "^1.13.6",
     "chart.js": "4.2.1",
+    "dompurify": "^3.3.1",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
-    "html2pdf.js": "^0.10.3",
+    "html2pdf.js": "^0.14.0",
     "lottie-react": "^2.4.1",
-    "next": "^16.1.2",
+    "lodash-es": "^4.17.23",
+    "next": "^16.1.6",
     "primeflex": "^3.3.1",
     "primeicons": "^6.0.1",
     "primereact": "^10.2.1",
-    "quill": "^2.0.3",
+    "quill": "2.0.2",
     "react": "^18.2.0",
     "react-dom": "18.2.0",
     "react-hook-form": "^7.66.1",
@@ -29,15 +31,20 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@types/dompurify": "^3.0.5",
     "@types/file-saver": "^2.0.7",
     "@types/html2pdf.js": "^0.10.0",
     "@types/node": "^25.0.8",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "eslint": "^9.0.0",
-    "eslint-config-next": "^16.1.2",
+    "eslint-config-next": "^16.1.6",
     "prettier": "^2.8.8",
     "sass": "^1.63.4",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "lodash-es": "^4.17.23",
+    "minimatch": "^9.0.7"
   }
 }

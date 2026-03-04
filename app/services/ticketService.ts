@@ -1,12 +1,13 @@
-import axios from 'axios';
 import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
+import { createAuthAxios } from '@/config/createAuthAxios';
 import { env } from '@/config/env';
 import { AUTH_FORBIDDEN_MSG } from '@/global/types/api';
 import { TicketForm, MasterData, City, Ticket } from '@/app/(main)/uikit/invalidstate/types';
 import { STATIC_CATEGORIES } from '@/app/(main)/uikit/invalidstate/ticketData';
 import { getCurrentDateTimeString } from '@/utils/dateUtils';
 
-const TICKETS_BASE = env.ticketsApiUrl;
+const TICKETS_BASE = env.ticketsApiUrl.trim().replace(/\/+$/, '');
+const axiosTickets = TICKETS_BASE ? createAuthAxios(TICKETS_BASE) : null;
 
 // รูปแบบจาก API: { id: number, name: string }
 interface BuildingApiItem {
@@ -144,10 +145,13 @@ export const ticketService = {
             if (!formData.topic) {
                 return { success: false, message: "ກະລຸນາປ້ອນຂໍ້ມູນທີ່ຈຳເປັນ (*)" };
             }
+            if (!axiosTickets) {
+                return { success: false, message: "ບໍ່ສາມາດເຊື່ອມຕໍ່ Server ໄດ້" };
+            }
 
             // A. ดึงข้อมูล Tickets ทั้งหมดมาก่อน เพื่อหา ID ล่าสุด
-            const existingTickets = await axios.get<Ticket[]>(`${TICKETS_BASE}/tickets`);
-            const tickets = existingTickets.data;
+            const res = await axiosTickets.get<Ticket[]>('/tickets');
+            const tickets = res.data;
 
             // B. คำนวณหา Max ID
             let maxId = 0;
@@ -184,7 +188,7 @@ export const ticketService = {
             };
 
             // E. ส่งข้อมูลไปยัง API
-            const response = await axios.post(`${TICKETS_BASE}/tickets`, newTicket);
+            await axiosTickets.post('/tickets', newTicket);
             return { success: true, message: `ບັນທຶກຂໍ້ມູນສຳເລັດ!` };
 
         } catch {
@@ -194,21 +198,15 @@ export const ticketService = {
 
     // 4. Get Tickets
     getTickets: async (): Promise<Ticket[]> => {
-        try {
-            const res = await axios.get<Ticket[]>(`${TICKETS_BASE}/tickets`);
-            return res.data;
-        } catch (error) {
-            throw error;
-        }
+        if (!axiosTickets) throw new Error('Tickets API not configured');
+        const res = await axiosTickets.get<Ticket[]>('/tickets');
+        return res.data;
     },
 
     // 5. Update Ticket
     updateTicket: async (ticket: Ticket) => {
-        try {
-            const response = await axios.put(`${TICKETS_BASE}/tickets/${ticket.id}`, ticket);
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
+        if (!axiosTickets) throw new Error('Tickets API not configured');
+        const response = await axiosTickets.put(`/tickets/${ticket.id}`, ticket);
+        return response.data;
     }
 };

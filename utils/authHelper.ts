@@ -14,6 +14,8 @@ export const AUTH_KEYS = {
   USER_PROFILE_STORE: 'userProfileStore',
   SIDE_MENU: 'sideMenu',
   TOKEN: 'token',
+  /** Legacy: ลบเมื่อ Logout/401 (เคยใช้ใน login เก่า) */
+  LASTIME: 'lastime',
   /** ลบเมื่อ Logout/401 เพื่อไม่ให้ ID พนักงานคนเก่าค้าง */
   EMPLOYEE_ID: 'employeeId',
 } as const;

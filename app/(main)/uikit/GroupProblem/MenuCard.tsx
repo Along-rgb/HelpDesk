@@ -9,12 +9,15 @@ export interface MenuCardProps {
   description: string;
   /** ຮູບໄອຄອນ (Icon Image URL) */
   iconUrl: string;
+  /** ຈຳນວນ ticket ໃນໝວດໝູ່ (optional) */
+  ticketCount?: number;
 }
 
 export const MenuCard: React.FC<MenuCardProps> = ({
   title,
   description,
   iconUrl,
+  ticketCount,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -70,6 +73,14 @@ export const MenuCard: React.FC<MenuCardProps> = ({
           <span className="text-xl font-bold text-900 mb-3">{title}</span>
           <p className="text-600 line-height-3 text-sm m-0">{description}</p>
         </div>
+
+        {ticketCount != null && (
+          <div className="w-full flex justify-content-center align-items-center pt-2 pb-3 mt-auto">
+            <span className="text-600 text-sm">
+              {ticketCount} ລາຍການ
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

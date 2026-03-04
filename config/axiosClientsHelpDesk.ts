@@ -15,8 +15,6 @@ const axiosClientsHelpDesk = axios.create({
   baseURL: env.helpdeskApiUrl,
 });
 
-const MAX_TOKEN_AGE_MS = 2 * 60 * 60 * 1000; // 2 hours
-
 /** Parsed shape of persisted auth store state (read-only). */
 interface PersistedAuthState {
   state?: { authData?: { accessToken?: string; issuedAt?: number } };
@@ -58,10 +56,6 @@ export function getTokenFromStorage(): string | null {
   return getLatestToken();
 }
 
-function isTokenExpired(issuedAt: number): boolean {
-  return Date.now() - issuedAt > MAX_TOKEN_AGE_MS;
-}
-
 function attachAuthToRequest(config: InternalAxiosRequestConfig): void {
   // Do NOT set Content-Type for FormData. The browser/runtime must set
   // multipart/form-data with the correct boundary; manually setting
@@ -83,12 +77,6 @@ function attachAuthToRequest(config: InternalAxiosRequestConfig): void {
   }
 
   const token = getLatestToken();
-  const { issuedAt } = readAuthFromStorage();
-
-  // if (issuedAt != null && isTokenExpired(issuedAt)) {
-  //   clearAppSession();
-  //   throw new UnauthorizedError('Token expired (frontend policy).');
-  // }
 
   if (token) {
     config.headers.set('Authorization', `Bearer ${token}`);

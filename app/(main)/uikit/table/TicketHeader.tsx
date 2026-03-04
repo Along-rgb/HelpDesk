@@ -19,14 +19,12 @@ interface TicketHeaderProps {
     globalFilter: string;
     onGlobalFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
     isSelectionEmpty: boolean;
-    onNewTicket: () => void;
-    onNewService: () => void;
     onBulkAssign: () => void;
 }
 
 export const TicketHeader = ({
     statusFilter, setStatusFilter, statusOptions, assignOptions, assignmentSectionTitle, assignFilter, setAssignFilter,
-    globalFilter, onGlobalFilterChange, isSelectionEmpty, onNewTicket, onNewService, onBulkAssign
+    globalFilter, onGlobalFilterChange, isSelectionEmpty, onBulkAssign
 }: TicketHeaderProps) => {
 
     const getStatusIcon = (option: StatusOption) =>
@@ -86,8 +84,6 @@ export const TicketHeader = ({
                     <i className="pi pi-search" />
                     <InputText value={globalFilter} onChange={onGlobalFilterChange} placeholder="ຄົ້ນຫາລວມ.." className="p-inputtext-sm w-full md:w-15rem" />
                 </span>
-                <Button label="ແຈ້ງບັນຫາໃໝ່" icon="pi pi-send" severity="danger" size="small" onClick={onNewTicket} />
-                <Button label="ຂໍບໍລິການໃໝ່" icon="pi pi-shopping-cart" severity="success" size="small" onClick={onNewService} />
             </div>
         </div>
     );

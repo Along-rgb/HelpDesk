@@ -4,7 +4,6 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { IconItemData } from '../types';
-import { getCategoryIconBaseUrl } from '../utils/iconUrl';
 
 interface Props {
     items: IconItemData[];
@@ -40,22 +39,7 @@ function IconCell({ src, alt = '' }: { src: string; alt?: string }) {
                 height={48}
                 className="border-round"
                 style={{ width: '48px', height: '48px', objectFit: 'contain' }}
-                onError={() => {
-                    if (process.env.NODE_ENV === 'development') {
-                        const base = getCategoryIconBaseUrl();
-                        const isFullUrl = src.startsWith('http://') || src.startsWith('https://');
-                        console.warn(
-                            '[IssuesIconTable] Image load failed:',
-                            {
-                                requestedUrl: src,
-                                uploadBaseUrl: base || '(empty — set NEXT_PUBLIC_HELPDESK_UPLOAD_BASE_URL)',
-                                isFullUrl,
-                                hint: 'Possible causes: CORS, 404 (file missing on server), or base URL missing /uploads',
-                            }
-                        );
-                    }
-                    setError(true);
-                }}
+                onError={() => setError(true)}
             />
         </span>
     );

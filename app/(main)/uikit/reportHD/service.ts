@@ -23,16 +23,13 @@ export const ReportService = {
             });
             
             return response.data;
-        } catch (error: any) {
-            // ถ้าเป็นการ Cancel request ไม่ต้อง log error
+        } catch (error: unknown) {
             if (axios.isCancel(error)) {
-                console.log('Request canceled:', error.message);
-                throw error; // throw ต่อให้หน้าบ้านรู้ว่าเป็น cancel
+                throw error;
             }
-
-            console.error("Error fetching reports:", error);
-            // กรณี Error อื่นๆ ให้ส่งค่าว่างกลับไป หรือ throw error ตามต้องการ
-            return []; 
+            const message = error instanceof Error ? error.message : String(error);
+            console.error('Error fetching reports:', message);
+            return [];
         }
     }
 };

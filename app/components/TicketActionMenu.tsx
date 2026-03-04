@@ -9,6 +9,7 @@ export interface TicketActionMenuItem {
   icon: string;
   className?: string;
   command: () => void;
+  disabled?: boolean;
 }
 
 export interface TicketActionMenuProps {
@@ -39,12 +40,13 @@ export function TicketActionMenu({
 }: TicketActionMenuProps) {
   const router = useRouter();
   const items = menuItems ?? (variant === 'user' ? DEFAULT_ITEMS_USER : DEFAULT_ITEMS_TECHN);
-  const lastIndex = items.length - 1;
-  const model = [
-    ...items.slice(0, lastIndex).map((item) => ({ label: item.label, icon: item.icon, className: item.className, command: item.command })),
-    { separator: true },
-    { label: items[lastIndex].label, icon: items[lastIndex].icon, className: items[lastIndex].className, command: items[lastIndex].command },
-  ];
+  const model = items.map((item) => ({
+    label: item.label,
+    icon: item.icon,
+    className: item.className,
+    command: item.command,
+    disabled: item.disabled,
+  }));
 
   const isUser = variant === 'user';
   const buttonStyle = isUser
