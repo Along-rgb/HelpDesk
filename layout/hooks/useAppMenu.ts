@@ -23,7 +23,7 @@ export const MENU_MODEL: MenuItemWithRole[] = [
 ];
 
 const USER_ROLE_MENU: MenuItemWithRole[] = [
-    { label: 'ຫນ້າຫຼັກ', icon: 'pi pi-fw pi-home', to: '/uikit/pageUser' },
+    { label: 'ແຈ້ງບັນຫາໃໝ່', icon: 'pi pi-fw pi-send', to: '/uikit/GroupProblem', allowedRoles: [ROLE_ID.User] },
     { label: 'ປະຫວັດການຮ້ອງຂໍ', icon: 'pi pi-fw pi-folder-open', to: '/uikit/request-history', allowedRoles: [ROLE_ID.User] },
     { label: 'ກ່ຽວກັບລະບົບ', icon: 'pi pi-fw pi-info-circle', to: '/uikit/Aboutsystem' }
 ];
@@ -49,5 +49,5 @@ export function useAppMenu() {
         return USER_MENU_ITEMS.filter((item) => !item.allowedRoles || item.allowedRoles.includes(roleId));
     }, [roleId]);
 
-    return { displayName, visibleMenuItems, visibleUserMenuItems };
+    return { displayName, roleId, visibleMenuItems, visibleUserMenuItems };
 }

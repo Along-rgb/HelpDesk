@@ -66,6 +66,7 @@ export default function PageTechnDemo() {
     } = useTicketTableTechn(toastRef);
 
     const [first, setFirst] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(15);
 
     const centerProps = { align: "center" as const, alignHeader: "center" as const };
 
@@ -93,19 +94,22 @@ export default function PageTechnDemo() {
                         value={displayRows}
                         loading={loading}
                         paginator
-                        rows={15}
+                        rows={rowsPerPage}
                         rowsPerPageOptions={[15, 25, 50]}
                         paginatorTemplate="CurrentPageReport FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
                         currentPageReportTemplate="ສະແດງ {first} ເຖີງ {last} ຈາກທັງໝົດ {totalRecords} ລາຍການ"
                         dataKey="rowId"
                         size="small"
                         scrollable
-                        scrollHeight="flex"
+                        scrollHeight="60vh"
                         tableStyle={{ minWidth: "60rem" }}
                         style={{ fontSize: "1rem" }}
                         emptyMessage={<div className="text-center p-4">ບໍ່ພົບຂໍ້ມູນ</div>}
                         first={first}
-                        onPage={(e) => setFirst(e.first)}
+                        onPage={(e) => {
+                            setFirst(e.first);
+                            setRowsPerPage(e.rows);
+                        }}
                     >
                         <Column
                             field="id"

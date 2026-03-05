@@ -16,6 +16,9 @@ const STAFF_ROLE_ID = 3;
 const STAFF_HEAD_CATEGORY_TAB_INDEX = 1;
 /** ສະຖານະຫຼັງມອບໝາຍວຽກ — ກຳລັງດຳເນີນການ (auto ເມື່ອມອບໝາຍວຽກແລ້ວ) */
 const HELPDESK_STATUS_IN_PROGRESS = 2;
+/** ສະຖານະທີ່ສາມາດກົດຮັບວຽກເອງໄດ້ (role 2) — ລໍຖ້າຮັບວຽກ ເທົ່ານັ້ນ */
+const STATUS_WAITING_ACCEPT = "ລໍຖ້າຮັບວຽກ";
+const TECHNICIAN_ROLE_ID = 2;
 /** Role 2 ไม่มีสิทธิ์ GET prioritys — ใช้รายการ fallback เพื่อให้เลือกได้ */
 const ROLE_ID_NO_PRIORITY_LIST = 2;
 const FALLBACK_PRIORITY_OPTIONS: { id: number; name: string }[] = [
@@ -28,8 +31,16 @@ const FALLBACK_PRIORITY_OPTIONS: { id: number; name: string }[] = [
 
 const ALL_STATUS_OPTION: StatusOption = { label: "ທັງໝົດ", value: "Allin" };
 
+/** ຫົວຂໍ້ທີ່ສາມາດຮັບວຽກເອງໄດ້: ສະຖານະ ລໍຖ້າຮັບວຽກ ແລະ ຍັງບໍ່ມີຄົນມອບໝາຍ */
+function canReceiveSelf(t: Ticket): boolean {
+  if ((t.status ?? "").trim() !== STATUS_WAITING_ACCEPT) return false;
+  const assignees = t.assignees ?? [];
+  return assignees.length === 0;
+}
+
 export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
   const roleId = useUserProfileStore((s) => s.currentUser?.roleId ?? null);
+  const currentUserId = useUserProfileStore((s) => s.currentUser?.id ?? null) as number | null;
   const { list: statusList } = useHelpdeskStatusOptions();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
@@ -244,11 +255,59 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
     }
   };
 
+  /** ຮັບວຽກເອງ (role 2): ເງື່ອນໄຂ ສະຖານະ ລໍຖ້າຮັບວຽກ ແລະ ຍັງບໍ່ມີຄົນມອບໝາຍ */
+  const onReceiveTaskSelf = useCallback(async () => {
+    if (roleId !== TECHNICIAN_ROLE_ID || currentUserId == null) return;
+    const eligible = selectedTickets.filter(canReceiveSelf);
+    const helpdeskRequestIds = eligible.map((t) => Number(t.id)).filter((id): id is number => Number.isFinite(id));
+    if (helpdeskRequestIds.length === 0) {
+      toastRef?.current?.show({
+        severity: "warn",
+        summary: "ເລືອກຫົວຂໍ້",
+        detail: "ເລືອກຫົວຂໍ້ທີ່ສະຖານະ ລໍຖ້າຮັບວຽກ ແລະ ຍັງບໍ່ມີຄົນມອບໝາຍ",
+        life: 4000,
+      });
+      return;
+    }
+    try {
+      setLoading(true);
+      await axiosClientsHelpDesk.post(HELPDESK_ENDPOINTS.ASSIGNMENTS, {
+        helpdeskRequestId: helpdeskRequestIds,
+        assignedToId: [currentUserId],
+      });
+      await Promise.all(
+        helpdeskRequestIds.map((id) =>
+          axiosClientsHelpDesk.put(HELPDESK_ENDPOINTS.updateHelpdeskStatus(id), { helpdeskStatusId: HELPDESK_STATUS_IN_PROGRESS })
+        )
+      );
+      await fetchData();
+      setSelectedTickets([]);
+      toastRef?.current?.show({
+        severity: "success",
+        summary: "ສຳເລັດ",
+        detail: "ຮັບວຽກເອງສຳເລັດ ສະຖານະເປັນກຳລັງດຳເນີນການ",
+        life: 3000,
+      });
+    } catch {
+      setLoading(false);
+      toastRef?.current?.show({
+        severity: "error",
+        summary: "ຜິດພາດ",
+        detail: "ຮັບວຽກເອງບໍ່ສຳເລັດ",
+        life: 4000,
+      });
+    }
+  }, [roleId, currentUserId, selectedTickets, fetchData, toastRef]);
+
   const openAssigneeDialog = (assignees: Assignee[], ticketStatus?: string) => {
     setCurrentAssignees(assignees);
     setCurrentTicketStatus(ticketStatus ?? null);
     setDialogVisible(true);
   };
+
+  const isRole2 = roleId === TECHNICIAN_ROLE_ID;
+  const selectedEligibleForReceiveSelf = useMemo(() => selectedTickets.filter(canReceiveSelf), [selectedTickets]);
+  const receiveSelfDisabled = !isRole2 || selectedEligibleForReceiveSelf.length === 0;
 
   return {
     tickets: filteredTickets,
@@ -274,5 +333,9 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
     openAssigneeDialog,
     closeDialog: () => setDialogVisible(false),
     refetch: fetchData,
+    isRole2,
+    onReceiveTaskSelf,
+    receiveSelfDisabled,
+    canReceiveSelf,
   };
 };

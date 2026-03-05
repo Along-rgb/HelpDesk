@@ -129,6 +129,7 @@ export default function RequestHistoryPage() {
         : '—';
     const [activeTab, setActiveTab] = useState<number>(TAB_INDEX.NEW);
     const [first, setFirst] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(15);
     const [numberSKT, setNumberSKT] = useState('');
     const [createdAtRange, setCreatedAtRange] = useState<Date[] | null>(null);
     const [tickets, setTickets] = useState<RequestHistoryRow[]>([]);
@@ -335,10 +336,19 @@ export default function RequestHistoryPage() {
                 <DataTable
                     value={filteredByTab}
                     paginator
-                    rows={10}
+                    rows={rowsPerPage}
                     first={first}
-                    onPage={(e) => setFirst((e as { first: number }).first)}
+                    onPage={(e) => {
+                        const { first: f, rows: r } = e as { first: number; rows: number };
+                        setFirst(f);
+                        setRowsPerPage(r);
+                    }}
+                    rowsPerPageOptions={[15, 25, 50]}
+                    paginatorTemplate="CurrentPageReport FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+                    currentPageReportTemplate="ສະແດງ {first} ເຖີງ {last} ຈາກທັງໝົດ {totalRecords} ລາຍການ"
                     size="small"
+                    scrollable
+                    scrollHeight="60vh"
                     loading={loading}
                     emptyMessage={loading ? undefined : <div className="request-history-empty-msg">ບໍ່ພົບຂໍ້ມູນ</div>}
                 >

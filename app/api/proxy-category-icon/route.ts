@@ -1,24 +1,17 @@
 /**
  * Proxy for category icon images — avoids CORS when frontend (e.g. localhost:3500)
  * loads images from another domain (e.g. api-test.edl.com.la/helpdesk/upload/categoryicon).
- * Reads upload base from NEXT_PUBLIC_HELPDESK_UPLOAD_BASE_URL (or derived from API base).
+ * Uses env.helpdeskUploadBaseUrl (from NEXT_PUBLIC_HELPDESK_UPLOAD_BASE_URL or derived from API base).
  * On remote 404, tries public/uploads/{filename} so local uploads still work when UI uses proxy URL.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
-
-/** Base path ตาม Backend: subdomain/upload/categoryicon (ไม่มี s ท้าย categoryicon) */
-const UPLOAD_CATEGORYICON_PATH = '/upload/categoryicon';
+import { env } from '@/config/env';
 
 function getUploadBaseUrl(): string {
-  const explicit = (process.env.NEXT_PUBLIC_HELPDESK_UPLOAD_BASE_URL ?? '').trim().replace(/\/+$/, '');
-  if (explicit) return explicit;
-  const apiBase = (process.env.NEXT_PUBLIC_HELPDESK_API_BASE_URL ?? '').trim();
-  if (!apiBase) return '';
-  const subdomain = apiBase.replace(/\/api\/?$/, '').replace(/\/+$/, '');
-  return subdomain + UPLOAD_CATEGORYICON_PATH;
+  return env.helpdeskUploadBaseUrl;
 }
 
 /** ถ้า Backend ส่ง path ย่อย (เช่น categoryicon/xxx.png) ใช้แค่ชื่อไฟล์เพื่อไม่ให้ path ซ้ำกับ base */
@@ -66,7 +59,7 @@ export async function GET(request: NextRequest) {
 
   if (!url) {
     return NextResponse.json(
-      { error: 'Invalid file (path not allowed) or NEXT_PUBLIC_HELPDESK_UPLOAD_BASE_URL is not configured' },
+      { error: 'Invalid file (path not allowed) or Helpdesk upload base URL is not configured (see .env.local)' },
       { status: 400 }
     );
   }

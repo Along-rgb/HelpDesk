@@ -1,14 +1,14 @@
 // table/TicketColumnTemplates.tsx
 import React from "react";
-import Link from "next/link"; 
+import Link from "next/link";
+import { encryptId } from "@/lib/crypto";
 import { Ticket, Assignee } from "./types";
 import { AssigneeAvatarGroup } from "./AssigneeAvatarGroup";
 import { ASSIGNEE_STATUS_MAP, STATUS_MAP } from "./constants";
 
-// ... (TitleBody และ RequesterBody เหมือนเดิม ไม่ต้องแก้)
 export const TitleBody = (rowData: Ticket) => (
-    <Link 
-        href={`/uikit/ticket-detail/${rowData.id}`} 
+    <Link
+        href={`/uikit/ticket-detail/${encryptId(rowData.id)}`}
         className="no-underline"
         style={{ color: 'inherit' }}
     >

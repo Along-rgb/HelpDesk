@@ -3,16 +3,15 @@
  * เปิดใช้ด้วย NEXT_PUBLIC_USE_HELPDESK_PROXY=true ใน .env.local
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { env } from '@/config/env';
 
 function getBackendBaseUrl(): string {
-  return (process.env.NEXT_PUBLIC_HELPDESK_API_BASE_URL ?? '').trim().replace(/\/$/, '');
+  return env.helpdeskApiUrl.trim().replace(/\/$/, '');
 }
 
 /** Base for upload endpoints: .../helpdesk/upload (hdfile, hdimage) */
 function getUploadBaseUrl(): string {
-  const apiBase = (process.env.NEXT_PUBLIC_HELPDESK_API_BASE_URL ?? '').trim().replace(/\/$/, '');
-  if (!apiBase) return '';
-  return apiBase.replace(/\/api\/?$/, '').replace(/\/+$/, '') + '/upload';
+  return env.helpdeskUploadRequestBaseUrl;
 }
 
 async function proxy(
@@ -28,7 +27,7 @@ async function proxy(
   const base = isUpload ? getUploadBaseUrl() : getBackendBaseUrl();
   if (!base) {
     return NextResponse.json(
-      { error: 'Proxy not configured. Set NEXT_PUBLIC_HELPDESK_API_BASE_URL in .env' },
+      { error: 'Proxy not configured. Set NEXT_PUBLIC_HELPDESK_API_BASE_URL in .env.local and restart dev server' },
       { status: 503 }
     );
   }

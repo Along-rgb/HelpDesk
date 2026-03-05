@@ -6,17 +6,21 @@ import { Panel } from "primereact/panel";
 import { Dropdown } from "primereact/dropdown";
 import { TabView, TabPanel } from "primereact/tabview";
 import { Toast } from "primereact/toast";
-import { Ticket } from "@/app/(main)/uikit/table/types";
+import { Ticket, AssigneeOption, type AdminAssignUserRow } from "@/app/(main)/uikit/table/types";
 import { STATUS_MAP, STATUS_ICON_MAP, STATUS_ICON_FALLBACK } from "@/app/(main)/uikit/table/constants";
 import { normalizeHelpdeskRow, unwrapHelpdeskResponse } from "@/app/(main)/uikit/table/normalizeHelpdeskRow";
 import type { HelpdeskRowInput } from "@/app/(main)/uikit/table/normalizeHelpdeskRow";
 import axiosClientsHelpDesk from "@/config/axiosClientsHelpDesk";
 import { HELPDESK_ENDPOINTS } from "@/config/endpoints";
 import { useUserProfileStore } from "@/app/store/user/userProfileStore";
+import { normalizeDataList } from "@/utils/apiNormalizers";
 import { sanitizeHtml } from "@/utils/sanitizeHtml";
+import { decryptId } from "@/lib/crypto";
 
-/** Role 3 = Staff — ບໍ່ໃຫ້ເຫັນ ມອບໝາຍວຽກ */
+/** Role 3 = Staff — ບໍ່ໃຫ້ເຫັນຊ່ອງມອບໝາຍວຽກ (ເງື່ອນໄຂແບບດຽວກັບ table: ໃຊ້ USERS_ADMINASSIGN + ກອງເປັນ Staff ເທົ່ານັ້ນ) */
 const ROLE_ID_STAFF = 3;
+/** Role 1, 2 เท่านั้นที่ Backend ອະນຸຍາດ GET users/adminassign — ບໍ່ສົ່ງ request ເມື່ອ role 3, 4 ເພື່ອຫຼີກ 403 */
+const ROLE_IDS_CAN_ADMIN_ASSIGN = [1, 2] as const;
 /** ສະຖານະທີ່ໃຫ້ເຫັນປຸ່ມ ຮັບວຽກເອງ (ເມື່ອປ່ຽນແລ້ວປຸ່ມຫາຍ — ໃຫ້ຕົງກັບ pageTechn checkbox) */
 const STATUS_WAITING_ACCEPT = "ລໍຖ້າຮັບວຽກ";
 /** ກຳລັງດຳເນີນການ — ໃຊ້ເມື່ອຮັບວຽກເອງ (เหมือน pageTechn) */
@@ -32,12 +36,14 @@ export default function TicketDetailPage() {
     // --- State ควบคุม Sidebar ---
     const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 
-    const [technicians, setTechnicians] = useState([]);
-    const [selectedAssignee, setSelectedAssignee] = useState(null);
+    /** ຕາມ table: ດຶງຈາກ USERS_ADMINASSIGN ແລະກອງເປັນ Staff (roleId === 3) ເທົ່ານັ້ນ */
+    const [assignOptions, setAssignOptions] = useState<AssigneeOption[]>([]);
+    const [selectedAssignee, setSelectedAssignee] = useState<AssigneeOption | null>(null);
 
     /** ອີເມວ: ดึงจาก endpoint เดียวกับ profileUser (GET users/:id) */
     const [requesterEmail, setRequesterEmail] = useState<string>("");
     const [acceptLoading, setAcceptLoading] = useState(false);
+    const [invalidLink, setInvalidLink] = useState(false);
     const toastRef = useRef<Toast | null>(null);
 
     const fetchTicket = useCallback((id: string) => {
@@ -53,10 +59,45 @@ export default function TicketDetailPage() {
             .finally(() => setLoading(false));
     }, []);
 
+    /** ມອບໝາຍວຽກ — ເອີ້ນ USERS_ADMINASSIGN ເທົ່ານັ້ນເມື່ອ role 1 ຫຼື 2 (ຫຼີກ 403 ສຳລັບ role 3, 4) */
     useEffect(() => {
-        const id = params.id;
-        if (!id || typeof id !== "string") return;
-        fetchTicket(id);
+        const canCall = roleId != null && ROLE_IDS_CAN_ADMIN_ASSIGN.includes(roleId as 1 | 2);
+        if (!canCall) {
+            setAssignOptions([]);
+            return;
+        }
+        axiosClientsHelpDesk
+            .get(HELPDESK_ENDPOINTS.USERS_ADMINASSIGN)
+            .then((response) => {
+                const list = normalizeDataList<AdminAssignUserRow>(response.data);
+                const staff = list.filter((u) => Number(u.roleId) === ROLE_ID_STAFF);
+                const options: AssigneeOption[] = staff.map((u) => {
+                    const first = u.employee?.first_name ?? "";
+                    const last = u.employee?.last_name ?? "";
+                    const label = [first, last].filter(Boolean).join(" ").trim() || String(u.id);
+                    return { id: u.id, label };
+                });
+                setAssignOptions(options);
+            })
+            .catch(() => setAssignOptions([]));
+    }, [roleId]);
+
+    useEffect(() => {
+        const encodedId = params.id;
+        if (!encodedId || typeof encodedId !== "string") {
+            setInvalidLink(true);
+            setTicket(null);
+            setLoading(false);
+            return;
+        }
+        const ticketId = decryptId(encodedId);
+        if (!ticketId) {
+            setInvalidLink(true);
+            setTicket(null);
+            setLoading(false);
+            return;
+        }
+        fetchTicket(ticketId);
     }, [params.id, fetchTicket]);
 
     const handleAcceptWork = useCallback(() => {
@@ -108,8 +149,9 @@ export default function TicketDetailPage() {
             .catch(() => setRequesterEmail(""));
     }, [ticket?.employeeId]);
 
+    if (invalidLink) return <div className="p-4 text-xl">ລິ້ງຄ໌ບໍ່ຖືກຕ້ອງ ຫຼືໝົດອາຍຸ</div>;
     if (loading) return <div className="p-4 text-xl">ກໍາລັງໂຫຼດຂໍ້ມູນ...</div>;
-    if (!ticket) return <div className="p-4 text-xl">ບໍ່ພົບຂໍ້ມູນ Ticket ID: {params.id}</div>;
+    if (!ticket) return <div className="p-4 text-xl">ບໍ່ພົບຂໍ້ມູນ Ticket</div>;
 
     const requesterName = ticket.requester || `${ticket.firstname_req || ''} ${ticket.lastname_req || ''}`.trim();
 
@@ -136,8 +178,8 @@ export default function TicketDetailPage() {
                                     <Dropdown
                                         value={selectedAssignee}
                                         onChange={(e) => setSelectedAssignee(e.value)}
-                                        options={technicians}
-                                        optionLabel="name"
+                                        options={assignOptions}
+                                        optionLabel="label"
                                         placeholder="ມອບໝາຍວຽກ"
                                         className="w-16rem"
                                         emptyMessage="ບໍ່ພົບລາຍຊື່"

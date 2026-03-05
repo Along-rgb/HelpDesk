@@ -35,7 +35,7 @@ function getAuthIds(userObj: UserProfile.UserLoginResponse | undefined): { userI
 }
 
 function getAfterLoginPath(roleId: number | null | undefined): string {
-  if (roleId === 4) return '/uikit/pageUser';
+  if (roleId === 4) return '/uikit/GroupProblem';
   if (roleId === 1 || roleId === 2) return '/uikit/MainBoard';
   return '/uikit/pageTechn';
 }

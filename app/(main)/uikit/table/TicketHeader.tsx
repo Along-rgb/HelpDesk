@@ -20,11 +20,16 @@ interface TicketHeaderProps {
     onGlobalFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
     isSelectionEmpty: boolean;
     onBulkAssign: () => void;
+    /** ສຳລັບ role 2: ເປີດປຸ່ມ ຮັບວຽກເອງ (ເງື່ອນໄຂ ລໍຖ້າຮັບວຽກ ແລະ ຍັງບໍ່ມີຄົນມອບໝາຍ) */
+    showReceiveSelfButton?: boolean;
+    receiveSelfDisabled?: boolean;
+    onReceiveTaskSelf?: () => void;
 }
 
 export const TicketHeader = ({
     statusFilter, setStatusFilter, statusOptions, assignOptions, assignmentSectionTitle, assignFilter, setAssignFilter,
-    globalFilter, onGlobalFilterChange, isSelectionEmpty, onBulkAssign
+    globalFilter, onGlobalFilterChange, isSelectionEmpty, onBulkAssign,
+    showReceiveSelfButton, receiveSelfDisabled, onReceiveTaskSelf,
 }: TicketHeaderProps) => {
 
     const getStatusIcon = (option: StatusOption) =>
@@ -75,7 +80,16 @@ export const TicketHeader = ({
                     disabled={isSelectionEmpty}
                     itemTemplate={(option: AssigneeOption) => <div className="text-sm flex align-items-center gap-2">{option.label}</div>}
                 />
-                <Button label="ຮັບວຽກເອງ" icon="pi pi-check" severity="secondary" size="small" disabled={isSelectionEmpty} />
+                {showReceiveSelfButton && (
+                    <Button
+                        label="ຮັບວຽກເອງ"
+                        icon="pi pi-check"
+                        severity="secondary"
+                        size="small"
+                        disabled={receiveSelfDisabled ?? true}
+                        onClick={onReceiveTaskSelf}
+                    />
+                )}
             </div>
 
             {/* RIGHT */}

@@ -35,9 +35,14 @@ export default function TableDemo() {
         onCheckboxChange, onPriorityChange,
         dialogVisible, currentAssignees, currentTicketStatus, openAssigneeDialog, closeDialog,
         onBulkAssign,
+        isRole2,
+        onReceiveTaskSelf,
+        receiveSelfDisabled,
+        canReceiveSelf,
     } = useTicketTable(toastRef);
 
     const [first, setFirst] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(15);
 
     const centerProps = { align: 'center' as const, alignHeader: 'center' as const };
 
@@ -59,6 +64,9 @@ export default function TableDemo() {
                         globalFilter={globalFilter} onGlobalFilterChange={onGlobalFilterChange}
                         isSelectionEmpty={selectedTickets.length === 0}
                         onBulkAssign={onBulkAssign}
+                        showReceiveSelfButton={isRole2}
+                        receiveSelfDisabled={receiveSelfDisabled}
+                        onReceiveTaskSelf={onReceiveTaskSelf}
                     />
                     {error && (
                         <div className="flex align-items-center gap-2 p-3 mb-3 surface-100 border-round text-red-600">
@@ -69,28 +77,38 @@ export default function TableDemo() {
                     <DataTable
                         value={tickets}
                         paginator
-                        rows={15}
+                        rows={rowsPerPage}
                         rowsPerPageOptions={[15, 25, 50]}
                         paginatorTemplate="CurrentPageReport FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
                         currentPageReportTemplate="ສະແດງ {first} ເຖີງ {last} ຈາກທັງໝົດ {totalRecords} ລາຍການ"
                         dataKey="id"
                         size="small"
                         scrollable
-                        scrollHeight="flex"
+                        scrollHeight="60vh"
                         loading={loading}
                         tableStyle={{ minWidth: "60rem" }}
                         style={{ fontSize: "calc(1rem + 1.5px)" }}
                         emptyMessage={loading ? undefined : <div className="text-center p-4">ບໍ່ພົບຂໍ້ມູນ</div>}
                         first={first}
-                        onPage={(e) => setFirst(e.first)}
+                        onPage={(e) => {
+                            setFirst(e.first);
+                            setRowsPerPage(e.rows);
+                        }}
                     >
                         <Column 
                             headerStyle={{ width: '3rem' }} style={{ maxWidth: '3rem' }} {...centerProps} 
-                            body={(rowData: Ticket) => (
-                                <div className="flex justify-content-center">
-                                    <Checkbox checked={selectedTickets.some((t) => t.id === rowData.id)} onChange={(e) => onCheckboxChange(e, rowData)} />
-                                </div>
-                            )}
+                            body={(rowData: Ticket) => {
+                                const showCheckbox = isRole2 ? canReceiveSelf(rowData) : true;
+                                return (
+                                    <div className="flex justify-content-center">
+                                        {showCheckbox ? (
+                                            <Checkbox checked={selectedTickets.some((t) => t.id === rowData.id)} onChange={(e) => onCheckboxChange(e, rowData)} />
+                                        ) : (
+                                            <span className="text-400">—</span>
+                                        )}
+                                    </div>
+                                );
+                            }}
                         />
                         
                         {/* ✅ [UPDATE] ใช้ field="id" แทนการคำนวณลำดับ */}

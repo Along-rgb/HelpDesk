@@ -17,6 +17,8 @@ export const HELPDESK_ENDPOINTS = {
 
   USERS_ADMINASSIGN: 'users/adminassign',
   USER_BY_ID: (id: string | number) => `users/${id}`,
+  /** POST — เปลี่ยนรหัสผ่าน (body: oldpassword, password1, password2) */
+  CHANGE_PASSWORD: 'users/changepassword',
 
   HEADCATEGORY_SELECT: 'headcategorys/selectheadcategory',
   PRIORITY: 'prioritys',

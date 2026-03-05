@@ -130,6 +130,11 @@ $topmenu-height: 3rem;
     font-feature-settings: var(--font-feature-settings, normal);
 }
 
+.layout-topmenu-spacer {
+    flex: 1;
+    min-width: 0;
+}
+
 .layout-topmenu-list {
     margin: 0;
     padding: 0;
@@ -139,6 +144,7 @@ $topmenu-height: 3rem;
     align-items: center;
     gap: 0.25rem;
     flex: 1;
+    min-width: 0;
 }
 
 .layout-topmenu-user {
@@ -251,6 +257,138 @@ $topmenu-height: 3rem;
         color: $menu-active-color;
         font-weight: 600;
         i { color: $menu-active-color; }
+    }
+}
+
+// Top menu Burger (responsive < 1024px)
+.layout-topmenu-burger {
+    position: relative;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.layout-topmenu-burger-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: $menu-text-color;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    i {
+        font-size: 1.35rem;
+    }
+
+    &:hover {
+        background-color: var(--surface-hover, #f8f9fa);
+        color: $menu-active-color;
+    }
+
+    &[aria-expanded="true"] {
+        background-color: rgba(63, 81, 181, 0.1);
+        color: $menu-active-color;
+    }
+}
+
+.layout-topmenu-burger-panel {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.25rem;
+    min-width: 16rem;
+    max-width: 90vw;
+    max-height: calc(100vh - #{$topbar-height} - #{$topmenu-height} - 2rem);
+    overflow-y: auto;
+    background: $sidebar-bg;
+    border: 1px solid var(--surface-border, $border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+}
+
+.layout-topmenu-burger-panel-inner {
+    padding: 0.5rem 0;
+}
+
+.layout-topmenu-burger-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.layout-topmenu-burger-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1rem;
+    color: $menu-text-color;
+    text-decoration: none;
+    font-size: 0.95rem;
+    transition: background 0.2s;
+
+    i {
+        font-size: 1rem;
+        color: lighten($menu-text-color, 15%);
+    }
+
+    &:hover {
+        background: var(--surface-hover, #f8f9fa);
+        color: $menu-active-color;
+        i { color: $menu-active-color; }
+    }
+
+    &.active-route {
+        background: rgba(63, 81, 181, 0.08);
+        color: $menu-active-color;
+        font-weight: 600;
+        i { color: $menu-active-color; }
+    }
+}
+
+.layout-topmenu-burger-user {
+    border-bottom: 1px solid $border-color;
+    margin-bottom: 0.25rem;
+    padding-bottom: 0.5rem;
+}
+
+.layout-topmenu-burger-user-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: $menu-text-color;
+
+    i {
+        font-size: 1rem;
+        color: lighten($menu-text-color, 15%);
+    }
+}
+
+.layout-topmenu-burger-sep {
+    border: 0;
+    border-top: 1px solid $border-color;
+    margin: 0.35rem 0.5rem;
+}
+
+.layout-topmenu-burger-logout {
+    color: $danger-color !important;
+    i { color: $danger-color !important; }
+    &:hover { background: rgba($danger-color, 0.08) !important; }
+}
+
+// Top menu responsive: < 1024px แสดงเฉพาะ Burger ด้านขวา
+@media screen and (max-width: 1024px) {
+    .layout-topmenu-list,
+    .layout-topmenu-user {
+        display: none !important;
     }
 }
 

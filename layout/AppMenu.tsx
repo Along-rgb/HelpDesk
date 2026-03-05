@@ -23,9 +23,10 @@ const MENU_MODEL: MenuItemWithRole[] = [
     { label: 'ກ່ຽວກັບລະບົບ', icon: 'pi pi-fw pi-info-circle', to: '/uikit/Aboutsystem' }
 ];
 
-/** เมนูสำหรับ Role User (id: 4) เท่านั้น — ເຫັນແຕ່ ຫນ້າຫຼັກ (pageUser) ແລະ ກ່ຽວກັບລະບົບ */
+/** เมนูสำหรับ Role User (id: 4) เท่านั้น — ແຈ້ງບັນຫາໃໝ່, ປະຫວັດການຮ້ອງຂໍ, ກ່ຽວກັບລະບົບ */
 const USER_ROLE_MENU: MenuItemWithRole[] = [
-    { label: 'ຫນ້າຫຼັກ', icon: 'pi pi-fw pi-home', to: '/uikit/pageUser' },
+    { label: 'ແຈ້ງບັນຫາໃໝ່', icon: 'pi pi-fw pi-send', to: '/uikit/GroupProblem' },
+    { label: 'ປະຫວັດການຮ້ອງຂໍ', icon: 'pi pi-fw pi-folder-open', to: '/uikit/request-history' },
     { label: 'ກ່ຽວກັບລະບົບ', icon: 'pi pi-fw pi-info-circle', to: '/uikit/Aboutsystem' }
 ];
 

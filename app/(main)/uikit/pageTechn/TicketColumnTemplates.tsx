@@ -1,8 +1,10 @@
 "use client";
 import React from "react";
 import Link from "next/link";
+import { encryptId } from "@/lib/crypto";
 import { Ticket, Assignee } from "./types";
-import { ASSIGNEE_STATUS_MAP } from "./constants";
+import { AssigneeAvatarGroup } from "./AssigneeAvatarGroup";
+import { ASSIGNEE_STATUS_MAP, STATUS_MAP } from "./constants";
 
 /** แปลงชื่อสำหรับแสดง (ตัดคำนำหน้า/เอาแค่ส่วนที่ใช้แสดง) */
 function getDisplayName(user: Assignee): string {
@@ -22,7 +24,7 @@ function getDisplayName(user: Assignee): string {
 
 export const TitleBody = (rowData: Ticket) => (
     <Link
-        href={`/uikit/ticket-detail/${rowData.id}`}
+        href={`/uikit/ticket-detail/${encryptId(rowData.id)}`}
         className="no-underline"
         style={{ color: "inherit" }}
     >
@@ -62,7 +64,7 @@ export const RequesterBody = (rowData: Ticket) => {
     );
 };
 
-/** แสดงชื่อ assignee เดียว (สำหรับแถวที่ขยายแล้ว role 3,4) */
+/** แสดงชื่อ assignee เดียว (แถวขยาย role 3,4) — ชื่อปกติ ไม่ใช้ Avatar */
 export const AssigneeSingleBody = (assignee: Assignee) => {
     const displayName = getDisplayName(assignee);
     const statusInfo = ASSIGNEE_STATUS_MAP[assignee.status] || ASSIGNEE_STATUS_MAP["default"];
@@ -83,6 +85,7 @@ export const AssigneeSingleBody = (assignee: Assignee) => {
     );
 };
 
+/** ມອບໝາຍໃຫ້: คนเดียว = ชื่อปกติ, มากกว่า 1 = Avatar Group (แบบเดียวกับ table) */
 export const AssigneeBody = (rowData: Ticket, action: (data: Assignee[]) => void) => {
     let displayData = rowData.assignees || [];
 
@@ -93,34 +96,41 @@ export const AssigneeBody = (rowData: Ticket, action: (data: Assignee[]) => void
     if (displayData.length === 0)
         return <span className="text-500 text-sm italic">ຍັງບໍ່ໄດ້ມອບໝາຍ</span>;
 
-    const statusInfoFirst =
-        ASSIGNEE_STATUS_MAP[displayData[0].status] || ASSIGNEE_STATUS_MAP["default"];
-    let textColor = "text-700";
-    if (statusInfoFirst.severity === "info") textColor = "text-blue-500";
-    else if (statusInfoFirst.severity === "success") textColor = "text-green-500";
-    else if (statusInfoFirst.severity === "warning") textColor = "text-orange-500";
+    if (displayData.length === 1) {
+        const user = displayData[0];
+        const statusInfo = ASSIGNEE_STATUS_MAP[user.status] || ASSIGNEE_STATUS_MAP["default"];
+        const helpdeskSeverity = rowData.status ? (STATUS_MAP[rowData.status] ?? null) : null;
+        let textColor = "text-700";
+        if (helpdeskSeverity === "info") textColor = "text-blue-500";
+        else if (helpdeskSeverity === "success") textColor = "text-green-500";
+        else if (helpdeskSeverity === "warning") textColor = "text-orange-500";
+        else if (helpdeskSeverity === "danger") textColor = "text-red-500";
+        else {
+            if (statusInfo.severity === "info") textColor = "text-blue-500";
+            else if (statusInfo.severity === "success") textColor = "text-green-500";
+            else if (statusInfo.severity === "warning") textColor = "text-orange-500";
+        }
+        const statusLabel = rowData.status || statusInfo.label;
+        const displayName = getDisplayName(user);
 
-    // Tooltip: รายชื่อทั้งหมด (first_name last_name)
-    const tooltipText = displayData
-        .map((u) => u.name || "")
-        .filter((name) => !!name && !!name.trim())
-        .join(" • ");
-
-    // แสดงเป็นรายชื่อ (ไม่ใช้ AvatarGroup)
-    const nameList =
-        displayData.length === 1
-            ? getDisplayName(displayData[0])
-            : displayData.map((u) => getDisplayName(u)).join(", ");
+        return (
+            <div
+                className={`js-tooltip-target ${textColor} font-bold cursor-pointer text-sm`}
+                onClick={() => action(displayData)}
+                style={{ whiteSpace: "nowrap" }}
+                data-pr-tooltip={`${user.name} | ${statusLabel}`}
+                data-pr-position="bottom"
+            >
+                {displayName}
+            </div>
+        );
+    }
 
     return (
-        <div
-            className={`js-tooltip-target ${textColor} font-bold cursor-pointer text-sm`}
+        <AssigneeAvatarGroup
+            assignees={displayData}
+            ticketStatus={rowData.status}
             onClick={() => action(displayData)}
-            style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-            data-pr-tooltip={tooltipText}
-            data-pr-position="bottom"
-        >
-            {nameList}
-        </div>
+        />
     );
 };

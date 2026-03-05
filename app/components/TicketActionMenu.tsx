@@ -3,6 +3,7 @@
 import React from 'react';
 import { SplitButton } from 'primereact/splitbutton';
 import { useRouter } from 'next/navigation';
+import { encryptId } from '@/lib/crypto';
 
 export interface TicketActionMenuItem {
   label: string;
@@ -64,7 +65,7 @@ export function TicketActionMenu({
         style={isUser ? { height: '26px' } : { height: '28px', fontSize: '12px' }}
         buttonProps={{ style: buttonStyle }}
         menuButtonProps={{ style: { width: menuButtonWidth, padding: isUser ? '0' : undefined } }}
-        onClick={() => router.push(`/uikit/ticket-detail/${ticket.id}`)}
+        onClick={() => router.push(`/uikit/ticket-detail/${encryptId(ticket.id)}`)}
         dropdownIcon="pi pi-chevron-down"
       />
     </div>

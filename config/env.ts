@@ -6,12 +6,30 @@
  * แล้วใช้ env.helpdeskApiUrl, env.ticketsApiUrl ฯลฯ
  */
 
+/**
+ * Next.js จะ inline ค่า env ฝั่ง client ได้ "เฉพาะ" การอ้างแบบตรง ๆ เช่น
+ * process.env.NEXT_PUBLIC_FOO (ไม่ใช่ process.env[key]).
+ * ดังนั้นต้อง map key → direct reference เพื่อให้ค่าใน browser ถูกต้อง.
+ */
+const PUBLIC_ENV: Record<string, string | undefined> = {
+  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+  NEXT_PUBLIC_OG_IMAGE_URL: process.env.NEXT_PUBLIC_OG_IMAGE_URL,
+  NEXT_PUBLIC_HELPDESK_API_BASE_URL: process.env.NEXT_PUBLIC_HELPDESK_API_BASE_URL,
+  NEXT_PUBLIC_HELPDESK_AUTH_LOGIN_PATH: process.env.NEXT_PUBLIC_HELPDESK_AUTH_LOGIN_PATH,
+  NEXT_PUBLIC_HELPDESK_UPLOAD_BASE_URL: process.env.NEXT_PUBLIC_HELPDESK_UPLOAD_BASE_URL,
+  NEXT_PUBLIC_LOGIN_USE_PASCAL_CASE: process.env.NEXT_PUBLIC_LOGIN_USE_PASCAL_CASE,
+  NEXT_PUBLIC_USE_LOCAL_CATEGORY_ICON_UPLOAD: process.env.NEXT_PUBLIC_USE_LOCAL_CATEGORY_ICON_UPLOAD,
+  NEXT_PUBLIC_USE_HELPDESK_PROXY: process.env.NEXT_PUBLIC_USE_HELPDESK_PROXY,
+  NEXT_PUBLIC_TICKETS_API_URL: process.env.NEXT_PUBLIC_TICKETS_API_URL,
+  NEXT_PUBLIC_REPORTS_API_URL: process.env.NEXT_PUBLIC_REPORTS_API_URL,
+  NEXT_PUBLIC_CHANGE_PASSWORD_API_URL: process.env.NEXT_PUBLIC_CHANGE_PASSWORD_API_URL,
+  NEXT_PUBLIC_IMAGE_REMOTE_HOSTNAME: process.env.NEXT_PUBLIC_IMAGE_REMOTE_HOSTNAME,
+  NEXT_PUBLIC_TICKET_ID_SECRET: process.env.NEXT_PUBLIC_TICKET_ID_SECRET,
+};
+
 const getEnv = (key: string, fallback: string): string => {
-  if (typeof window !== 'undefined') {
-    const val = (process.env as Record<string, string | undefined>)[key];
-    return (val && val.trim()) || fallback;
-  }
-  return (process.env[key]?.trim()) || fallback;
+  const raw = (PUBLIC_ENV[key] ?? process.env[key])?.trim();
+  return raw && raw !== '' ? raw : fallback;
 };
 
 /** ตรวจสอบตอนอ่านค่า (ให้ fallback dev ทำงานใน browser ตอน dev) */
@@ -21,10 +39,10 @@ const getIsDev = (): boolean =>
 /** Path ตาม Backend: subdomain/upload/categoryicon (ไม่มี s ท้าย categoryicon) */
 const UPLOAD_CATEGORYICON_PATH = '/upload/categoryicon';
 
-/** ค่า fallback เมื่อ process.env ไม่ตั้ง — ใช้เมื่อ .env.local ไม่มีหรือว่าง (dev/test) */
+/** ค่า fallback เมื่อ process.env ไม่ตั้ง — ใช้เมื่อ .env.local ไม่มีหรือว่าง (dev/test). ค่า API จริงให้ตั้งใน .env.local */
 const devFallback = {
   appUrl: 'http://localhost:3500',
-  helpdeskApiUrl: 'https://api-test.edl.com.la/helpdesk/api',
+  helpdeskApiUrl: '',
   helpdeskUploadBaseUrl: '',
   ticketsApiUrl: 'http://localhost:3501',
   reportsApiUrl: 'http://localhost:3000/api',
@@ -39,7 +57,7 @@ export const env = {
   get ogImageUrl() {
     return getEnv('NEXT_PUBLIC_OG_IMAGE_URL', '');
   },
-  /** อ่านจาก process.env.NEXT_PUBLIC_HELPDESK_API_BASE_URL; fallback localhost เฉพาะโหมด development */
+  /** อ่านจาก process.env.NEXT_PUBLIC_HELPDESK_API_BASE_URL; fallback เฉพาะโหมด development */
   get helpdeskApiUrl() {
     return getEnv('NEXT_PUBLIC_HELPDESK_API_BASE_URL', getIsDev() ? devFallback.helpdeskApiUrl : '');
   },
