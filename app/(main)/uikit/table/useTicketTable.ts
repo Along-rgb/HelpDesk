@@ -13,6 +13,8 @@ import { normalizeHelpdeskRow } from "./normalizeHelpdeskRow";
 import { useUserProfileStore } from "@/app/store/user/userProfileStore";
 
 const STAFF_ROLE_ID = 3;
+/** Role 2 (Admin) + Role 3 (Staff) — ເກັບທັງຄູ່ໃນ assignOptions ເພື່ອ lookup emp_code */
+const ROLE_IDS_FOR_ASSIGN_OPTIONS = [2, 3] as const;
 const STAFF_HEAD_CATEGORY_TAB_INDEX = 1;
 /** ສະຖານະຫຼັງມອບໝາຍວຽກ — ກຳລັງດຳເນີນການ (auto ເມື່ອມອບໝາຍວຽກແລ້ວ) */
 const HELPDESK_STATUS_IN_PROGRESS = 2;
@@ -30,6 +32,51 @@ const FALLBACK_PRIORITY_OPTIONS: { id: number; name: string }[] = [
 ];
 
 const ALL_STATUS_OPTION: StatusOption = { label: "ທັງໝົດ", value: "Allin" };
+
+/** สร้าง map id → label (ชื่อ) จาก assignOptions; ใส่ทั้ง user id และ employeeId เพื่อ lookup ได้ไม่ว่า ticket จะส่ง id แบบไหน */
+function buildStaffLabelMap(options: AssigneeOption[]): Map<number, string> {
+  const map = new Map<number, string>();
+  for (const o of options) {
+    if (o.label) map.set(o.id, o.label);
+    if (o.employeeId != null && Number.isFinite(Number(o.employeeId))) map.set(Number(o.employeeId), o.label);
+  }
+  return map;
+}
+
+/** สร้าง map id → emp_code จาก assignOptions; ใส่ทั้ง User ID (o.id) ແລະ Employee ID (o.employeeId) ເພື່ອ lookup */
+function buildStaffEmpCodeMap(options: AssigneeOption[]): Map<number, string> {
+  const map = new Map<number, string>();
+  for (const o of options) {
+    const code = o.emp_code != null && String(o.emp_code).trim() !== "" ? String(o.emp_code).trim() : null;
+    if (!code) continue;
+    map.set(o.id, code);
+    if (o.employeeId != null && Number.isFinite(Number(o.employeeId))) map.set(Number(o.employeeId), code);
+  }
+  return map;
+}
+
+/** สร้าง map id → image, id → phone จาก assignOptions (รองรับ User ID ແລະ Employee ID) */
+function buildStaffImageMap(options: AssigneeOption[]): Map<number, string> {
+  const map = new Map<number, string>();
+  for (const o of options) {
+    if (o.image != null && String(o.image).trim() !== "") {
+      map.set(o.id, String(o.image).trim());
+      if (o.employeeId != null && Number.isFinite(Number(o.employeeId))) map.set(Number(o.employeeId), String(o.image).trim());
+    }
+  }
+  return map;
+}
+
+function buildStaffPhoneMap(options: AssigneeOption[]): Map<number, string> {
+  const map = new Map<number, string>();
+  for (const o of options) {
+    if (o.phone != null && String(o.phone).trim() !== "") {
+      map.set(o.id, String(o.phone).trim());
+      if (o.employeeId != null && Number.isFinite(Number(o.employeeId))) map.set(Number(o.employeeId), String(o.phone).trim());
+    }
+  }
+  return map;
+}
 
 /** ຫົວຂໍ້ທີ່ສາມາດຮັບວຽກເອງໄດ້: ສະຖານະ ລໍຖ້າຮັບວຽກ ແລະ ຍັງບໍ່ມີຄົນມອບໝາຍ */
 function canReceiveSelf(t: Ticket): boolean {
@@ -87,17 +134,28 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
     return out;
   }, []);
 
+  /** ດຶງຂໍ້ມູນຈາກ users/admin (ຫຼື adminassign fallback) — ເກັບ Role 2 + 3 ເພື່ອ lookup emp_code, image, phone */
   useEffect(() => {
     axiosClientsHelpDesk
-      .get(HELPDESK_ENDPOINTS.USERS_ADMINASSIGN)
+      .get(HELPDESK_ENDPOINTS.USERS_ADMIN)
       .then((response) => {
-        const list = normalizeDataList<AdminAssignUserRow>(response.data);
-        const staff = list.filter((u) => Number(u.roleId) === STAFF_ROLE_ID);
-        const options: AssigneeOption[] = staff.map((u) => {
+        const raw = response?.data;
+        const list: AdminAssignUserRow[] = Array.isArray(raw)
+          ? (raw as AdminAssignUserRow[])
+          : normalizeDataList<AdminAssignUserRow>(raw);
+        const filtered = list.filter(
+          (u) => u.roleId == null || ROLE_IDS_FOR_ASSIGN_OPTIONS.includes(Number(u.roleId) as 2 | 3)
+        );
+        const options: AssigneeOption[] = filtered.map((u) => {
           const first = u.employee?.first_name ?? "";
           const last = u.employee?.last_name ?? "";
           const label = [first, last].filter(Boolean).join(" ").trim() || String(u.id);
-          return { id: u.id, label };
+          const emp_codeRaw = u.employee?.emp_code ?? u.username ?? (u as { emp_code?: string }).emp_code;
+          const emp_code = emp_codeRaw != null && String(emp_codeRaw).trim() !== "" ? String(emp_codeRaw).trim() : undefined;
+          const employeeId = u.employeeId ?? u.employee?.id;
+          const image = u.employee?.empimg != null && String(u.employee.empimg).trim() !== "" ? String(u.employee.empimg).trim() : undefined;
+          const phone = u.employee?.tel != null && String(u.employee.tel).trim() !== "" ? String(u.employee.tel).trim() : undefined;
+          return { id: u.id, label, emp_code, employeeId, image, phone };
         });
         setAssignOptions(options);
       })
@@ -138,13 +196,23 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
       .then((response) => {
         const rawList = normalizeDataList<HelpdeskRequestRow>(response.data);
         const list = rawList.map(normalizeHelpdeskRow).sort((a, b) => Number(b.id) - Number(a.id));
-        const staffMap = new Map(assignOptions.map((o) => [o.id, o.label]));
+        const staffMap = buildStaffLabelMap(assignOptions);
+        const staffEmpCodeMap = buildStaffEmpCodeMap(assignOptions);
+        const staffImageMap = buildStaffImageMap(assignOptions);
+        const staffPhoneMap = buildStaffPhoneMap(assignOptions);
         const enriched = list.map((t) => ({
           ...t,
-          assignees: (t.assignees ?? []).map((a) => ({
-            ...a,
-            name: !a.name || a.name === "—" || !a.name.trim() ? staffMap.get(Number(a.id)) ?? a.name : a.name,
-          })),
+          assignees: (t.assignees ?? []).map((a) => {
+            const key = Number(a.id);
+            const enrichedEmpCode = a.emp_code?.trim() || staffEmpCodeMap.get(key);
+            return {
+              ...a,
+              name: !a.name || a.name === "—" || !a.name.trim() ? staffMap.get(key) ?? a.name : a.name,
+              emp_code: enrichedEmpCode != null && enrichedEmpCode !== "" ? enrichedEmpCode : a.emp_code,
+              image: a.image ?? staffImageMap.get(key),
+              phone: a.phone ?? staffPhoneMap.get(key),
+            };
+          }),
         }));
         setTickets(enriched);
         setFilteredTickets(filterTickets(enriched, globalFilter, statusFilter?.value ?? null));
@@ -157,9 +225,10 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
       .finally(() => setLoading(false));
   }, [globalFilter, statusFilter?.value, filterTickets, assignOptions]);
 
+  /** ເອີ້ນ fetchData ເມື່ອ fetchData ປ່ຽນ (รวมເວລາ assignOptions โหลดແລ້ວ) เพื่อให้ enrich emp_code ໄດ້ */
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   useEffect(() => {
     setFilteredTickets(filterTickets(tickets, globalFilter, statusFilter?.value ?? null));
@@ -167,14 +236,24 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
 
   useEffect(() => {
     if (assignOptions.length === 0) return;
-    const staffMap = new Map(assignOptions.map((o) => [o.id, o.label]));
+    const staffMap = buildStaffLabelMap(assignOptions);
+    const staffEmpCodeMap = buildStaffEmpCodeMap(assignOptions);
+    const staffImageMap = buildStaffImageMap(assignOptions);
+    const staffPhoneMap = buildStaffPhoneMap(assignOptions);
     setTickets((prev) =>
       prev.map((t) => ({
         ...t,
-        assignees: (t.assignees ?? []).map((a) => ({
-          ...a,
-          name: !a.name || a.name === "—" || !a.name.trim() ? staffMap.get(Number(a.id)) ?? a.name : a.name,
-        })),
+        assignees: (t.assignees ?? []).map((a) => {
+          const key = Number(a.id);
+          const enrichedEmpCode = (a.emp_code?.trim() || staffEmpCodeMap.get(key))?.trim();
+          return {
+            ...a,
+            name: !a.name || a.name === "—" || !a.name.trim() ? staffMap.get(key) ?? a.name : a.name,
+            emp_code: enrichedEmpCode != null && enrichedEmpCode !== "" ? enrichedEmpCode : a.emp_code,
+            image: a.image ?? staffImageMap.get(key),
+            phone: a.phone ?? staffPhoneMap.get(key),
+          };
+        }),
       }))
     );
   }, [assignOptions]);

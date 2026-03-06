@@ -12,13 +12,20 @@ import { normalizeHelpdeskRow, unwrapHelpdeskResponse } from "@/app/(main)/uikit
 import type { HelpdeskRowInput } from "@/app/(main)/uikit/table/normalizeHelpdeskRow";
 import axiosClientsHelpDesk from "@/config/axiosClientsHelpDesk";
 import { HELPDESK_ENDPOINTS } from "@/config/endpoints";
-import { useUserProfileStore } from "@/app/store/user/userProfileStore";
 import { normalizeDataList } from "@/utils/apiNormalizers";
+import { useUserProfileStore } from "@/app/store/user/userProfileStore";
 import { sanitizeHtml } from "@/utils/sanitizeHtml";
 import { decryptId } from "@/lib/crypto";
+import { fetchTurningsForSelect } from "@/app/services/ticketService";
+import { getHelpdeskFileUrl, getHelpdeskFileUrlAbsolute } from "@/utils/helpdeskFileUrl";
+import { getDownloadApiUrl } from "@/utils/downloadFile";
 
-/** Role 3 = Staff — ບໍ່ໃຫ້ເຫັນຊ່ອງມອບໝາຍວຽກ (ເງື່ອນໄຂແບບດຽວກັບ table: ໃຊ້ USERS_ADMINASSIGN + ກອງເປັນ Staff ເທົ່ານັ້ນ) */
+/** Role 2 = Admin — ticket-detail ໃຊ້ GET helpdeskrequests/admin ແລ້ວຄົ້ນຫາໂດຍ id */
+const ROLE_ID_ADMIN = 2;
+/** Role 3 = Staff/Techn — ticket-detail ໃຊ້ GET helpdeskrequests/[id] (ຂໍ້ມູນຈາກ Admin assignedTo) */
 const ROLE_ID_STAFF = 3;
+/** Role 4 = User — ticket-detail ໃຊ້ GET helpdeskrequests/user ແລ້ວຄົ້ນຫາໂດຍ id */
+const ROLE_ID_USER = 4;
 /** Role 1, 2 เท่านั้นที่ Backend ອະນຸຍາດ GET users/adminassign — ບໍ່ສົ່ງ request ເມື່ອ role 3, 4 ເພື່ອຫຼີກ 403 */
 const ROLE_IDS_CAN_ADMIN_ASSIGN = [1, 2] as const;
 /** ສະຖານະທີ່ໃຫ້ເຫັນປຸ່ມ ຮັບວຽກເອງ (ເມື່ອປ່ຽນແລ້ວປຸ່ມຫາຍ — ໃຫ້ຕົງກັບ pageTechn checkbox) */
@@ -40,24 +47,45 @@ export default function TicketDetailPage() {
     const [assignOptions, setAssignOptions] = useState<AssigneeOption[]>([]);
     const [selectedAssignee, setSelectedAssignee] = useState<AssigneeOption | null>(null);
 
-    /** ອີເມວ: ดึงจาก endpoint เดียวกับ profileUser (GET users/:id) */
+    /** ອີເມວ / ຝ່າຍ / ພະແນກ: ดึงจาก GET users/:id (ຜູ້ປ້ອນຂໍ້ມູນ) */
     const [requesterEmail, setRequesterEmail] = useState<string>("");
+    const [requesterDivision, setRequesterDivision] = useState<string>("");
+    const [requesterDepartment, setRequesterDepartment] = useState<string>("");
+    /** ອອກລິບມາ: รายการจาก turnings/selectturning ເພື່ອ resolve turningId → name */
+    const [turningOptions, setTurningOptions] = useState<{ id: number; name: string }[]>([]);
     const [acceptLoading, setAcceptLoading] = useState(false);
     const [invalidLink, setInvalidLink] = useState(false);
     const toastRef = useRef<Toast | null>(null);
 
-    const fetchTicket = useCallback((id: string) => {
-        setLoading(true);
-        return axiosClientsHelpDesk
-            .get(HELPDESK_ENDPOINTS.requestById(id))
-            .then((response) => {
-                const row = unwrapHelpdeskResponse<HelpdeskRowInput>(response.data);
-                const normalized = row ? normalizeHelpdeskRow(row) : null;
-                setTicket(normalized);
-            })
-            .catch(() => setTicket(null))
-            .finally(() => setLoading(false));
-    }, []);
+    /** ລອງ GET helpdeskrequests/[id] ກ່ອນເພື່ອໃຫ້ໄດ້ຂໍ້ມູນເຕັມລວມ hdFile, hdImgs. ຖ້າ 403/404 ຈຶ່ງ fallback ໃສ່ list (Admin/User). */
+    const fetchTicket = useCallback(
+        (id: string) => {
+            setLoading(true);
+            const numId = Number(id);
+            const role = roleId != null ? Number(roleId) : null;
+
+            return axiosClientsHelpDesk
+                .get(HELPDESK_ENDPOINTS.requestById(id))
+                .then((response) => {
+                    const row = unwrapHelpdeskResponse<HelpdeskRowInput>(response.data);
+                    setTicket(row ? normalizeHelpdeskRow(row) : null);
+                })
+                .catch((err) => {
+                    const status = err?.response?.status;
+                    if ((status === 403 || status === 404) && (role === ROLE_ID_ADMIN || role === ROLE_ID_USER)) {
+                        const endpoint = role === ROLE_ID_ADMIN ? HELPDESK_ENDPOINTS.REQUESTS_ADMIN : HELPDESK_ENDPOINTS.REQUESTS_USER;
+                        return axiosClientsHelpDesk.get(endpoint).then((res) => {
+                            const list = normalizeDataList<HelpdeskRowInput>(res.data);
+                            const row = list.find((r) => Number(r.id) === numId) ?? null;
+                            setTicket(row ? normalizeHelpdeskRow(row) : null);
+                        });
+                    }
+                    setTicket(null);
+                })
+                .finally(() => setLoading(false));
+        },
+        [roleId]
+    );
 
     /** ມອບໝາຍວຽກ — ເອີ້ນ USERS_ADMINASSIGN ເທົ່ານັ້ນເມື່ອ role 1 ຫຼື 2 (ຫຼີກ 403 ສຳລັບ role 3, 4) */
     useEffect(() => {
@@ -127,10 +155,12 @@ export default function TicketDetailPage() {
             .finally(() => setAcceptLoading(false));
     }, [ticket, fetchTicket]);
 
-    /** ดึง ອີເມວ จาก GET users/:id (endpoint เดียวกับ profileUser) */
+    /** ดึง ອີເມວ, ຝ່າຍ, ພະແນກ ของຜູ້ປ້ອນຂໍ້ມູນ (GET users/:id) */
     useEffect(() => {
         if (!ticket?.employeeId) {
             setRequesterEmail("");
+            setRequesterDivision("");
+            setRequesterDepartment("");
             return;
         }
         const userId = String(ticket.employeeId);
@@ -141,13 +171,41 @@ export default function TicketDetailPage() {
             })
             .then((res) => {
                 const raw = res.data?.data ?? res.data;
-                const email =
-                    (raw && typeof raw === "object" && (raw as { employee?: { email?: string } }).employee?.email) ??
-                    (raw && typeof raw === "object" ? (raw as { email?: string }).email : null);
+                if (!raw || typeof raw !== "object") return;
+                const obj = raw as {
+                    email?: string;
+                    employee?: {
+                        email?: string;
+                        department?: { department_name?: string };
+                        division?: { division_name?: string };
+                    };
+                };
+                const email = obj.employee?.email ?? obj.email;
                 setRequesterEmail(email != null && String(email).trim() !== "" ? String(email).trim() : "");
-            }) 
-            .catch(() => setRequesterEmail(""));
+                const divName = obj.employee?.division?.division_name;
+                const deptName = obj.employee?.department?.department_name;
+                setRequesterDivision(divName != null && String(divName).trim() !== "" ? String(divName).trim() : "");
+                setRequesterDepartment(deptName != null && String(deptName).trim() !== "" ? String(deptName).trim() : "");
+            })
+            .catch(() => {
+                setRequesterEmail("");
+                setRequesterDivision("");
+                setRequesterDepartment("");
+            });
     }, [ticket?.employeeId]);
+
+    /** โหลดรายการ ອອກລິບມາ (turnings) ເພື່ອ resolve turningId → name */
+    useEffect(() => {
+        fetchTurningsForSelect()
+            .then((list) => {
+                const options = list.map((item) => ({
+                    id: Number(item.code),
+                    name: item.name,
+                })).filter((o) => Number.isFinite(o.id));
+                setTurningOptions(options);
+            })
+            .catch(() => setTurningOptions([]));
+    }, []);
 
     if (invalidLink) return <div className="p-4 text-xl">ລິ້ງຄ໌ບໍ່ຖືກຕ້ອງ ຫຼືໝົດອາຍຸ</div>;
     if (loading) return <div className="p-4 text-xl">ກໍາລັງໂຫຼດຂໍ້ມູນ...</div>;
@@ -234,8 +292,8 @@ export default function TicketDetailPage() {
 
                                     <Panel header="ລາຍລະອຽດ" toggleable className="border-top-1 border-yellow-500 shadow-none border-1 surface-border border-round-none">
                                         <div className="m-0 text-700 line-height-3 text-base px-3 md:px-4">
-                                            {ticket.description ? (
-                                                <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(ticket.description) }} />
+                                            {(ticket.details ?? ticket.description) ? (
+                                                <div dangerouslySetInnerHTML={{ __html: sanitizeHtml((ticket.details ?? ticket.description) ?? '') }} />
                                             ) : (
                                                 <div className="text-500">ບໍ່ມີລາຍລະອຽດເພີ່ມເຕີມ</div>
                                             )}
@@ -249,8 +307,63 @@ export default function TicketDetailPage() {
                                     </Panel>
 
                                     <Panel header="ຂໍ້ມູນອຸປະກອນ ແລະ ລາຍລະອຽດເພີ່ມເຕີມ" toggleable className="border-top-1 border-yellow-500 shadow-none border-1 surface-border border-round-none">
-                                        <div className="text-500 text-base italic py-4 px-3 md:px-4">
-                                            ພື້ນທີ່ສໍາລັບສະແດງຂໍ້ມູນລາຍລະອຽດຂອງອຸປະກອນ (ກໍາລັງອັບເດດ)
+                                        <div className="flex flex-column gap-4 py-3 px-3 md:px-4">
+                                            {ticket.hdFile && (
+                                                <div>
+                                                    <span className="text-900 font-bold text-base block mb-2">ໄຟລ໌ PDF</span>
+                                                    <a
+                                                        href={getDownloadApiUrl(getHelpdeskFileUrlAbsolute("hdFile", ticket.hdFile) || getHelpdeskFileUrl("hdFile", ticket.hdFile), ticket.hdFile)}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex align-items-center gap-2 text-primary hover:underline"
+                                                    >
+                                                        <i className="pi pi-file-pdf" />
+                                                        {ticket.hdFile}
+                                                    </a>
+                                                </div>
+                                            )}
+                                            {(() => {
+                                                const fromTicket = ticket.hdImgs && ticket.hdImgs.length > 0 ? ticket.hdImgs : null;
+                                                const fromRaw = (ticket._raw as { hdImgs?: { id?: number; helpdeskRequestId?: number; hdImg?: string }[] } | undefined)?.hdImgs;
+                                                const list = fromTicket ?? (Array.isArray(fromRaw) ? fromRaw.filter((i) => i != null && typeof (i as { hdImg?: string }).hdImg === "string").map((i) => ({ id: (i as { id?: number }).id ?? 0, helpdeskRequestId: (i as { helpdeskRequestId?: number }).helpdeskRequestId ?? 0, hdImg: String((i as { hdImg: string }).hdImg) })) : []);
+                                                return list.length > 0 ? (
+                                                    <div>
+                                                        <span className="text-900 font-bold text-base block mb-2">ຮູບພາບ</span>
+                                                        <div className="flex flex-wrap gap-3">
+                                                            {list.map((img) => {
+                                                                const imgUrlAbs = getHelpdeskFileUrlAbsolute("hdImgs", img.hdImg) || getHelpdeskFileUrl("hdImgs", img.hdImg);
+                                                                const imgSrc = getDownloadApiUrl(imgUrlAbs, img.hdImg, "inline");
+                                                                const downloadUrl = getDownloadApiUrl(imgUrlAbs, img.hdImg, "attachment");
+                                                                return (
+                                                                    <div
+                                                                        key={`${img.id}-${img.hdImg}`}
+                                                                        className="block border-1 surface-border border-round overflow-hidden surface-50"
+                                                                        style={{ maxWidth: 200 }}
+                                                                    >
+                                                                        <img
+                                                                            src={imgSrc}
+                                                                            alt={img.hdImg}
+                                                                            className="w-full h-auto block"
+                                                                            style={{ maxHeight: 180, objectFit: "cover" }}
+                                                                        />
+                                                                        <a
+                                                                            href={downloadUrl}
+                                                                            target="_blanklf"
+                                                                            rel="noopener noreferrer"
+                                                                            className="block text-center p-2 text-primary text-sm hover:underline"
+                                                                        >
+                                                                            ດາວໂຫຼດ
+                                                                        </a>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                ) : null;
+                                            })()}
+                                            {!ticket.hdFile && !(ticket.hdImgs?.length || (Array.isArray((ticket._raw as unknown as { hdImgs?: unknown[] })?.hdImgs) && (ticket._raw as unknown as { hdImgs: unknown[] }).hdImgs.length > 0)) && (
+                                                <div className="text-500 text-base italic">ບໍ່ມີໄຟລ໌ PDF ຫຼື ຮູບພາບ</div>
+                                            )}
                                         </div>
                                     </Panel>
 
@@ -296,11 +409,11 @@ export default function TicketDetailPage() {
                                     </li>
                                     <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
                                         <span className="text-900 font-bold flex-shrink-0">ຝ່າຍ : </span>
-                                        <span className="text-700 flex-1 min-w-0">{ticket.department || '-'}</span>
+                                        <span className="text-700 flex-1 min-w-0">{ticket.division || requesterDivision || '-'}</span>
                                     </li>
                                     <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
                                         <span className="text-900 font-bold flex-shrink-0">ພະແນກ :</span>
-                                        <span className="text-700 flex-1 min-w-0">{ticket.division || '-'}</span>
+                                        <span className="text-700 flex-1 min-w-0">{ticket.department || requesterDepartment || '-'}</span>
                                     </li>
                                     <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
                                         <span className="text-900 font-bold flex-shrink-0">ເລກ ຊຄທ : </span>
@@ -320,7 +433,12 @@ export default function TicketDetailPage() {
                                     </li>
                                     <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
                                         <span className="text-900 font-bold flex-shrink-0">ອອກລິບມາ :</span>
-                                        <span className="text-700 flex-1 min-w-0">{ticket.turning ?? '-'}</span>
+                                        <span className="text-700 flex-1 min-w-0">
+                                            {ticket.turning ??
+                                                (ticket.turningId != null && turningOptions.length > 0
+                                                    ? (turningOptions.find((t) => t.id === ticket.turningId)?.name ?? '-')
+                                                    : '-')}
+                                        </span>
                                     </li>
                                     <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
                                         <span className="text-900 font-bold flex-shrink-0">ເບີໂທ :</span>

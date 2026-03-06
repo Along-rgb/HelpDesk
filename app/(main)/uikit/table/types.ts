@@ -31,11 +31,20 @@ export interface HelpdeskStatus {
 /** Option for status dropdown (label/value from API name) */
 export type StatusOption = { label: string; value: string };
 
-/** Row from GET users/adminassign (filter roleId === 3 for Staff) */
+/** Row from GET users/admin (หรือ users/adminassign); id = user id, employee.id = employee id สำหรับ lookup */
 export interface AdminAssignUserRow {
   id: number;
-  roleId: number;
-  employee?: { first_name?: string; last_name?: string; emp_code?: string };
+  roleId?: number;
+  username?: string;
+  employeeId?: number;
+  employee?: {
+    id?: number;
+    first_name?: string;
+    last_name?: string;
+    emp_code?: string;
+    empimg?: string;
+    tel?: string;
+  };
 }
 
 /** Item from GET headcategorys/selectheadcategory */
@@ -44,8 +53,15 @@ export interface HeadCategorySelectRow {
   name: string;
 }
 
-/** Option for assignee dropdown (id + display name) */
-export type AssigneeOption = { id: number; label: string };
+/** Option for assignee dropdown + lookup; id = user id, employeeId = employee id (รองรับ lookup ທັງ 466 ແລະ 5325) */
+export type AssigneeOption = {
+  id: number;
+  label: string;
+  emp_code?: string;
+  employeeId?: number;
+  image?: string;
+  phone?: string;
+};
 
 /** Priority lookup (may be null) */
 export interface Priority {
@@ -83,6 +99,8 @@ export interface HelpdeskRequestRow {
 export interface Assignee {
   id: number | string;
   name: string;
+  /** รหัสพนักงาน — แสดงใน Dialog ແທນ id (ເຊັ່ນ [emp_code] - ຊື່) */
+  emp_code?: string;
   image?: string;
   phone?: string;
   status: 'doing' | 'done' | 'waiting';
@@ -110,17 +128,25 @@ export interface Ticket {
   verified: boolean;
   employeeId?: number | string;
   description?: string;
+  /** ລາຍລະອຽດຈາກ API (field details) — ໃຊ້ເມື່ອ API ສົ່ງ details ແຍກຈາກ description */
+  details?: string;
   category?: string;
   building?: string;
   level?: string;
   room?: string;
-  /** ອອກລິບມາ — turning.name จาก API */
+  /** ອອກລິບມາ — turning.name จาก API หรือ resolve ຈາກ turningId */
   turning?: string;
+  /** ອອກລິບມາ — turningId จาก API (ໃຊ້ resolve ຊື່ຖ້າ turning ວ່າງ) */
+  turningId?: number;
   /** ເລກ ຊຄທ — numberSKT จาก API */
   numberSKT?: string;
   division?: string;
   department?: string;
   email?: string;
+  /** ໄຟລ໌ PDF ສະແດງຊື່ໄຟລ໌ຈາກ API (hdFile) */
+  hdFile?: string | null;
+  /** ຮູບພາບຈາກ API (hdImgs[]) — ແຕ່ລະອັນມີ id, helpdeskRequestId, hdImg = ຊື່ໄຟລ໌ */
+  hdImgs?: { id: number; helpdeskRequestId: number; hdImg: string }[];
   /** Raw row for detail link / actions */
   _raw?: HelpdeskRequestRow;
 }

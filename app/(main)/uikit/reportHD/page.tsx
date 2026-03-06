@@ -157,8 +157,10 @@ export default function ReportHD() {
                 life: 2500
             });
         } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            console.error('PDF export failed:', msg);
+            if (process.env.NODE_ENV === 'development') {
+                const msg = err instanceof Error ? err.message : String(err);
+                console.error('PDF export failed:', msg);
+            }
             toast.current?.show({
                 severity: 'error',
                 summary: 'ຜິດພາດ',

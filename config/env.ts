@@ -25,6 +25,7 @@ const PUBLIC_ENV: Record<string, string | undefined> = {
   NEXT_PUBLIC_CHANGE_PASSWORD_API_URL: process.env.NEXT_PUBLIC_CHANGE_PASSWORD_API_URL,
   NEXT_PUBLIC_IMAGE_REMOTE_HOSTNAME: process.env.NEXT_PUBLIC_IMAGE_REMOTE_HOSTNAME,
   NEXT_PUBLIC_TICKET_ID_SECRET: process.env.NEXT_PUBLIC_TICKET_ID_SECRET,
+  NEXT_PUBLIC_HELPDESK_IMAGES_PATH: process.env.NEXT_PUBLIC_HELPDESK_IMAGES_PATH,
 };
 
 const getEnv = (key: string, fallback: string): string => {
@@ -89,6 +90,10 @@ export const env = {
   /** ใช้ proxy /api/proxy-helpdesk เพื่อ bypass CORS (frontend localhost → API อีก domain) */
   get useHelpdeskProxy() {
     return getEnv('NEXT_PUBLIC_USE_HELPDESK_PROXY', 'false').toLowerCase() === 'true';
+  },
+  /** Path segment สำหรับโหลดรูป (hdImgs) บน Backend — default hdimage, ຖ້າ Backend ໃຊ້ hdImgs ໃຫ້ຕັ້ງທີ່ນີ້ */
+  get helpdeskImagesPath() {
+    return getEnv('NEXT_PUBLIC_HELPDESK_IMAGES_PATH', 'hdimage').trim() || 'hdimage';
   },
   get ticketsApiUrl() {
     return getEnv('NEXT_PUBLIC_TICKETS_API_URL', getIsDev() ? devFallback.ticketsApiUrl : '');

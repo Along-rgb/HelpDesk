@@ -40,7 +40,9 @@ export const AssigneeDialog = ({ visible, onHide, assignees, ticketStatus, secti
                             <div className="flex align-items-center gap-2">
                                 <Avatar icon="pi pi-user" shape="circle" className="surface-100 text-500 border-1 surface-border" />
                                 <div className="flex flex-column">
-                                    <span className="font-bold text-sm">[{user.id}] - {user.name}</span>
+                                    <span className="font-bold text-sm">
+                                        [{user.emp_code != null && String(user.emp_code).trim() !== "" ? String(user.emp_code).trim() : "—"}] - {user.name}
+                                    </span>
                                     <span className="text-xs text-500">Staff / IT Support</span>
                                 </div>
                             </div>

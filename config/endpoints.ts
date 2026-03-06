@@ -16,6 +16,8 @@ export const HELPDESK_ENDPOINTS = {
   STATUS_SELECT: 'helpdeskstatus/selecthelpdeskstatus',
 
   USERS_ADMINASSIGN: 'users/adminassign',
+  /** GET — รายการ Admin + Staff สำหรับ lookup emp_code (Role 2, 3); โครงสร้าง id, username, employee: { id, emp_code, first_name, last_name, empimg, tel } */
+  USERS_ADMIN: 'users/admin',
   USER_BY_ID: (id: string | number) => `users/${id}`,
   /** POST — เปลี่ยนรหัสผ่าน (body: oldpassword, password1, password2) */
   CHANGE_PASSWORD: 'users/changepassword',

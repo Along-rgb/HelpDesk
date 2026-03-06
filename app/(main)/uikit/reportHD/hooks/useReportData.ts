@@ -9,41 +9,37 @@ export function useReportData(activeIndex: number, dateRange: Date[] | any) {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        // สร้าง Controller สำหรับยกเลิก request เก่า
         const controller = new AbortController();
-           
+
         const fetchData = async () => {
-            // ✅ Logic ใหม่: ตรวจสอบก่อนว่าเลือกวันที่ครบหรือยัง
-            // ถ้า dateRange เป็น null, หรือว่าง, หรือเลือกไม่ครบทั้ง Start/End
             if (!dateRange || dateRange.length < 2 || !dateRange[0] || !dateRange[1]) {
-                setData([]); // สั่งให้ข้อมูลเป็นค่าว่างทันที
+                setData([]);
                 setLoading(false);
-                return; // จบการทำงาน ไม่ต้องไปเรียก API
+                return;
             }
 
             setLoading(true);
             setError(null);
-            
+
             try {
                 const filter = {
                     startDate: dateRange[0],
                     endDate: dateRange[1],
                     tabIndex: activeIndex
                 };
-                
-                // ส่ง signal ไปด้วย
                 const result = await ReportService.getReports(filter, controller.signal);
-                
-                // อัพเดท state เฉพาะเมื่อยังไม่โดน cancel
+
                 if (!controller.signal.aborted) {
                     setData(result);
                 }
             } catch (err: unknown) {
                 const e = err as { name?: string; code?: string };
                 if (!controller.signal.aborted && e.name !== 'CanceledError' && e.code !== 'ERR_CANCELED') {
-                    const message = err instanceof Error ? err.message : String(err);
-                    console.error('Report fetch error:', message);
-                    setError("ເກີດຂໍ້ຜິດພາດກະລຸນາລໍຖ້າ");
+                    if (process.env.NODE_ENV === 'development') {
+                        const message = err instanceof Error ? err.message : String(err);
+                        console.error('Report fetch error:', message);
+                    }
+                    setError('ເກີດຂໍ້ຜິດພາດກະລຸນາລໍຖ້າ');
                     setData([]);
                 }
             } finally {
@@ -55,7 +51,6 @@ export function useReportData(activeIndex: number, dateRange: Date[] | any) {
 
         fetchData();
 
-        // Cleanup function
         return () => {
             controller.abort();
         };

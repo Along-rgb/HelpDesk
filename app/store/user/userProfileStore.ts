@@ -275,7 +275,9 @@ export const useUserProfileStore = create<UserProfileState>()(
               err?.response?.data?.message ||
               (err instanceof Error ? err.message : null) ||
               (err?.response?.status === 403 ? 'ບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນ' : 'ບໍ່ສາມາດດຶງຂໍ້ມູນໄດ້');
-            console.error('[profileUser] fetchUserProfile error:', message, 'status:', err?.response?.status);
+            if (process.env.NODE_ENV === 'development') {
+                console.error('[profileUser] fetchUserProfile error:', message, 'status:', err?.response?.status);
+            }
             set({ error: message, loading: false });
           }
         },

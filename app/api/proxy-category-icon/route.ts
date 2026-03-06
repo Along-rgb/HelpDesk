@@ -125,8 +125,10 @@ export async function GET(request: NextRequest) {
     if (process.env.NODE_ENV === 'development') payload.attemptedUrl = url;
     return NextResponse.json(payload, { status: 404 });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error('[proxy-icon] Proxy fetch failed:', message);
+    if (process.env.NODE_ENV === 'development') {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[proxy-icon] Proxy fetch failed:', message);
+    }
     return NextResponse.json({ error: 'Proxy fetch failed' }, { status: 502 });
   }
 }
