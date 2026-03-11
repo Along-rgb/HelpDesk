@@ -1,4 +1,4 @@
-// src/uikit/MenuApps/Detail-category_Buildings/page.tsx
+// src/uikit/MenuApps/Detail-category-Buildings/page.tsx
 'use client';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -8,7 +8,8 @@ import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
 import ManagementTable, { getCascadeDeleteMessage } from './ManagementTable';
 import BuildingCreateDialog from './BuildingCreateDialog';
-import { useBuilding } from '../hooks/useBuilding';
+import { useBuildingStore } from '@/app/store/helpdesk';
+import { useStoreToast } from '@/app/hooks/useStoreToast';
 import { BuildingData, CreateBuildingPayload, BuildingTabs } from '../types';
 import { createDataMap } from '../utils/dataMapping';
 import { CUSTOM_TAB_CSS } from '../constants/tabStyles';
@@ -20,18 +21,37 @@ export default function BuildingsPage() {
     const searchParams = useSearchParams();
     const { roleId } = useUserProfile();
     const [activeIndex, setActiveIndex] = useState<number>(BuildingTabs.BUILDING);
+    const toastRef = useRef<Toast>(null);
+
+    // Selectors: subscribe only to needed state for performance
+    const items = useBuildingStore((s) => s.items);
+    const buildingOptions = useBuildingStore((s) => s.buildingOptions);
+    const loading = useBuildingStore((s) => s.loading);
+    const error = useBuildingStore((s) => s.error);
+    const successMessage = useBuildingStore((s) => s.successMessage);
+    const clearMessages = useBuildingStore((s) => s.clearMessages);
+    const fetchData = useBuildingStore((s) => s.fetchData);
+    const fetchBuildingOptions = useBuildingStore((s) => s.fetchBuildingOptions);
+    const saveData = useBuildingStore((s) => s.saveData);
+    const deleteFloor = useBuildingStore((s) => s.deleteFloor);
+    const deleteBuildingCascade = useBuildingStore((s) => s.deleteBuildingCascade);
 
     useEffect(() => {
         if (roleId === 2) router.replace('/uikit/MenuApps');
     }, [roleId, router]);
 
-    const { toast, items, buildingOptions, saveData, deleteData, deleteBuildingCascade } = useBuilding(activeIndex);
+    useEffect(() => {
+        fetchData(activeIndex as 0 | 1);
+        if (activeIndex === BuildingTabs.LEVEL) fetchBuildingOptions();
+    }, [activeIndex, fetchData, fetchBuildingOptions]);
+
+    useStoreToast(toastRef, { error, successMessage, clearMessages });
 
     if (roleId === 2) return null;
 
     // [Optimization] ສ້າງ Map ຂອງ Building ເພື່ອສົ່ງໃຫ້ Table lookup (O(1))
     const buildingMap = useMemo(() => {
-        return createDataMap(Array.isArray(buildingOptions) ? buildingOptions : [], 'id', 'name');
+        return createDataMap(buildingOptions ?? [], 'id', 'name');
     }, [buildingOptions]);
 
     const [isDialogVisible, setDialogVisible] = useState(false);
@@ -67,7 +87,7 @@ export default function BuildingsPage() {
     const openNew = () => {
         if (addButtonDisabled) return;
         if (addClickCount >= 2) {
-            toast?.current?.show({
+            toastRef.current?.show({
                 severity: 'warn',
                 summary: 'ແຈ້ງເຕືອນ',
                 detail: 'ກະລຸນາລໍຖ້າບໍ່ກົດຊ້ຳ',
@@ -105,7 +125,7 @@ export default function BuildingsPage() {
         });
 
         if (isDuplicate) {
-            toast?.current?.show({
+            toastRef.current?.show({
                 severity: 'warn',
                 summary: 'ແຈ້ງເຕືອນ',
                 detail: 'ຂໍອະໄພຂໍ້ມູນຊຸດນີ້ມີແລ້ວກະລຸນາປ້ອນໃໝ່ອີກຄັ້ງ',
@@ -121,7 +141,7 @@ export default function BuildingsPage() {
         }
 
         setSaving(true);
-        const success = await saveData(payload, id);
+        const success = await saveData(payload, activeIndex as 0 | 1, id);
         if (success) {
             setDialogVisible(false);
             setSelectedItem(null);
@@ -133,7 +153,7 @@ export default function BuildingsPage() {
         if (activeIndex === BuildingTabs.BUILDING) {
             deleteBuildingCascade(item.id);
         } else {
-            deleteData(item);
+            deleteFloor(item.id);
         }
     };
 
@@ -153,13 +173,13 @@ export default function BuildingsPage() {
     return (
         <div className="card p-4 surface-card shadow-2 border-round">
              <style>{CUSTOM_TAB_CSS}</style>
-            <Toast ref={toast} position="top-center" />
+            <Toast ref={toastRef} position="top-center" />
             <div className="mb-4">
                 <TabMenu model={tabItems} activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)} className="custom-tabmenu" />
             </div>
 
             <ManagementTable 
-                items={Array.isArray(items) ? items : []}
+                items={items ?? []}
                 header={renderHeader()}
                 globalFilter={globalFilter}
                 nameColumnHeader={columnNameHeader}
@@ -167,8 +187,9 @@ export default function BuildingsPage() {
                 onEdit={openEdit}
                 onDelete={onDelete}
                 buildingMap={buildingMap}
-                buildingOptions={buildingOptions}
+                buildingOptions={buildingOptions ?? []}
                 deleteConfirmMessage={activeIndex === BuildingTabs.BUILDING ? getCascadeDeleteMessage : undefined}
+                isLoading={loading && (items?.length ?? 0) === 0}
             />
 
             <BuildingCreateDialog 
@@ -177,7 +198,7 @@ export default function BuildingsPage() {
                 onSave={handleSave} 
                 itemNameLabel={columnNameHeader}
                 activeTab={activeIndex}
-                buildingOptions={buildingOptions}
+                buildingOptions={buildingOptions ?? []}
                 isSaving={isSaving}
                 editData={selectedItem}
                 saveButtonDisabled={saveButtonCooldown}

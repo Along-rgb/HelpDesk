@@ -7,6 +7,7 @@ import { useCategoryIconsSelect } from "../MenuApps/hooks/useCategoryIconsSelect
 import { useTicketCountByCategory } from "./hooks/useTicketCountByCategory";
 import { getCategoryIconDisplayUrl } from "../MenuApps/utils/iconUrl";
 import { MenuCard } from "./MenuCard";
+import InlineLoading from "@/app/components/InlineLoading";
 
 export default function GroupProblemPage() {
   const { items: categoryItems, loading: categoryLoading, error: categoryError } = useSelectCategories(true);
@@ -29,8 +30,8 @@ export default function GroupProblemPage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-content-center align-items-center h-screen">
-        <i className="pi pi-spin pi-spinner text-4xl" />
+      <div className="flex justify-content-center align-items-center min-h-[50vh]">
+        <InlineLoading />
       </div>
     );
   }

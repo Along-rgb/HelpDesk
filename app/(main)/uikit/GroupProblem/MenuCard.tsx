@@ -70,13 +70,13 @@ export const MenuCard: React.FC<MenuCardProps> = ({
         </div>
 
         <div className="flex flex-column flex-grow-1 p-4 text-center mt-2 w-full">
-          <span className="text-xl font-bold text-900 mb-3">{title}</span>
-          <p className="text-600 line-height-3 text-sm m-0">{description}</p>
+          <span className="text-2xl font-bold text-900 mb-3">{title}</span>
+          <p className="text-600 line-height-3 text-lg m-0">{description}</p>
         </div>
 
         {ticketCount != null && (
           <div className="w-full flex justify-content-center align-items-center pt-2 pb-3 mt-auto">
-            <span className="text-600 text-sm">
+            <span className="text-600 text-lg font-medium">
               {ticketCount} ລາຍການ
             </span>
           </div>

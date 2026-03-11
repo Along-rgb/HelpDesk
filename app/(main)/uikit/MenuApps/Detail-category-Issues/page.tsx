@@ -1,6 +1,6 @@
-// src/uikit/MenuApps/Detail-category_Issues/page.tsx
+// src/uikit/MenuApps/Detail-category-Issues/page.tsx
 'use client';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { TabMenu } from 'primereact/tabmenu';
 import { InputText } from 'primereact/inputtext';
@@ -11,8 +11,8 @@ import IssuesTable from './IssuesTable';
 import IssuesCreateDialog from './IssuesCreateDialog';
 import IssuesIconTable from './IssuesIconTable';
 import IssuesIconCreateDialog from './IssuesIconCreateDialog';
-import { useCategories } from '../hooks/useCategories';
-import { useIssues } from '../hooks/useIssues';
+import { useIssueStore } from '@/app/store/helpdesk';
+import { useStoreToast } from '@/app/hooks/useStoreToast';
 import { useHeadCategorySelect } from '../hooks/useHeadCategorySelect';
 import { useCategoryIconsSelect } from '../hooks/useCategoryIconsSelect';
 import { useCategoryIcons } from '../hooks/useCategoryIcons';
@@ -38,19 +38,37 @@ export default function IssuesPage() {
     const searchParams = useSearchParams();
     const { roleId } = useUserProfile();
     const [activeIndex, setActiveIndex] = useState<number>(0);
+    const toastRef = useRef<Toast>(null);
 
     const profileReady = roleId === 1 || roleId === 2;
     const canManageCategoryAndTopic = isRole2(roleId);
     const canManageIcons = isRole1(roleId);
 
-    const { toast: categoryToast, items: categoryItems, loading: categoryLoading, saveData: saveCategory, deleteData: deleteCategory } = useCategories(
-        activeIndex,
-        profileReady && canManageCategoryAndTopic && activeIndex <= 1
-    );
-    const { toast: issueToast, items: topicItems, loading: issueLoading, saveData: saveIssue, deleteData: deleteIssue } = useIssues(
-        activeIndex,
-        profileReady && canManageCategoryAndTopic && activeIndex <= 1
-    );
+    // useIssueStore: categories & items (Tab ໝວດໝູ່, ລາຍການຫົວຂໍ້)
+    const categories = useIssueStore((s) => s.categories);
+    const itemsFromStore = useIssueStore((s) => s.items);
+    const issueLoading = useIssueStore((s) => s.loading);
+    const error = useIssueStore((s) => s.error);
+    const successMessage = useIssueStore((s) => s.successMessage);
+    const clearMessages = useIssueStore((s) => s.clearMessages);
+    const fetchData = useIssueStore((s) => s.fetchData);
+    const saveCategory = useIssueStore((s) => s.saveCategory);
+    const deleteCategory = useIssueStore((s) => s.deleteCategory);
+    const saveTicket = useIssueStore((s) => s.saveTicket);
+    const deleteTicket = useIssueStore((s) => s.deleteTicket);
+
+    useStoreToast(toastRef, { error, successMessage, clearMessages });
+
+    useEffect(() => {
+        if (!profileReady || !canManageCategoryAndTopic) return;
+        const c = new AbortController();
+        fetchData(c.signal);
+        return () => c.abort();
+    }, [profileReady, canManageCategoryAndTopic, fetchData]);
+
+    const categoryItems = categories ?? [];
+    const topicItems = itemsFromStore ?? [];
+
     const { items: headCategorySelectItems } = useHeadCategorySelect(
         activeIndex,
         profileReady && canManageCategoryAndTopic && activeIndex <= 1
@@ -94,15 +112,18 @@ export default function IssuesPage() {
     );
 
     const items = activeIndex === IssueTabs.ICON ? iconItems : activeIndex === 0 ? categoryItems : topicItems;
-    const toast = activeIndex === 0 ? categoryToast : activeIndex === 1 ? issueToast : iconToast;
+    const toast = activeIndex === IssueTabs.ICON ? iconToast : toastRef;
 
     /** loading ຂອງ tab ປັດຈຸບັນ — ບໍ່ໃຫ້ແສງ "ບໍ່ພົບຂໍ້ມູນ" ຕອນເປີດໜ້າ/refresh ຫຼື ຍັງໂຫຼດຂໍ້ມູນ */
     const tableLoading = useMemo(() => {
-        if (!profileReady) return true; // ຍັງບໍ່ຮູ້ role — ບໍ່ໃຫ້ແສງ empty
+        if (!profileReady) return true;
         if (activeIndex === IssueTabs.ICON) return iconLoading;
-        if (activeIndex === 0) return categoryLoading;
+        if (activeIndex === 0 || activeIndex === 1) return issueLoading;
         return issueLoading;
-    }, [profileReady, activeIndex, iconLoading, categoryLoading, issueLoading]);
+    }, [profileReady, activeIndex, iconLoading, issueLoading]);
+
+    /** ໂຫຼດແບບມິນິມอล — ສະແດງແຕ່ຄັ້ງແຮກ (ຍັງບໍ່ມີຂໍ້ມູນໃນ tab ນີ້) */
+    const tableLoadingFirstOnly = tableLoading && (items?.length ?? 0) === 0;
 
     const [isDialogVisible, setDialogVisible] = useState(false);
     const [isIconDialogVisible, setIconDialogVisible] = useState(false);
@@ -187,11 +208,13 @@ export default function IssuesPage() {
             const id = selectedItem && 'headCategoryId' in selectedItem ? selectedItem.id : undefined;
             const success = await saveCategory(p, id);
             if (success) setDialogVisible(false);
+            // successMessage จาก Store จะถูกแสดงผ่าน useStoreToast
         } else {
             const p = payload as CreateIssuePayload;
             const id = selectedItem && 'parentId' in selectedItem ? selectedItem.id : undefined;
-            const success = await saveIssue(p, id);
+            const success = await saveTicket(p, id);
             if (success) setDialogVisible(false);
+            // successMessage จาก Store จะถูกแสดงผ่าน useStoreToast
         }
         setSaving(false);
     };
@@ -212,9 +235,9 @@ export default function IssuesPage() {
             acceptLabel: 'ຕົກລົງ',
             rejectLabel: 'ຍົກເລີກ',
             acceptClassName: 'p-button-danger',
-            accept: () => {
-                if (activeIndex === 0) deleteCategory(item as CategoryData);
-                else deleteIssue(item as IssueData);
+            accept: async () => {
+                if (activeIndex === 0) await deleteCategory((item as CategoryData).id);
+                else await deleteTicket((item as IssueData).id);
             },
         });
     };
@@ -290,13 +313,13 @@ export default function IssuesPage() {
             {activeIndex === IssueTabs.ICON ? (
                 <>
                     <IssuesIconTable
-                        items={iconItems}
+                        items={iconItems ?? []}
                         header={renderHeader()}
                         globalFilter={globalFilter}
                         onEdit={openIconEdit}
                         onDelete={confirmIconDelete}
                         canManage={canManageIcons}
-                        isLoading={tableLoading}
+                        isLoading={tableLoadingFirstOnly}
                     />
                     <IssuesIconCreateDialog
                         visible={isIconDialogVisible}
@@ -310,7 +333,7 @@ export default function IssuesPage() {
             ) : (
                 <>
                     <IssuesTable
-                        items={activeIndex === 0 ? categoryItems : topicItems}
+                        items={(activeIndex === 0 ? categoryItems : topicItems) ?? []}
                         header={renderHeader()}
                         globalFilter={globalFilter}
                         nameColumnHeader={columnNameHeader}
@@ -321,7 +344,7 @@ export default function IssuesPage() {
                         headCategoryMap={headCategoryMap}
                         categoryIconMap={categoryIconMap}
                         canManage={canManageCategoryAndTopic}
-                        isLoading={tableLoading}
+                        isLoading={tableLoadingFirstOnly}
                         categoryIdsInUse={activeIndex === 0 ? categoryIdsInUse : undefined}
                     />
                     <IssuesCreateDialog

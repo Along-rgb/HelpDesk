@@ -8,8 +8,8 @@ import { STATUS_ICON_MAP, STATUS_ICON_FALLBACK } from "./constants";
 import type { StatusOption, AssigneeOption } from "./types";
 
 interface TicketHeaderProps {
-    statusFilter: any;
-    setStatusFilter: (value: any) => void;
+    statusFilter: string | null;
+    setStatusFilter: (value: string | null) => void;
     statusOptions: StatusOption[];
     assignOptions: AssigneeOption[];
     /** หัวข้อส่วนมอบหมาย (จาก headcategorys/selectheadcategory) */
@@ -50,6 +50,11 @@ export const TicketHeader = ({
         );
     };
 
+    const selectedStatusOption =
+        statusFilter != null
+            ? statusOptions.find((o) => o.value === statusFilter) ?? null
+            : null;
+
     const panelFooterTemplate = () => (
         <div className="py-2 px-3 border-top-1 surface-border">
             <Button
@@ -65,10 +70,15 @@ export const TicketHeader = ({
             {/* LEFT */}
             <div className="flex flex-wrap gap-2 align-items-center">
                 <Dropdown
-                    value={statusFilter} onChange={(e) => setStatusFilter(e.value)}
-                    options={statusOptions} optionLabel="label" placeholder="ເລືອກສະຖານະ"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter((e.value as string | null) ?? null)}
+                    options={statusOptions}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="ເລືອກສະຖານະ"
                     className="p-inputtext-sm w-full md:w-12rem" showClear
-                    itemTemplate={renderStatusOption} valueTemplate={renderStatusOption}
+                    itemTemplate={renderStatusOption}
+                    valueTemplate={() => renderStatusOption(selectedStatusOption)}
                 />
                 <MultiSelect
                     value={assignFilter} onChange={(e) => setAssignFilter(e.value)}

@@ -7,6 +7,7 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Toast } from "primereact/toast";
 import { useTicketForm } from "./useTicketForm";
 import { FormDropdown } from "@/app/components/FormDropdown";
+import InlineLoading from "@/app/components/InlineLoading";
 import { useProfileData } from "@/app/store/user/userProfileStore";
 
 const RequestForm = () => {
@@ -61,9 +62,8 @@ const RequestForm = () => {
 
         <div className="p-fluid p-4">
           {loadingMaster && (
-            <div className="flex align-items-center gap-2 text-500 mb-3">
-              <i className="pi pi-spin pi-spinner" />
-              <span>ກຳລັງໂຫລດຂໍ້ມູນ...</span>
+            <div className="mb-3">
+              <InlineLoading />
             </div>
           )}
           <div className="formgrid grid mb-3">

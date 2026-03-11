@@ -1,4 +1,4 @@
-// src/uikit/MenuApps/Detail-category_SupportTeam/RoleAssignDialog.tsx
+// src/uikit/MenuApps/Detail-category-SupportTeam/RoleAssignDialog.tsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';

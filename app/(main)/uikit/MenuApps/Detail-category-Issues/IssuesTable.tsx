@@ -1,4 +1,4 @@
-// src/uikit/MenuApps/Detail-category_Issues/IssuesTable.tsx
+// src/uikit/MenuApps/Detail-category-Issues/IssuesTable.tsx
 import React from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
@@ -119,7 +119,7 @@ export default function IssuesTable({
 
     return (
         <DataTable
-            value={items}
+            value={items ?? []}
             header={header}
             globalFilter={globalFilter}
             emptyMessage={!isLoading ? EMPTY_MSG : undefined}

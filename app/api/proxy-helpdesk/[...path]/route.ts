@@ -14,6 +14,34 @@ function getUploadBaseUrl(): string {
   return env.helpdeskUploadRequestBaseUrl;
 }
 
+/** Path prefixes allowed to proxy (prevent forwarding to arbitrary backend paths). */
+const ALLOWED_PATH_PREFIXES = [
+  'helpdeskrequests',
+  'helpdeskstatus',
+  'headcategorys',
+  'support-teams',
+  'buildings',
+  'floors',
+  'categorys',
+  'tickets',
+  'categoryicons',
+  'users',
+  'roles',
+  'divisions',
+  'assignments',
+  'prioritys',
+  'locations',
+] as const;
+
+function isPathAllowed(path: string): boolean {
+  if (!path || path.includes('..')) return false;
+  const segments = path.split('/').filter(Boolean);
+  if (segments.some((s) => s === '..' || s.includes('..'))) return false;
+  if (path.startsWith('upload/')) return true;
+  const first = segments[0];
+  return first != null && ALLOWED_PATH_PREFIXES.includes(first as (typeof ALLOWED_PATH_PREFIXES)[number]);
+}
+
 async function proxy(
   request: NextRequest,
   pathSegments: string[],
@@ -22,6 +50,9 @@ async function proxy(
   const path = pathSegments.filter(Boolean).join('/');
   if (!path) {
     return NextResponse.json({ error: 'Missing path' }, { status: 400 });
+  }
+  if (!isPathAllowed(path)) {
+    return NextResponse.json({ error: 'Path not allowed' }, { status: 403 });
   }
   const isUpload = path.startsWith('upload/');
   const base = isUpload ? getUploadBaseUrl() : getBackendBaseUrl();
@@ -46,6 +77,7 @@ async function proxy(
   if (method !== 'GET' && method !== 'HEAD') {
     const isForm = contentType?.includes('multipart/form-data');
     if (isForm) {
+      // ບໍ່ set Content-Type ໃຫ້ FormData — ໃຫ້ fetch ຕັ້ງ boundary ເອງ ເພື່ອໃຫ້ server parse ຖືກຕ້ອງ
       const formData = await request.formData();
       const res = await fetch(targetUrl, {
         method,

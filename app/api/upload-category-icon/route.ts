@@ -1,11 +1,13 @@
 /**
  * Temporary local upload for category icons (demo).
  * Saves to public/uploads/ so images are served at /uploads/filename (same-origin, no proxy).
+ * Requires Bearer JWT — only authenticated users can upload.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
+import { verifyBearerUserId } from '@/lib/apiAuth';
 
 const UPLOAD_DIR = join(process.cwd(), 'public', 'uploads');
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
@@ -16,6 +18,14 @@ function safeExt(name: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  const userId = await verifyBearerUserId(request);
+  if (userId == null) {
+    return NextResponse.json(
+      { error: 'Unauthorized. Bearer token required.' },
+      { status: 401 }
+    );
+  }
+
   const formData = await request.formData();
   const file = formData.get('catIcon') as File | null;
 
@@ -28,7 +38,7 @@ export async function POST(request: NextRequest) {
   }
 
   const ext = safeExt(file.name);
-  const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const filename = `${Date.now()}-${crypto.randomUUID().replace(/-/g, '')}.${ext}`;
 
   if (!existsSync(UPLOAD_DIR)) {
     await mkdir(UPLOAD_DIR, { recursive: true });

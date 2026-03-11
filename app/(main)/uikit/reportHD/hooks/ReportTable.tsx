@@ -208,7 +208,7 @@ export const ReportTable = ({ data, activeIndex }: Props) => {
             />
 
             <DataTable
-                value={data}
+                value={data ?? []}
                 headerColumnGroup={viewConfig.isDepartmentTab ? headerGroupDepartment : headerGroupGeneral}
                 rowGroupMode="subheader"
                 groupRowsBy={groupConfig.field}

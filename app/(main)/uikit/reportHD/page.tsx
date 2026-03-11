@@ -6,7 +6,7 @@ import { TabMenu } from 'primereact/tabmenu';
 import { Toast } from 'primereact/toast';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
-import { useReportData } from './hooks/useReportData';
+import { useReportStore } from '@/app/store/helpdesk';
 import { ReportHeaderControls } from './ReportHeaderControls';
 import { ReportTable } from './hooks/ReportTable';
 import { MENU_ITEMS } from './utils/reportConfig';
@@ -32,7 +32,21 @@ export default function ReportHD() {
     const [showExportDialog, setShowExportDialog] = useState(false);
     const toast = useRef<Toast>(null);
     const printableAreaRef = useRef<HTMLDivElement>(null);
-    const { data, error } = useReportData(activeIndex, dateRange);
+    // Selectors: subscribe only to needed state for performance
+    const data = useReportStore((s) => s.data);
+    const error = useReportStore((s) => s.error);
+    const fetchReports = useReportStore((s) => s.fetchReports);
+
+    useEffect(() => {
+        if (dateRange && dateRange.length >= 2 && dateRange[0] && dateRange[1]) {
+            const controller = new AbortController();
+            fetchReports(
+                { startDate: dateRange[0], endDate: dateRange[1], tabIndex: activeIndex },
+                controller.signal
+            );
+            return () => controller.abort();
+        }
+    }, [activeIndex, dateRange, fetchReports]);
 
     useEffect(() => {
         setPrintDate(new Date());
@@ -274,7 +288,7 @@ export default function ReportHD() {
 
                     {error && <div className="mb-3 p-3 bg-red-50 text-red-700 border-round">Error: {error}</div>}
 
-                    <ReportTable data={data} activeIndex={activeIndex} />
+                    <ReportTable data={data ?? []} activeIndex={activeIndex} />
 
                     {/* Print Footer */}
                     <div className="print-only-footer hidden mt-5">

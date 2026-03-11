@@ -34,6 +34,14 @@ const TAB_INDEX = {
     CANCELLED: 3,     // ຄຳຮ້ອງທີ່ຖືກປະຕິເສດ — เก็บไว้ก่อน
 } as const;
 
+/** ຊື່ສະຖານະຕາມແຖບ — ໃຊ້กรองໃຫ້ຕາມແຖບຖືກຕ້ອງ (ບໍ່ອີງໃສ່ statusId ເທົ່ານັ້ນ) */
+const STATUS_NAMES_BY_TAB: Record<number, Set<string>> = {
+    [TAB_INDEX.NEW]: new Set(['ໃໝ່', 'ລໍຖ້າຮັບວຽກ', 'ລໍຖ້າຮັບເລື່ອງ']),
+    [TAB_INDEX.PROCESSING]: new Set(['ກຳລັງດຳເນີນການ', 'ພັກໃວ້', 'ສົ່ງອອກແປງນອກ']),
+    [TAB_INDEX.COMPLETED]: new Set(['ແກ້ໄຂແລ້ວ', 'ປິດວຽກແລ້ວ', 'ສຳເລັດແລ້ວ']),
+    [TAB_INDEX.CANCELLED]: new Set(['ຍົກເລີກ', 'ຍົກເລິກ', 'ຖືກປະຕິເສດ']),
+};
+
 /** แปลงวันเวลาจาก API (ISO) เป็นรูปแบบแสดงผล — ใช้ formatDateTime ร่วมกับ dateUtils */
 function formatRequestDateTime(value: string | undefined | null): string {
     if (value == null || String(value).trim() === '') return '—';
@@ -70,8 +78,9 @@ type AssignmentRaw = {
  * id, ticketId, helpdeskStatusId, numberSKT, createdById, createdAt, updatedAt,
  * ticket: { id, title }, helpdeskStatus: { id, name }, assignments: [{ assignedTo: { id, employee: { first_name, last_name } } }]
  * แยกแสดงตาม createdById (กรองให้ user login เห็นเฉพาะของตัวเอง)
+ * Export ໃຫ້ pageUser ນຳໃຊ້ໃນ RequestHistoryByStatus
  */
-function normalizeHistoryResponse(data: unknown): RequestHistoryRow[] {
+export function normalizeHistoryResponse(data: unknown): RequestHistoryRow[] {
     if (Array.isArray(data)) {
         return (data as Record<string, unknown>[]).map((row) => {
             const id = row.id != null ? String(row.id) : (row.numberSKT as string) ?? '—';
@@ -241,14 +250,12 @@ export default function RequestHistoryPage() {
         return true;
     });
 
-    /** กรองตาม tabIndex โดยเทียบ statusId กับ helpdeskstatus/selecthelpdeskstatus: tab0=id1, tab1=id2, tab2=id3|id6, tab3=เก็บไว้ */
+    /** กรองตาม tab — ใช้ชื่อສະຖານະ (status) ເພື່ອให้แสดงผลแยกตามແຖບຖືກຕ້ອງ */
     const filteredByTab = filteredBySearch.filter((row) => {
-        const id = row.statusId;
-        if (activeTab === TAB_INDEX.NEW) return id === 1; // ລໍຖ້າຮັບວຽກ
-        if (activeTab === TAB_INDEX.PROCESSING) return id === 2; // ກຳລັງດຳເນີນການ
-        if (activeTab === TAB_INDEX.COMPLETED) return id === 3 || id === 6; // ແກ້ໄຂແລ້ວ ຫຼື ປິດວຽກແລ້ວ
-        if (activeTab === TAB_INDEX.CANCELLED) return false; // ຄຳຮ້ອງທີ່ຖືກປະຕິເສດ — เก็บไว้ก่อน
-        return true;
+        const statusName = (row.status ?? '').trim();
+        const allowed = STATUS_NAMES_BY_TAB[activeTab];
+        if (!allowed) return true;
+        return allowed.has(statusName);
     });
 
     return (
@@ -334,7 +341,7 @@ export default function RequestHistoryPage() {
                 }}
             >
                 <DataTable
-                    value={filteredByTab}
+                    value={filteredByTab ?? []}
                     paginator
                     rows={rowsPerPage}
                     first={first}
@@ -349,8 +356,8 @@ export default function RequestHistoryPage() {
                     size="small"
                     scrollable
                     scrollHeight="60vh"
-                    loading={loading}
-                    emptyMessage={loading ? undefined : <div className="request-history-empty-msg">ບໍ່ພົບຂໍ້ມູນ</div>}
+                    loading={loading && (tickets?.length ?? 0) === 0}
+                    emptyMessage={loading && (tickets?.length ?? 0) === 0 ? undefined : <div className="request-history-empty-msg">ບໍ່ພົບຂໍ້ມູນ</div>}
                 >
                     <Column field="id" header="ລຳດັບ" style={{ width: '10%', fontWeight: 'bold' }} align="center" />
                     <Column

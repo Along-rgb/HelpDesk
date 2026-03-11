@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Toast } from 'primereact/toast';
-import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
+import axiosClientsHelpDesk, { getTokenFromStorage } from '@/config/axiosClientsHelpDesk';
 import { env } from '@/config/env';
 import { IconItemData, CreateIconPayload } from '../types';
 import { getCategoryIconProxyUrl, getLocalUploadIconUrl } from '../utils/iconUrl';
@@ -67,7 +67,10 @@ export function useCategoryIcons(triggerFetch: unknown, shouldFetch: boolean = t
                 if (useLocalUpload && payload.iconFile) {
                     const form = new FormData();
                     form.append(FORM_KEY_ICON, payload.iconFile);
-                    const res = await fetch(LOCAL_UPLOAD_PATH, { method: 'POST', body: form });
+                    const token = getTokenFromStorage();
+                    const headers: HeadersInit = {};
+                    if (token) headers['Authorization'] = `Bearer ${token}`;
+                    const res = await fetch(LOCAL_UPLOAD_PATH, { method: 'POST', body: form, headers });
                     if (!res.ok) {
                         const err = await res.json().catch(() => ({}));
                         throw new Error((err as { error?: string }).error ?? 'Upload failed');

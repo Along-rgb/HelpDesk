@@ -4,43 +4,55 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Tag } from "primereact/tag";
 import { Toast } from "primereact/toast";
+import { Checkbox } from "primereact/checkbox";
 import { useTicketTableTechn } from "./useTicketTableTechn";
-import { TicketRow } from "./types";
-import { Ticket } from "./types";
+import { Ticket, TicketRow } from "./types";
 import { STATUS_MAP, CUSTOM_TOOLTIP_CSS, PRIORITY_MAP } from "./constants";
 import { sanitizeStyleContent } from "@/utils/sanitizeHtml";
 import { TicketActionMenu } from "@/app/components/TicketActionMenu";
 import type { TicketActionMenuItem } from "@/app/components/TicketActionMenu";
 import { TicketHeaderTechn } from "./TicketHeaderTechn";
-import { AssigneeDialog } from "./AssigneeDialog";
 import { TableTooltip } from "./TableTooltip";
-import { TitleBody, RequesterBody, AssigneeBody, AssigneeSingleBody } from "./TicketColumnTemplates";
+import { TitleBody, RequesterBody } from "./TicketColumnTemplates";
+import { ReportWorkModal } from "./ReportWorkModal";
+import type { ReportWorkFormData } from "./types";
+import { submitReportWork } from "./reportWorkService";
 
-/** ລຳດັບສະຖານະໃນ dropdown ລາຍລະອຽດ: ແກ້ໄຂແລ້ວ, ພັກໃວ້, ສົ່ງອອກແປງນອກ, ປິດວຽກແລ້ວ (id 6 = Dis — กดไม่ได้) */
-const DETAIL_STATUS_ORDER = [3, 5, 4, 6];
+/** ไอคอนต่อ helpdesk status id จาก API helpdeskstatus/staff (id ตรงกับ response) */
 const DETAIL_STATUS_ICONS: Record<number, string> = {
-    3: "pi pi-check",
-    5: "pi pi-pause",
-    4: "pi pi-send",
-    6: "pi pi-times-circle",
+    4: "pi pi-check-circle",   /* ແກ້ໄຂແລ້ວ */
+    5: "pi pi-external-link", /* ສົ່ງອອກແປງນອກ */
+    6: "pi pi-pause",          /* ພັກໃວ້ */
+    8: "pi pi-circle",         /* ຍົກເລີກ */
 };
-/** id ປິດວຽກແລ້ວ — ໃຫ້ Dis (disabled) กดไม่ได้ */
-const DETAIL_STATUS_DISABLED_ID = 6;
+/** id สถานะ ແກ້ໄຂແລ້ວ — ເປີດ modal ລາຍງານວຽກ */
+const DETAIL_STATUS_REPORT_WORK_ID = 4;
+/** id สถานะ ຍົກເລີກ — ປຸ່ມ disabled */
+const DETAIL_STATUS_DISABLED_ID = 8;
 
+/**
+ * สร้างรายการเมนู dropdown ລາຍລະອຽດ จาก GET helpdeskstatus/staff.
+ */
 function buildDetailMenuItems(
     ticket: Ticket,
-    statusList: { id: number; name: string }[],
-    updateTicketStatus: (ticketId: string | number, helpdeskStatusId: number) => Promise<void>
+    staffStatusList: { id: number; name: string }[],
+    updateTicketStatus: (ticketId: string | number, helpdeskStatusId: number) => Promise<void>,
+    onOpenReportWork: (ticket: Ticket) => void
 ): TicketActionMenuItem[] {
-    const byId = new Map(statusList.map((s) => [s.id, s]));
-    return DETAIL_STATUS_ORDER.filter((id) => byId.has(id)).map((id) => {
-        const s = byId.get(id)!;
+    return staffStatusList.map((s) => {
+        const id = s.id;
         const isDisabled = id === DETAIL_STATUS_DISABLED_ID;
+        const isReportWork = id === DETAIL_STATUS_REPORT_WORK_ID;
+        const command = isDisabled
+            ? () => {}
+            : isReportWork
+              ? () => onOpenReportWork(ticket)
+              : () => updateTicketStatus(ticket.id, id);
         return {
             label: s.name,
             icon: DETAIL_STATUS_ICONS[id] ?? "pi pi-circle",
-            command: isDisabled ? () => {} : () => updateTicketStatus(ticket.id, id),
-            disabled: isDisabled, // ປິດວຽກແລ້ວ (id 6) = Dis กดไม่ได้
+            command,
+            disabled: isDisabled,
         };
     });
 }
@@ -55,18 +67,39 @@ export default function PageTechnDemo() {
         statusFilter,
         setStatusFilter,
         statusOptions,
-        dialogVisible,
-        currentAssignees,
-        openAssigneeDialog,
-        closeDialog,
         showAction,
+        showCheckbox,
         getTicketFromRow,
-        statusList,
+        staffStatusList,
         updateTicketStatus,
+        selectedTickets,
+        onCheckboxChange,
+        onAcceptSelf,
     } = useTicketTableTechn(toastRef);
 
     const [first, setFirst] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(15);
+    const [reportWorkModalVisible, setReportWorkModalVisible] = useState(false);
+    const [reportWorkTicket, setReportWorkTicket] = useState<Ticket | null>(null);
+
+    const openReportWorkModal = (ticket: Ticket) => {
+        setReportWorkTicket(ticket);
+        setReportWorkModalVisible(true);
+    };
+
+    const handleReportWorkSave = async (
+        ticketId: string | number,
+        data: ReportWorkFormData
+    ) => {
+        try {
+            await submitReportWork(ticketId, data);
+            await updateTicketStatus(ticketId, DETAIL_STATUS_REPORT_WORK_ID);
+            // Modal ປິດຜ່ານ onHide ຫຼັງ await onSave; updateTicketStatus ເຮັດ refresh ຕາຕະລາງໃນ hook ແລ້ວ
+        } catch (err) {
+            console.error("handleReportWorkSave failed:", err);
+            toastRef.current?.show({ severity: "error", summary: "ຜິດພາດ", detail: "ບໍ່ສາມາດບັນທຶກລາຍງານວຽກໄດ້", life: 4000 });
+        }
+    };
 
     const centerProps = { align: "center" as const, alignHeader: "center" as const };
 
@@ -78,21 +111,18 @@ export default function PageTechnDemo() {
             <div className="col-12">
                 <div className="card">
                     <TableTooltip target=".js-tooltip-target" dependencies={[displayRows, first]} />
-                    <AssigneeDialog
-                        visible={dialogVisible}
-                        onHide={closeDialog}
-                        assignees={currentAssignees}
-                    />
                     <TicketHeaderTechn
                         statusFilter={statusFilter}
                         setStatusFilter={setStatusFilter}
                         statusOptions={statusOptions}
                         globalFilter={globalFilter}
                         onGlobalFilterChange={onGlobalFilterChange}
+                        acceptSelfDisabled={selectedTickets.length === 0}
+                        onAcceptSelf={onAcceptSelf}
                     />
                     <DataTable
-                        value={displayRows}
-                        loading={loading}
+                        value={displayRows ?? []}
+                        loading={loading && (displayRows?.length ?? 0) === 0}
                         paginator
                         rows={rowsPerPage}
                         rowsPerPageOptions={[15, 25, 50]}
@@ -104,13 +134,30 @@ export default function PageTechnDemo() {
                         scrollHeight="60vh"
                         tableStyle={{ minWidth: "60rem" }}
                         style={{ fontSize: "1rem" }}
-                        emptyMessage={<div className="text-center p-4">ບໍ່ພົບຂໍ້ມູນ</div>}
+                        emptyMessage={loading && (displayRows?.length ?? 0) === 0 ? undefined : <div className="text-center p-4">ບໍ່ພົບຂໍ້ມູນ</div>}
                         first={first}
                         onPage={(e) => {
                             setFirst(e.first);
                             setRowsPerPage(e.rows);
                         }}
                     >
+                        <Column
+                            headerStyle={{ width: "3rem" }}
+                            bodyStyle={{ width: "3rem", textAlign: "center" }}
+                            body={(rowData: TicketRow) =>
+                                showCheckbox(rowData) ? (
+                                    <Checkbox
+                                        checked={selectedTickets.some(
+                                            (t) =>
+                                                rowData.assignmentId != null
+                                                    ? t.assignmentId === rowData.assignmentId
+                                                    : String(t.id) === String(getTicketFromRow(rowData).id)
+                                        )}
+                                        onChange={(e) => onCheckboxChange(e, rowData)}
+                                    />
+                                ) : null
+                            }
+                        />
                         <Column
                             field="id"
                             header="ລະຫັດ"
@@ -126,22 +173,11 @@ export default function PageTechnDemo() {
                         />
 
                         <Column
-                            header="ມອບໝາຍໃຫ້"
-                            style={{ minWidth: "140px" }}
-                            {...centerProps}
-                            body={(rowData: TicketRow) =>
-                                rowData.rowAssignee
-                                    ? AssigneeSingleBody(rowData.rowAssignee)
-                                    : AssigneeBody(rowData, openAssigneeDialog)
-                            }
-                        />
-
-                        <Column
                             field="assignDate"
                             header="ວັນທີມອບໝາຍ"
                             style={{ minWidth: "170px" }}
                             {...centerProps}
-                            body={(rowData: TicketRow) =>
+                            body={(rowData: any) =>
                                 rowData.assignDate || (
                                     <span className="text-500 text-sm">-</span>
                                 )
@@ -203,15 +239,16 @@ export default function PageTechnDemo() {
                             header="ດຳເນີນການ"
                             style={{ minWidth: "160px" }}
                             {...centerProps}
-                            body={(rowData: TicketRow) =>
+                            body={(rowData: any) =>
                                 showAction(rowData) ? (
                                     <TicketActionMenu
                                         ticket={getTicketFromRow(rowData)}
                                         variant="techn"
                                         menuItems={buildDetailMenuItems(
                                             getTicketFromRow(rowData),
-                                            statusList,
-                                            updateTicketStatus
+                                            staffStatusList,
+                                            updateTicketStatus,
+                                            openReportWorkModal
                                         )}
                                     />
                                 ) : null
@@ -220,6 +257,15 @@ export default function PageTechnDemo() {
                     </DataTable>
                 </div>
             </div>
+            <ReportWorkModal
+                visible={reportWorkModalVisible}
+                onHide={() => {
+                    setReportWorkModalVisible(false);
+                    setReportWorkTicket(null);
+                }}
+                ticket={reportWorkTicket}
+                onSave={handleReportWorkSave}
+            />
         </div>
     );
 }

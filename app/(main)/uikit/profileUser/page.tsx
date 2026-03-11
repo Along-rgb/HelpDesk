@@ -10,6 +10,7 @@ import FormInput from './components/FormInput';
 import { useProfile } from './hooks/useProfile';
 import { Card } from 'primereact/card';
 import { UserProfileHeader } from '../MainBoard/UserProfileHeader';
+import InlineLoading from '@/app/components/InlineLoading';
 
 const ProfilePage = () => {
   const { loading, error, profileData } = useProfile();
@@ -17,10 +18,7 @@ const ProfilePage = () => {
   if (loading) {
     return (
       <div className="profile-container">
-        <div className="text-center py-8">
-          <i className="pi pi-spin pi-spinner" style={{ fontSize: '3rem' }}></i>
-          <p className="mt-3">ກຳລັງໂຫຼດຂໍ້ມູນ...</p>
-        </div>
+        <InlineLoading />
       </div>
     );
   }

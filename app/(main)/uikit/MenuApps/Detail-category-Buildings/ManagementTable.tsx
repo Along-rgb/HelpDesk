@@ -1,4 +1,4 @@
-// src/uikit/MenuApps/Detail-category_Buildings/ManagementTable.tsx
+// src/uikit/MenuApps/Detail-category-Buildings/ManagementTable.tsx
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
@@ -27,6 +27,8 @@ interface Props {
     buildingOptions?: BuildingData[];
     /** ຖ້າສ่งມາ ໃຊ້ຂໍ້ຄວາມນີ້ໃນ Confirm ລຶບ — ຮອງຮັບທີ່ຈະເປັນ string ຫຼື ຟັງຊັນ (item) => string ເພື່ອດຶງຊື່ຂໍ້ມູນຂຶ້ນມາ */
     deleteConfirmMessage?: string | ((item: BuildingData) => string);
+    /** ໂຫຼດແບບມິນິມอล — ສະແດງແຕ່ຄັ້ງແຮກ (ຕອນຍັງບໍ່ມີຂໍ້ມູນ) */
+    isLoading?: boolean;
 }
 
 export default function ManagementTable({ 
@@ -39,7 +41,8 @@ export default function ManagementTable({
     onDelete, 
     buildingMap,
     buildingOptions = [],
-    deleteConfirmMessage
+    deleteConfirmMessage,
+    isLoading = false,
 }: Props) {
 
     const isLevelTab = activeTab === BuildingTabs.LEVEL;
@@ -147,6 +150,12 @@ export default function ManagementTable({
             <>
                 <ConfirmDialog />
                 {safeHeader}
+                {isLoading && levelTableDataCount === 0 ? (
+                    <div className="flex align-items-center justify-content-center gap-2 py-6 text-500">
+                        <i className="pi pi-spin pi-spinner" style={{ fontSize: '1.25rem' }} aria-hidden />
+                        <span>ກຳລັງໂຫຼດຂໍ້ມູນ...</span>
+                    </div>
+                ) : (
                 <div className="p-datatable p-datatable-sm p-datatable-striped mt-3 border-1 surface-border border-round overflow-hidden">
                     <div ref={tableWrapperRef} className="p-datatable-wrapper" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
                         <table className="p-datatable-table w-full" style={{ borderCollapse: 'collapse', borderSpacing: 0 }}>
@@ -186,10 +195,11 @@ export default function ManagementTable({
                             </tbody>
                         </table>
                     </div>
-                    {levelTableDataCount === 0 && (
+                    {levelTableDataCount === 0 && !isLoading && (
                         <div className="text-center p-4 text-gray-500 surface-0">ບໍ່ພົບຂໍ້ມູນ</div>
                     )}
                 </div>
+                )}
             </>
         );
     }
@@ -198,9 +208,10 @@ export default function ManagementTable({
         <>
             <ConfirmDialog />
             <DataTable 
-                value={filteredItems} 
+                value={filteredItems ?? []} 
                 header={safeHeader} 
-                emptyMessage={<div className="text-center p-4 text-gray-500">ບໍ່ພົບຂໍ້ມູນ</div>} 
+                loading={isLoading}
+                emptyMessage={!isLoading ? <div className="text-center p-4 text-gray-500">ບໍ່ພົບຂໍ້ມູນ</div> : undefined} 
                 className="p-datatable-sm" 
                 stripedRows 
                 paginator 
