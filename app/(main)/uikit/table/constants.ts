@@ -33,7 +33,7 @@ export const STATUS_MAP: Record<string, "success" | "info" | "warning" | "danger
     'Allin': null
 };
 
-/** Icons for status dropdown (value = status name). Use STATUS_ICON_FALLBACK for unknown statuses. */
+/** Icons for status dropdown (ເລືອກສະຖານະ) — ตรงตาม UI: ติ๊กวงกลม, export, pause, check, วงกลมว่าง. */
 export const STATUS_ICON_MAP: Record<string, string> = {
     'Allin': 'pi pi-th-large',
     'ກຳລັງດຳເນີນການ': 'pi pi-spin pi-spinner',
@@ -42,7 +42,8 @@ export const STATUS_ICON_MAP: Record<string, string> = {
     'ແກ້ໄຂແລ້ວ': 'pi pi-check-circle',
     'ປິດວຽກແລ້ວ': 'pi pi-check',
     'ພັກໃວ້': 'pi pi-pause',
-    'ຍົກເລິກ': 'pi pi-times',
+    'ຍົກເລິກ': 'pi pi-circle',
+    'ຍົກເລີກ': 'pi pi-circle',
     'ສົ່ງອອກແປງນອກ': 'pi pi-external-link'
 };
 export const STATUS_ICON_FALLBACK = 'pi pi-circle';

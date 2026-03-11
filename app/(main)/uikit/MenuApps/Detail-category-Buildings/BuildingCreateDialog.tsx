@@ -1,4 +1,4 @@
-// src/uikit/MenuApps/Detail-category_Buildings/BuildingCreateDialog.tsx
+// src/uikit/MenuApps/Detail-category-Buildings/BuildingCreateDialog.tsx
 import React, { useState, useEffect } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
@@ -20,11 +20,7 @@ interface Props {
 
 export default function BuildingCreateDialog({ visible, onHide, onSave, itemNameLabel, activeTab, buildingOptions, isSaving, editData, saveButtonDisabled = false }: Props) {
     const [name, setName] = useState('');
-    const [code, setCode] = useState(''); 
-    const [status, setStatus] = useState<string>('ACTIVE');
-    
     const [selectedBuilding, setSelectedBuilding] = useState<BuildingData | null>(null);
-
     const [submitted, setSubmitted] = useState(false);
 
     const isLevelTab = activeTab === BuildingTabs.LEVEL;
@@ -35,17 +31,12 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
             setSubmitted(false);
             if (editData) {
                 setName(editData.name ?? '');
-                setCode(editData.code ?? '');
-                setStatus(editData.status ?? 'ACTIVE');
-
                 if (isLevelTab) {
                     const parent = buildingOptions.find(b => b.id === editData.parentId);
                     setSelectedBuilding(parent || null);
                 }
             } else {
                 setName('');
-                setCode('');
-                setStatus('ACTIVE');
                 setSelectedBuilding(null);
             }
         }
@@ -64,8 +55,8 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
 
         const payload: CreateBuildingPayload = {
             name: name.trim(),
-            code: code?.trim() ?? '',
-            status: status || 'ACTIVE'
+            code: '',
+            status: 'ACTIVE',
         };
         if (finalParentId != null) {
             payload.parentId = finalParentId;
@@ -80,8 +71,7 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
         </div>
     );
 
-    let mainInputLabel = itemNameLabel;
-    let descriptionLabel = "ລາຍລະອຽດ (ວ່າງໄດ້)";
+    const mainInputLabel = itemNameLabel;
 
     return (
         <Dialog 
@@ -96,7 +86,6 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
             className="p-fluid"
         >
             <div className="flex flex-column gap-3">
-                
                 {isLevelTab && (
                     <div className="field mb-0">
                         <label htmlFor="parentBuilding" className="font-bold block mb-2">
@@ -128,11 +117,6 @@ export default function BuildingCreateDialog({ visible, onHide, onSave, itemName
                         autoFocus
                     />
                     {submitted && !name.trim() && <small className="text-red-500">ກະລຸນາປ້ອນ {mainInputLabel}</small>}
-                </div>
-
-                <div className="field mb-0">
-                    <label htmlFor="code" className="font-bold block mb-2">{descriptionLabel}</label>
-                    <InputText id="code" value={code} onChange={(e) => setCode(e.target.value)} className="w-full" />
                 </div>
             </div>
         </Dialog>

@@ -26,6 +26,8 @@ const PUBLIC_ENV: Record<string, string | undefined> = {
   NEXT_PUBLIC_IMAGE_REMOTE_HOSTNAME: process.env.NEXT_PUBLIC_IMAGE_REMOTE_HOSTNAME,
   NEXT_PUBLIC_TICKET_ID_SECRET: process.env.NEXT_PUBLIC_TICKET_ID_SECRET,
   NEXT_PUBLIC_HELPDESK_IMAGES_PATH: process.env.NEXT_PUBLIC_HELPDESK_IMAGES_PATH,
+  NEXT_PUBLIC_HELPDESK_FIELD_FILE: process.env.NEXT_PUBLIC_HELPDESK_FIELD_FILE,
+  NEXT_PUBLIC_HELPDESK_FIELD_IMAGES: process.env.NEXT_PUBLIC_HELPDESK_FIELD_IMAGES,
 };
 
 const getEnv = (key: string, fallback: string): string => {
@@ -58,7 +60,7 @@ export const env = {
   get ogImageUrl() {
     return getEnv('NEXT_PUBLIC_OG_IMAGE_URL', '');
   },
-  /** อ่านจาก process.env.NEXT_PUBLIC_HELPDESK_API_BASE_URL; fallback เฉพาะโหมด development */
+  /** อ่านจาก process.env.NEXT_PUBLIC_HELPDESK_API_BASE_URL; ຕ້ອງມີ protocol (http:// ຫຼື https://) ຄົບຖ້ວນ. Fallback เฉพาะโหมด development */
   get helpdeskApiUrl() {
     return getEnv('NEXT_PUBLIC_HELPDESK_API_BASE_URL', getIsDev() ? devFallback.helpdeskApiUrl : '');
   },
@@ -94,6 +96,15 @@ export const env = {
   /** Path segment สำหรับโหลดรูป (hdImgs) บน Backend — default hdimage, ຖ້າ Backend ໃຊ້ hdImgs ໃຫ້ຕັ້ງທີ່ນີ້ */
   get helpdeskImagesPath() {
     return getEnv('NEXT_PUBLIC_HELPDESK_IMAGES_PATH', 'hdimage').trim() || 'hdimage';
+  },
+  /** Field name สำหรับแนบไฟล์ PDF ใน FormData ตอน POST/PUT helpdeskrequests */
+  get helpdeskFieldFile() {
+    return getEnv('NEXT_PUBLIC_HELPDESK_FIELD_FILE', 'hdFile').trim() || 'hdFile';
+  },
+
+  /** Field name สำหรับแนบรูป (append ซ้ำได้) ใน FormData ตอน POST/PUT helpdeskrequests */
+  get helpdeskFieldImages() {
+    return getEnv('NEXT_PUBLIC_HELPDESK_FIELD_IMAGES', 'hdImgs').trim() || 'hdImgs';
   },
   get ticketsApiUrl() {
     return getEnv('NEXT_PUBLIC_TICKETS_API_URL', getIsDev() ? devFallback.ticketsApiUrl : '');

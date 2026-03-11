@@ -164,10 +164,13 @@ export interface AdminAssignUser {
         first_name?: string;
         last_name?: string;
         emp_code?: string;
+        tel?: string;
         divisionId: number;
         departmentId?: number;
         department?: { id: number; department_name: string; department_code: string; department_status: string };
         division?: { id: number; division_name: string; division_code: string; division_status: string; branch_id: number; departmentId: number };
+        position?: { id: number; pos_name: string; pos_status: string; poscodeId?: number };
+        unit?: { id: number; unit_name: string; unit_code: string; unit_status: string; [key: string]: unknown };
         [key: string]: unknown;
     };
 }
@@ -175,6 +178,7 @@ export interface AdminAssignUser {
 /** Row for grouped Support Team (ວິຊາການ) table: section header or user row. ใช้ departmentId เปรียบเทียบกับ users จาก /api/users/admin */
 export type SupportTeamTechnicalRow =
     | { type: 'section'; headCategoryId: number; name: string; divisionId: number; departmentId: number }
+    | { type: 'division_section'; name: string }
     | { type: 'user'; id: number; fullName: string; divisionId: number; departmentId?: number; raw: AdminAssignUser };
 
 // --- Division (for dropdown from /api/divisions) ---
@@ -221,7 +225,8 @@ export enum IssueTabs {
 export enum SupportTeamTabs {
     ISSUE_CATEGORY = 0,  // ທິມສະໜັບສະໜູນ
     TECHNICAL = 1,       // ວິຊາການ
-    ROLE_MANAGEMENT = 2  // ສະຖານະ (Roles)
+    ROLE_MANAGEMENT = 2, // ສະຖານະ (Roles)
+    STAFF = 3            // ພະນັກງານ
 }
 
 // --- Role Management (tab ສະຖານະ) ---

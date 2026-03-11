@@ -7,6 +7,7 @@ import { Button } from "primereact/button";
 import { Panel } from "primereact/panel";
 import { TabView, TabPanel } from "primereact/tabview";
 import { useUserProfileStore } from "@/app/store/user/userProfileStore";
+import RequestHistoryByStatus from "./RequestHistoryByStatus";
 
 const PageUser = () => {
     const router = useRouter();
@@ -111,6 +112,16 @@ const PageUser = () => {
                                             </Link>
                                         </div>
                                     </Panel>
+                                </div>
+                            </TabPanel>
+                            <TabPanel header="ປະຫວັດການຮ້ອງຂໍ" leftIcon="pi pi-folder-open mr-2">
+                                <div className="mt-3 -mx-3 md:-mx-4">
+                                    <div className="flex justify-content-end mb-2">
+                                        <Link href="/uikit/request-history" className="p-button p-button-outlined p-button-sm no-underline">
+                                            ເປີດໜ້າປະຫວັດການຮ້ອງຂໍເຕັມ
+                                        </Link>
+                                    </div>
+                                    <RequestHistoryByStatus />
                                 </div>
                             </TabPanel>
                         </TabView>

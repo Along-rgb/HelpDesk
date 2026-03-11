@@ -28,14 +28,14 @@ const SettingsPage = () => {
         return base;
     }, [roleId]);
 
-    /** Role 1: tab ໝວດໝູ່, ລາຍການຫົວຂໍ້ (0,1) disabled. Role 2: tab ເພີ່ມໄອຄອນ (2) disabled.
-     * ການແຈ້ງບັນຫາ/ການຮ້ອງຂໍ: Role 1 ກົດໄດ້ແຕ່ ເພີ່ມໄອຄອນ (tabIndex=2). Role 2 ກົດໄດ້ແຕ່ ໝວດໝູ່, ລາຍການຫົວຂໍ້ (tabIndex=0,1). */
+    /** Role 1: tab ວິຊາການ (1), ສະຖານະ (2) disabled. Role 2: tab ທິມສະໜັບສະໜູນ (0), ພະນັກງານ (3) disabled.
+     * ການແຈ້ງບັນຫາ: Role 1 ກົດໄດ້ແຕ່ ເພີ່ມໄອຄອນ (tabIndex=2). Role 2 ກົດໄດ້ແຕ່ ໝວດໝູ່, ລາຍການຫົວຂໍ້ (tabIndex=0,1). */
     const getSubMenuDisabled = useMemo(() => {
         const r = Number(roleId);
         return (itemId: string, tabIndex: number) => {
             if (itemId === 'users') {
-                if (r === 1 && tabIndex === 1) return true;
-                if (r === 2 && tabIndex === 0) return true;
+                if (r === 1 && (tabIndex === 1 || tabIndex === 2)) return true; // ວິຊາການ, ສະຖານະ
+                if (r === 2 && (tabIndex === 0 || tabIndex === 3)) return true; // ທິມສະໜັບສະໜູນ, ພະນັກງານ
                 return false;
             }
             if (itemId === 'issues') {

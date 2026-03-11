@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, createContext } from 'react';
+import React, { useState, createContext, useCallback, useMemo } from 'react';
 import { LayoutState, ChildContainerProps, LayoutConfig, LayoutContextProps } from '@/types';
 export const LayoutContext = createContext({} as LayoutContextProps);
 
@@ -22,38 +22,33 @@ export const LayoutProvider = ({ children }: ChildContainerProps) => {
         menuHoverActive: false
     });
 
-    const onMenuToggle = () => {
-        if (isOverlay()) {
-            setLayoutState((prevLayoutState) => ({ ...prevLayoutState, overlayMenuActive: !prevLayoutState.overlayMenuActive }));
-        }
-
-        if (isDesktop()) {
-            setLayoutState((prevLayoutState) => ({ ...prevLayoutState, staticMenuDesktopInactive: !prevLayoutState.staticMenuDesktopInactive }));
+    const onMenuToggle = useCallback(() => {
+        const isOverlay = layoutConfig.menuMode === 'overlay';
+        const isDesktop = typeof window !== 'undefined' && window.innerWidth > 991;
+        if (isOverlay) {
+            setLayoutState((prev) => ({ ...prev, overlayMenuActive: !prev.overlayMenuActive }));
+        } else if (isDesktop) {
+            setLayoutState((prev) => ({ ...prev, staticMenuDesktopInactive: !prev.staticMenuDesktopInactive }));
         } else {
-            setLayoutState((prevLayoutState) => ({ ...prevLayoutState, staticMenuMobileActive: !prevLayoutState.staticMenuMobileActive }));
+            setLayoutState((prev) => ({ ...prev, staticMenuMobileActive: !prev.staticMenuMobileActive }));
         }
-    };
+    }, [layoutConfig.menuMode]);
 
-    const showProfileSidebar = () => {
-        setLayoutState((prevLayoutState) => ({ ...prevLayoutState, profileSidebarVisible: !prevLayoutState.profileSidebarVisible }));
-    };
+    const showProfileSidebar = useCallback(() => {
+        setLayoutState((prev) => ({ ...prev, profileSidebarVisible: !prev.profileSidebarVisible }));
+    }, []);
 
-    const isOverlay = () => {
-        return layoutConfig.menuMode === 'overlay';
-    };
-
-    const isDesktop = () => {
-        return window.innerWidth > 991;
-    };
-
-    const value: LayoutContextProps = {
-        layoutConfig,
-        setLayoutConfig,
-        layoutState,
-        setLayoutState,
-        onMenuToggle,
-        showProfileSidebar
-    };
+    const value = useMemo<LayoutContextProps>(
+        () => ({
+            layoutConfig,
+            setLayoutConfig,
+            layoutState,
+            setLayoutState,
+            onMenuToggle,
+            showProfileSidebar
+        }),
+        [layoutConfig, layoutState, onMenuToggle, showProfileSidebar]
+    );
 
     return <LayoutContext.Provider value={value}>{children}</LayoutContext.Provider>;
 };

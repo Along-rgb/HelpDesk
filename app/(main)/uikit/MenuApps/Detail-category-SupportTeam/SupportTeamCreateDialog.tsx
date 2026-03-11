@@ -1,4 +1,4 @@
-// src/uikit/MenuApps/Detail-category_SupportTeam/SupportTeamCreateDialog.tsx
+// src/uikit/MenuApps/Detail-category-SupportTeam/SupportTeamCreateDialog.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';

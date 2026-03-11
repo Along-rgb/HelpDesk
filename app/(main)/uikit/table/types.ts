@@ -81,6 +81,8 @@ export interface AssignmentItem {
   employee?: Employee;
   assignedTo?: AssignedTo;
   status?: string;
+  /** สถานะส่วนตัวของ assignment (ສະຖານະ ส่วนตัว) — ใช้แสดงผลสำหรับ role 3 แทนสถานะรวม */
+  helpdeskStatus?: HelpdeskStatus | { id?: number; name?: string };
 }
 
 /** Raw item from GET /api/helpdeskrequests/admin */
@@ -101,9 +103,13 @@ export interface Assignee {
   name: string;
   /** รหัสพนักงาน — แสดงใน Dialog ແທນ id (ເຊັ່ນ [emp_code] - ຊື່) */
   emp_code?: string;
+  /** Employee ID — ใช้ lookup emp_code ใน modal เมื่อ API ส่ง id เป็น User ID */
+  employeeId?: number | string;
   image?: string;
   phone?: string;
   status: 'doing' | 'done' | 'waiting';
+  /** ชื่อสถานะระดับ assignment (assignment.helpdeskStatus.name) — ใช้แสดง ສະຖານະ ส่วนตัว สำหรับ role 3 */
+  statusName?: string;
 }
 
 /**

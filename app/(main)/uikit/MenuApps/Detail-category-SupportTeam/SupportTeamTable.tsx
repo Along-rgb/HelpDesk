@@ -1,10 +1,12 @@
-// src/uikit/MenuApps/Detail-category_SupportTeam/SupportTeamTable.tsx
+// src/uikit/MenuApps/Detail-category-SupportTeam/SupportTeamTable.tsx
 import React, { useRef, useEffect, useMemo } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Tooltip } from 'primereact/tooltip';
+import { FilterMatchMode } from 'primereact/api';
 import { SupportTeamData, IssueData, HeadCategoryData, SupportTeamTabs, SupportTeamTechnicalRow, DivisionOption } from '../types';
+import { getRoleDisplayNameLao } from './roleDisplayName';
 
 const TOOLTIP_TARGET = '.js-support-team-cell-tooltip';
 const TECHNICAL_TABLE_COL_COUNT = 5;
@@ -14,18 +16,23 @@ type RowData = IssueData | SupportTeamData | HeadCategoryData;
 // --- Type guards & helpers for SupportTeamTechnicalRow (section มี name, user มี fullName) ---
 /** แถวประเภท section = หัวกลุ่ม Head Category (มี name) */
 type TechnicalSectionRow = Extract<SupportTeamTechnicalRow, { type: 'section' }>;
+/** แถวประเภท division_section = หัวข้อພະແນກ (division_name) ແບບ ຕຶກສຳນັກງານ — ບໍ່ມີ icon */
+type TechnicalDivisionSectionRow = Extract<SupportTeamTechnicalRow, { type: 'division_section' }>;
 /** แถวประเภท user = ວິຊາການ (มี fullName จาก first_name + last_name) */
 type TechnicalUserRow = Extract<SupportTeamTechnicalRow, { type: 'user' }>;
 
 function isTechnicalSectionRow(row: SupportTeamTechnicalRow): row is TechnicalSectionRow {
     return row.type === 'section';
 }
+function isTechnicalDivisionSectionRow(row: SupportTeamTechnicalRow): row is TechnicalDivisionSectionRow {
+    return row.type === 'division_section';
+}
 function isTechnicalUserRow(row: SupportTeamTechnicalRow): row is TechnicalUserRow {
     return row.type === 'user';
 }
-/** คืนชื่อสำหรับใช้ค้นหา/แสดง: section → name, user → fullName */
+/** คืนชื่อสำหรับใช้ค้นหา/แสดง: section → name, division_section → name, user → fullName */
 function getTechnicalRowDisplayName(row: SupportTeamTechnicalRow): string {
-    if (isTechnicalSectionRow(row)) return row.name ?? '';
+    if (isTechnicalSectionRow(row) || isTechnicalDivisionSectionRow(row)) return row.name ?? '';
     if (isTechnicalUserRow(row)) return row.fullName ?? '';
     return '';
 }
@@ -68,6 +75,8 @@ interface Props {
     technicalTabRows?: SupportTeamTechnicalRow[];
     /** เมื่อ true (เช่น role 2 ใน tab ວິຊາການ) ปุ่มແກ້ໄຂ/ລຶບ จะถูกซ่อน */
     disableActions?: boolean;
+    /** เมื่อ false = tab ວິຊາການແບບ flat list (Role 2) ບໍ່ສະແດງຄໍລໍາ ຊື່ທີມສະໜັບສະໜູນ */
+    technicalShowSectionColumn?: boolean;
     /** เมื่อ true = ข้อมูลจาก GET /api/headcategorys (มี department/division nested). เมื่อ false = จาก selectheadcategory (มีแค่ departmentId/divisionId) */
     headCategoryHasNestedData?: boolean;
     /** ໃຊ້ຄົ້ນຫາຊື່ division ເມື່ອ headCategoryHasNestedData = false (role 2) */
@@ -90,14 +99,29 @@ export default function SupportTeamTable({
     issueCategoryMap,
     technicalTabRows = [],
     disableActions = false,
+    technicalShowSectionColumn = true,
     headCategoryHasNestedData = true,
     divisions = [],
     isLoading = false,
 }: Props) {
     const tooltipRef = useRef<React.ComponentRef<typeof Tooltip>>(null);
+    const safeItems = Array.isArray(items) ? items : [];
     const isIssueCategoryTab = activeTab === SupportTeamTabs.ISSUE_CATEGORY;
     const isTechnicalTab = activeTab === SupportTeamTabs.TECHNICAL;
     const useTechnicalGrouped = isTechnicalTab && Array.isArray(technicalTabRows);
+
+    // PrimeReact 10: avoid passing globalFilter string alone (can crash on Object.entries(undefined) in some paths)
+    const globalFilterFields = useMemo(() => {
+        if (isIssueCategoryTab) return ['name', 'description'];
+        if (isTechnicalTab) return ['issueCategoryName', 'name'];
+        return ['name', 'description'];
+    }, [isIssueCategoryTab, isTechnicalTab]);
+
+    const filters = useMemo(() => {
+        return {
+            global: { value: globalFilter ?? '', matchMode: FilterMatchMode.CONTAINS },
+        };
+    }, [globalFilter]);
 
     const filteredTechnicalRows = useMemo(() => {
         if (!useTechnicalGrouped || !globalFilter?.trim()) return technicalTabRows;
@@ -106,7 +130,7 @@ export default function SupportTeamTable({
         let i = 0;
         while (i < technicalTabRows.length) {
             const row = technicalTabRows[i];
-            if (isTechnicalSectionRow(row)) {
+            if (isTechnicalSectionRow(row) || isTechnicalDivisionSectionRow(row)) {
                 const nameMatch = getTechnicalRowDisplayName(row).toLowerCase().includes(q);
                 const users: SupportTeamTechnicalRow[] = [];
                 let j = i + 1;
@@ -134,6 +158,11 @@ export default function SupportTeamTable({
         let idx = 0;
         return filteredTechnicalRows.map((r) => (isTechnicalUserRow(r) ? ++idx : 0));
     }, [filteredTechnicalRows]);
+
+    /** Role 2 ໃຊ້ division_section ເປັນຫົວຂໍ້ — ບໍ່ມີຄໍລໍາ ພະແນກ แยก. ຕັດຫົວຂໍ້ ດຳເນີນການ ເມື່ອ disableActions */
+    const hasDivisionSectionRows = filteredTechnicalRows.some(isTechnicalDivisionSectionRow);
+    const baseColCount = technicalShowSectionColumn ? TECHNICAL_TABLE_COL_COUNT : (hasDivisionSectionRows ? 4 : TECHNICAL_TABLE_COL_COUNT - 1);
+    const colCount = disableActions ? baseColCount - 1 : baseColCount;
 
     // โหลด Tooltip ใหม่เมื่อตารางเรนเดอร์ (เซลล์ที่มี class นี้เกิดทีหลัง) เพื่อให้แสดงตามเงื่อนไขเฉพาะข้อความยาว > MAX_TEXT_LENGTH
     useEffect(() => {
@@ -203,6 +232,9 @@ export default function SupportTeamTable({
 
     if (useTechnicalGrouped) {
         const hasRows = filteredTechnicalRows.length > 0;
+        const showDivisionColumn = !technicalShowSectionColumn && !hasDivisionSectionRows;
+        /** Role 2 ແບບ 3 ຄໍລໍາ: ໃຫ້ຄໍລໍາ ວິຊາການ ບໍ່ຂະຫຍາຍ — ສະຖານະ ຢູ່ໃກ້ກັບ ວິຊາການ */
+        const compactTechnicalCol = hasDivisionSectionRows && disableActions;
         return (
             <>
                 <Tooltip ref={tooltipRef} target={TOOLTIP_TARGET} position="bottom" className="support-team-tooltip" showDelay={200} hideDelay={100} />
@@ -213,18 +245,39 @@ export default function SupportTeamTable({
                             <thead className="p-datatable-thead">
                                 <tr>
                                     <th className="p-datatable-header text-center w-4rem surface-0 border-bottom-1 surface-border">#</th>
-                                    <th className="p-datatable-header surface-0 border-bottom-1 surface-border" style={{ minWidth: '200px' }}>ຊື່ທີມສະໜັບສະໜູນ</th>
-                                    <th className="p-datatable-header text-center surface-0 border-bottom-1 surface-border" style={{ minWidth: '200px' }}>ວິຊາການ</th>
+                                    {technicalShowSectionColumn && (
+                                        <th className="p-datatable-header surface-0 border-bottom-1 surface-border" style={{ minWidth: '200px' }}>ຊື່ທີມສະໜັບສະໜູນ</th>
+                                    )}
+                                    <th className="p-datatable-header text-center surface-0 border-bottom-1 surface-border" style={compactTechnicalCol ? { width: '1%' } : { minWidth: '200px' }}>ວິຊາການ</th>
+                                    {!technicalShowSectionColumn && !hasDivisionSectionRows && (
+                                        <th className="p-datatable-header text-center surface-0 border-bottom-1 surface-border" style={{ minWidth: '200px' }}>ພະແນກ (division_name)</th>
+                                    )}
                                     <th className="p-datatable-header text-center surface-0 border-bottom-1 surface-border" style={{ minWidth: '140px' }}>ສະຖານະ</th>
-                                    <th className="p-datatable-header text-center w-8rem surface-0 border-bottom-1 surface-border">ດຳເນີນການ</th>
+                                    {!disableActions && (
+                                        <th className="p-datatable-header text-center w-8rem surface-0 border-bottom-1 surface-border">ດຳເນີນການ</th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody className="p-datatable-tbody">
                                 {filteredTechnicalRows.map((row, idx) => {
+                                    if (isTechnicalDivisionSectionRow(row)) {
+                                        return (
+                                            <tr key={`div-section-${idx}-${row.name}`} className="p-datatable-row section-title-row">
+                                                <td
+                                                    colSpan={colCount}
+                                                    className="p-3 font-bold text-lg text-indigo-700 border-bottom-1 surface-border"
+                                                    style={{ backgroundColor: '#f8fafc' }}
+                                                >
+                                                    {row.name}
+                                                </td>
+                                            </tr>
+                                        );
+                                    }
                                     if (isTechnicalSectionRow(row)) {
+                                        if (!technicalShowSectionColumn) return null;
                                         return (
                                             <tr key={`section-${row.headCategoryId}`} className="p-datatable-row section-title-row">
-                                                <td colSpan={TECHNICAL_TABLE_COL_COUNT} className="p-3 font-bold text-lg text-indigo-700 border-bottom-1 surface-border" style={{ backgroundColor: '#f0f9ff' }}>
+                                                <td colSpan={colCount} className="p-3 font-bold text-lg text-indigo-700 border-bottom-1 surface-border" style={{ backgroundColor: '#f0f9ff' }}>
                                                     <i className="pi pi-users mr-2" /> {row.name}
                                                 </td>
                                             </tr>
@@ -232,14 +285,22 @@ export default function SupportTeamTable({
                                     }
                                     if (isTechnicalUserRow(row)) {
                                         const rowIndex = technicalRowIndexByPosition[idx];
-                                        const roleName = (row.raw as { role?: { name?: string } })?.role?.name ?? '-';
+                                        const raw = row.raw as { roleId?: number; role?: { name?: string } };
+                                        const roleName = getRoleDisplayNameLao(raw.roleId, raw.role?.name);
                                         return (
                                             <tr key={`row-${idx}`} className="p-datatable-row">
                                                 <td className="p-datatable-cell text-center">{rowIndex}</td>
-                                                <td className="p-datatable-cell" />
-                                                <td className="p-datatable-cell text-center">{row.fullName}</td>
+                                                {technicalShowSectionColumn && <td className="p-datatable-cell" />}
+                                                <td className="p-datatable-cell text-center" style={compactTechnicalCol ? { width: '1%', whiteSpace: 'nowrap' } : undefined}>{row.fullName}</td>
+                                                {showDivisionColumn && (
+                                                    <td className="p-datatable-cell text-center">
+                                                        <CellWithTooltip text={(row.raw as { employee?: { division?: { division_name?: string } } })?.employee?.division?.division_name ?? '-'} />
+                                                    </td>
+                                                )}
                                                 <td className="p-datatable-cell text-center">{roleName}</td>
-                                                <td className="p-datatable-cell text-center">{technicalActionTemplate(row)}</td>
+                                                {!disableActions && (
+                                                    <td className="p-datatable-cell text-center">{technicalActionTemplate(row)}</td>
+                                                )}
                                             </tr>
                                         );
                                     }
@@ -265,9 +326,10 @@ export default function SupportTeamTable({
                 hideDelay={100}
             />
             <DataTable
-                value={items}
+                value={safeItems}
                 header={header}
-                globalFilter={globalFilter}
+                filters={filters}
+                globalFilterFields={globalFilterFields}
                 paginator
                 rows={10}
                 className="p-datatable-sm"

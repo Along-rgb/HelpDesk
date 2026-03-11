@@ -11,6 +11,18 @@ export interface Assignee {
 export interface TicketRow extends Ticket {
     rowId: string;
     rowAssignee?: Assignee;
+    /** assignment id (ใช้ตอน role 3 กด “ຮັບວຽກເອງ” และอ้างอิง selection/API) */
+    assignmentId?: number;
+    /** Role 3: helpdeskStatus.id ของ assignment — ใช้เช็คแสดง checkbox (id ไม่ใช่ 2,3 = รอรับงาน) */
+    assignmentHelpdeskStatusId?: number;
+    /** Role 3: status ในแถวคือสถานะระดับ Assignment (a.helpdeskStatus.name) ไม่ใช่สถานะรวมของ Ticket */
+}
+
+/** ข้อมูลฟอร์มລາຍງານວຽກ (Report Work Modal) */
+export interface ReportWorkFormData {
+  workDetail: string;
+  completedDate: Date | null;
+  imageFiles: File[];
 }
 
 export interface Ticket {
@@ -23,6 +35,7 @@ export interface Ticket {
     assignTo?: string;
     assignees?: Assignee[];
     assignDate?: string; // ວັນທີມອບໝາຍ
+    /** สถานะรวมของ Ticket (helpdeskRequest.helpdeskStatus). Role 3 ໃຊ້ assignment status ໃນ TicketRow ແທນ */
     status: string;
     priority: string;
     verified: boolean;
@@ -36,4 +49,8 @@ export interface Ticket {
     department?: string;
     contactPhone?: string;
     email?: string;
+    /** assignment id ສຳລັບສົ່ງ PUT /api/assignments/accept body: { id: [...] } */
+    assignmentIds?: number[];
+    /** role 3: แยกงานตาม assignment ของตัวเอง (1 assignment = 1 row) */
+    myAssignments?: { assignmentId: number; assignee: Assignee; statusName?: string; statusId?: number }[];
 }

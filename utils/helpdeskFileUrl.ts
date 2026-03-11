@@ -28,16 +28,18 @@ export function getHelpdeskFileUrl(
   if (!filename || typeof filename !== "string") return "";
   const name = filename.trim().replace(/^\//, "");
   if (!name) return "";
-  const encoded = encodeURIComponent(name);
-  const pathSegment = field === "hdImgs" ? env.helpdeskImagesPath : "hdFile";
+  // Backend ใช้ path segment "hdfile" (ตัว f เล็ก) สำหรับ PDF — ບໍ່ແມ່ນ hdFile
+  const pathSegment = field === "hdImgs" ? env.helpdeskImagesPath : "hdfile";
   const apiBase = getUploadBaseFromEnv();
+  let result: string;
   if (apiBase) {
-    return `${apiBase}/upload/${pathSegment}/${encoded}`;
+    result = `${apiBase}/upload/${pathSegment}/${name}`;
+  } else if (env.useHelpdeskProxy) {
+    result = `/api/proxy-helpdesk/upload/${pathSegment}/${name}`;
+  } else {
+    result = "";
   }
-  if (env.useHelpdeskProxy) {
-    return `/api/proxy-helpdesk/upload/${pathSegment}/${encoded}`;
-  }
-  return "";
+  return result;
 }
 
 /**
@@ -48,9 +50,9 @@ export function getHelpdeskFileUrlAbsolute(field: HelpdeskFileField, filename: s
   if (!filename || typeof filename !== "string") return "";
   const name = filename.trim().replace(/^\//, "");
   if (!name) return "";
-  const encoded = encodeURIComponent(name);
-  const pathSegment = field === "hdImgs" ? env.helpdeskImagesPath : "hdFile";
+  // Backend ใช้ "hdfile" (ตัว f เล็ก) สำหรับ PDF
+  const pathSegment = field === "hdImgs" ? env.helpdeskImagesPath : "hdfile";
   const apiBase = getUploadBaseFromEnv();
   if (!apiBase) return "";
-  return `${apiBase}/upload/${pathSegment}/${encoded}`;
+  return `${apiBase}/upload/${pathSegment}/${name}`;
 }

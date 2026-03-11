@@ -2,6 +2,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
+import { Image } from "primereact/image";
 import { Panel } from "primereact/panel";
 import { Dropdown } from "primereact/dropdown";
 import { TabView, TabPanel } from "primereact/tabview";
@@ -18,7 +20,8 @@ import { sanitizeHtml } from "@/utils/sanitizeHtml";
 import { decryptId } from "@/lib/crypto";
 import { fetchTurningsForSelect } from "@/app/services/ticketService";
 import { getHelpdeskFileUrl, getHelpdeskFileUrlAbsolute } from "@/utils/helpdeskFileUrl";
-import { getDownloadApiUrl } from "@/utils/downloadFile";
+import { getDownloadApiUrl, downloadFile } from "@/utils/downloadFile";
+import InlineLoading from "@/app/components/InlineLoading";
 
 /** Role 2 = Admin — ticket-detail ໃຊ້ GET helpdeskrequests/admin ແລ້ວຄົ້ນຫາໂດຍ id */
 const ROLE_ID_ADMIN = 2;
@@ -55,7 +58,39 @@ export default function TicketDetailPage() {
     const [turningOptions, setTurningOptions] = useState<{ id: number; name: string }[]>([]);
     const [acceptLoading, setAcceptLoading] = useState(false);
     const [invalidLink, setInvalidLink] = useState(false);
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
+    const [downloadingImageKey, setDownloadingImageKey] = useState<string | null>(null);
+    const [imagePreview, setImagePreview] = useState<{ imgSrc: string; downloadUrl: string; fileName: string; key: string } | null>(null);
+    /** ການຫມຸນ / ຂະຫຍາຍຮູບໃນ Dialog ເບິ່ງຮູບ */
+    const [imagePreviewRotation, setImagePreviewRotation] = useState(0);
+    const [imagePreviewScale, setImagePreviewScale] = useState(1);
     const toastRef = useRef<Toast | null>(null);
+
+    /** ຣີເຊັດ rotation/scale ເມື່ອເປີດຫຼືປິດ Dialog ເບິ່ງຮູບ */
+    useEffect(() => {
+        if (!imagePreview) {
+            setImagePreviewRotation(0);
+            setImagePreviewScale(1);
+        }
+    }, [imagePreview]);
+
+    const handleDownloadPdf = useCallback((fileName: string) => {
+        setDownloadingPdf(true);
+        try {
+            downloadFile(getHelpdeskFileUrl("hdFile", fileName), fileName);
+        } finally {
+            setTimeout(() => setDownloadingPdf(false), 2000);
+        }
+    }, []);
+
+    const handleDownloadImage = useCallback((fileName: string, key: string) => {
+        setDownloadingImageKey(key);
+        try {
+            downloadFile(getHelpdeskFileUrl("hdImgs", fileName), fileName);
+        } finally {
+            setTimeout(() => setDownloadingImageKey(null), 2000);
+        }
+    }, []);
 
     /** ລອງ GET helpdeskrequests/[id] ກ່ອນເພື່ອໃຫ້ໄດ້ຂໍ້ມູນເຕັມລວມ hdFile, hdImgs. ຖ້າ 403/404 ຈຶ່ງ fallback ໃສ່ list (Admin/User). */
     const fetchTicket = useCallback(
@@ -208,7 +243,7 @@ export default function TicketDetailPage() {
     }, []);
 
     if (invalidLink) return <div className="p-4 text-xl">ລິ້ງຄ໌ບໍ່ຖືກຕ້ອງ ຫຼືໝົດອາຍຸ</div>;
-    if (loading) return <div className="p-4 text-xl">ກໍາລັງໂຫຼດຂໍ້ມູນ...</div>;
+    if (loading) return <InlineLoading />;
     if (!ticket) return <div className="p-4 text-xl">ບໍ່ພົບຂໍ້ມູນ Ticket</div>;
 
     const requesterName = ticket.requester || `${ticket.firstname_req || ''} ${ticket.lastname_req || ''}`.trim();
@@ -307,63 +342,188 @@ export default function TicketDetailPage() {
                                     </Panel>
 
                                     <Panel header="ຂໍ້ມູນອຸປະກອນ ແລະ ລາຍລະອຽດເພີ່ມເຕີມ" toggleable className="border-top-1 border-yellow-500 shadow-none border-1 surface-border border-round-none">
-                                        <div className="flex flex-column gap-4 py-3 px-3 md:px-4">
-                                            {ticket.hdFile && (
-                                                <div>
-                                                    <span className="text-900 font-bold text-base block mb-2">ໄຟລ໌ PDF</span>
-                                                    <a
-                                                        href={getDownloadApiUrl(getHelpdeskFileUrlAbsolute("hdFile", ticket.hdFile) || getHelpdeskFileUrl("hdFile", ticket.hdFile), ticket.hdFile)}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="flex align-items-center gap-2 text-primary hover:underline"
-                                                    >
-                                                        <i className="pi pi-file-pdf" />
-                                                        {ticket.hdFile}
-                                                    </a>
-                                                </div>
-                                            )}
+                                        <div className="py-3 px-3 md:px-4">
                                             {(() => {
                                                 const fromTicket = ticket.hdImgs && ticket.hdImgs.length > 0 ? ticket.hdImgs : null;
                                                 const fromRaw = (ticket._raw as { hdImgs?: { id?: number; helpdeskRequestId?: number; hdImg?: string }[] } | undefined)?.hdImgs;
-                                                const list = fromTicket ?? (Array.isArray(fromRaw) ? fromRaw.filter((i) => i != null && typeof (i as { hdImg?: string }).hdImg === "string").map((i) => ({ id: (i as { id?: number }).id ?? 0, helpdeskRequestId: (i as { helpdeskRequestId?: number }).helpdeskRequestId ?? 0, hdImg: String((i as { hdImg: string }).hdImg) })) : []);
-                                                return list.length > 0 ? (
-                                                    <div>
-                                                        <span className="text-900 font-bold text-base block mb-2">ຮູບພາບ</span>
-                                                        <div className="flex flex-wrap gap-3">
-                                                            {list.map((img) => {
-                                                                const imgUrlAbs = getHelpdeskFileUrlAbsolute("hdImgs", img.hdImg) || getHelpdeskFileUrl("hdImgs", img.hdImg);
-                                                                const imgSrc = getDownloadApiUrl(imgUrlAbs, img.hdImg, "inline");
-                                                                const downloadUrl = getDownloadApiUrl(imgUrlAbs, img.hdImg, "attachment");
-                                                                return (
-                                                                    <div
-                                                                        key={`${img.id}-${img.hdImg}`}
-                                                                        className="block border-1 surface-border border-round overflow-hidden surface-50"
-                                                                        style={{ maxWidth: 200 }}
-                                                                    >
-                                                                        <img
-                                                                            src={imgSrc}
-                                                                            alt={img.hdImg}
-                                                                            className="w-full h-auto block"
-                                                                            style={{ maxHeight: 180, objectFit: "cover" }}
-                                                                        />
-                                                                        <a
-                                                                            href={downloadUrl}
-                                                                            target="_blanklf"
-                                                                            rel="noopener noreferrer"
-                                                                            className="block text-center p-2 text-primary text-sm hover:underline"
-                                                                        >
-                                                                            ດາວໂຫຼດ
-                                                                        </a>
-                                                                    </div>
-                                                                );
-                                                            })}
+                                                const imgList = fromTicket ?? (Array.isArray(fromRaw) ? fromRaw.filter((i) => i != null && typeof (i as { hdImg?: string }).hdImg === "string").map((i) => ({ id: (i as { id?: number }).id ?? 0, helpdeskRequestId: (i as { helpdeskRequestId?: number }).helpdeskRequestId ?? 0, hdImg: String((i as { hdImg: string }).hdImg) })) : []);
+                                                const hasPdf = !!ticket.hdFile;
+                                                const hasAny = hasPdf || imgList.length > 0;
+                                                return (
+                                                    <div className="surface-50 p-4 border-round">
+                                                        <div className="flex align-items-center gap-2 mb-4">
+                                                            <i className="pi pi-paperclip text-primary" style={{ fontSize: "1.25rem" }} />
+                                                            <span className="font-bold text-lg text-900">ເອກະສານແນບ (Attachments)</span>
                                                         </div>
+                                                        {!hasAny && (
+                                                            <div className="text-500 text-base italic">ບໍ່ມີໄຟລ໌ PDF ຫຼື ຮູບພາບ</div>
+                                                        )}
+                                                        {hasPdf && (
+                                                            <div
+                                                                className="flex align-items-center gap-4 p-3 surface-card border-1 surface-border border-round shadow-1 cursor-pointer hover:surface-100 transition-colors transition-duration-200 mb-4"
+                                                                style={{ gap: "1rem" }}
+                                                            >
+                                                                <div className="flex-shrink-0" style={{ color: "#e24c4c" }}>
+                                                                    <i className="pi pi-file-pdf text-4xl" />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0 flex flex-column gap-0">
+                                                                    <span className="text-900 font-medium block truncate" title={ticket.hdFile as string}>
+                                                                        {ticket.hdFile as string}
+                                                                    </span>
+                                                                    <span className="text-500 text-sm">PDF Document</span>
+                                                                </div>
+                                                                <Button
+                                                                    type="button"
+                                                                    icon={downloadingPdf ? "pi pi-spin pi-spinner" : "pi pi-download"}
+                                                                    rounded
+                                                                    className="p-button-secondary p-button-text flex-shrink-0"
+                                                                    onClick={() => handleDownloadPdf(ticket.hdFile as string)}
+                                                                    disabled={downloadingPdf}
+                                                                    aria-label="ດາວໂຫຼດ"
+                                                                />
+                                                            </div>
+                                                        )}
+                                                        {imgList.length > 0 && (
+                                                            <>
+                                                                <div className="grid gap-3">
+                                                                    {imgList.map((img) => {
+                                                                        const imgUrlAbs = getHelpdeskFileUrlAbsolute("hdImgs", img.hdImg) || getHelpdeskFileUrl("hdImgs", img.hdImg);
+                                                                        const imgSrc = getDownloadApiUrl(imgUrlAbs, img.hdImg, "inline");
+                                                                        const downloadUrl = getDownloadApiUrl(imgUrlAbs, img.hdImg, "attachment");
+                                                                        const key = `${img.id}-${img.hdImg}`;
+                                                                        const isDownloading = downloadingImageKey === key;
+                                                                        return (
+                                                                            <div
+                                                                                key={key}
+                                                                                className="relative border-1 surface-border border-round overflow-hidden surface-card shadow-1 col-12 md:col-6 cursor-pointer"
+                                                                                onClick={() => setImagePreview({ imgSrc, downloadUrl, fileName: img.hdImg, key })}
+                                                                                onKeyDown={(e) => e.key === "Enter" && setImagePreview({ imgSrc, downloadUrl, fileName: img.hdImg, key })}
+                                                                                role="button"
+                                                                                tabIndex={0}
+                                                                                aria-label="ເປີດການເບິ່ງຮູບ"
+                                                                            >
+                                                                                <div className="relative overflow-hidden transition-opacity transition-duration-200 hover:opacity-80">
+                                                                                    <img
+                                                                                        src={imgSrc}
+                                                                                        alt={img.hdImg}
+                                                                                        className="w-full h-auto block"
+                                                                                        style={{ maxHeight: 180, objectFit: "cover" }}
+                                                                                    />
+                                                                                    <Button
+                                                                                        type="button"
+                                                                                        icon={isDownloading ? "pi pi-spin pi-spinner" : "pi pi-download"}
+                                                                                        rounded
+                                                                                        size="small"
+                                                                                        className="absolute top-1 right-1 shadow-2 p-button-secondary"
+                                                                                        style={{ width: "2rem", height: "2rem", minWidth: "2rem", zIndex: 10 }}
+                                                                                        onClick={(e) => {
+                                                                                            e.preventDefault();
+                                                                                            e.stopPropagation();
+                                                                                            handleDownloadImage(img.hdImg, key);
+                                                                                        }}
+                                                                                        disabled={!!downloadingImageKey}
+                                                                                        aria-label="ດາວໂຫຼດ"
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                                <Dialog
+                                                                    visible={!!imagePreview}
+                                                                    onHide={() => setImagePreview(null)}
+                                                                    className="p-0 overflow-hidden w-full max-w-6xl"
+                                                                    style={{ width: "95vw" }}
+                                                                    contentStyle={{ padding: 0, overflow: "hidden" }}
+                                                                    dismissableMask
+                                                                    closable={false}
+                                                                    blockScroll
+                                                                    showHeader={false}
+                                                                >
+                                                                    {imagePreview && (
+                                                                        <div className="relative w-full surface-ground flex justify-content-center align-items-center" style={{ minHeight: "70vh" }}>
+                                                                            <img
+                                                                                src={imagePreview.imgSrc}
+                                                                                alt={imagePreview.fileName}
+                                                                                className="max-w-full max-h-[85vh] object-contain transition-transform duration-200"
+                                                                                style={{
+                                                                                    transform: `rotate(${imagePreviewRotation}deg) scale(${imagePreviewScale})`,
+                                                                                }}
+                                                                            />
+                                                                            <div
+                                                                                className="absolute flex gap-1 align-items-center surface-card border-1 surface-border border-round p-2 shadow-2"
+                                                                                style={{ top: "0.75rem", right: "0.75rem" }}
+                                                                            >
+                                                                                <Button
+                                                                                    icon="pi pi-refresh"
+                                                                                    rounded
+                                                                                    text
+                                                                                    className="p-button-rounded p-button-text text-900 border-1 border-400 border-round"
+                                                                                    style={{ minWidth: "2.5rem", height: "2.5rem" }}
+                                                                                    aria-label="ຫມຸນຂວາ"
+                                                                                    title="ຫມຸນຂວາ 90°"
+                                                                                    onClick={() => setImagePreviewRotation((r) => (r + 90) % 360)}
+                                                                                />
+                                                                                <Button
+                                                                                    icon="pi pi-undo"
+                                                                                    rounded
+                                                                                    text
+                                                                                    className="p-button-rounded p-button-text text-900 border-1 border-400 border-round"
+                                                                                    style={{ minWidth: "2.5rem", height: "2.5rem" }}
+                                                                                    aria-label="ຫມຸນຊ້າຍ"
+                                                                                    title="ຫມຸນຊ້າຍ 90°"
+                                                                                    onClick={() => setImagePreviewRotation((r) => (r - 90 + 360) % 360)}
+                                                                                />
+                                                                                <Button
+                                                                                    icon="pi pi-search-minus"
+                                                                                    rounded
+                                                                                    text
+                                                                                    className="p-button-rounded p-button-text text-900 border-1 border-400 border-round"
+                                                                                    style={{ minWidth: "2.5rem", height: "2.5rem" }}
+                                                                                    aria-label="ຂະຫຍາຍອອກ"
+                                                                                    title="ຂະຫຍາຍອອກ"
+                                                                                    onClick={() => setImagePreviewScale((s) => Math.max(0.25, s - 0.25))}
+                                                                                />
+                                                                                <Button
+                                                                                    icon="pi pi-search-plus"
+                                                                                    rounded
+                                                                                    text
+                                                                                    className="p-button-rounded p-button-text text-900 border-1 border-400 border-round"
+                                                                                    style={{ minWidth: "2.5rem", height: "2.5rem" }}
+                                                                                    aria-label="ຂະຫຍາຍເຂົ້າ"
+                                                                                    title="ຂະຫຍາຍເຂົ້າ"
+                                                                                    onClick={() => setImagePreviewScale((s) => Math.min(3, s + 0.25))}
+                                                                                />
+                                                                                <Button
+                                                                                    icon={downloadingImageKey === imagePreview.key ? "pi pi-spin pi-spinner" : "pi pi-download"}
+                                                                                    rounded
+                                                                                    text
+                                                                                    className="p-button-rounded p-button-text text-900 border-1 border-400 border-round"
+                                                                                    style={{ minWidth: "2.5rem", height: "2.5rem" }}
+                                                                                    onClick={() => handleDownloadImage(imagePreview.fileName, imagePreview.key)}
+                                                                                    disabled={!!downloadingImageKey}
+                                                                                    aria-label="ດາວໂຫຼດ"
+                                                                                    title="ດາວໂຫຼດ"
+                                                                                />
+                                                                                <Button
+                                                                                    icon="pi pi-times"
+                                                                                    rounded
+                                                                                    text
+                                                                                    className="p-button-rounded p-button-text text-900 border-1 border-400 border-round"
+                                                                                    style={{ minWidth: "2.5rem", height: "2.5rem" }}
+                                                                                    onClick={() => setImagePreview(null)}
+                                                                                    aria-label="ປິດ"
+                                                                                    title="ປິດ"
+                                                                                />
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </Dialog>
+                                                            </>
+                                                        )}
                                                     </div>
-                                                ) : null;
+                                                );
                                             })()}
-                                            {!ticket.hdFile && !(ticket.hdImgs?.length || (Array.isArray((ticket._raw as unknown as { hdImgs?: unknown[] })?.hdImgs) && (ticket._raw as unknown as { hdImgs: unknown[] }).hdImgs.length > 0)) && (
-                                                <div className="text-500 text-base italic">ບໍ່ມີໄຟລ໌ PDF ຫຼື ຮູບພາບ</div>
-                                            )}
                                         </div>
                                     </Panel>
 

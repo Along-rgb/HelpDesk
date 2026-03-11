@@ -18,21 +18,28 @@ export function getDownloadApiUrl(
   const params = new URLSearchParams({
     fileUrl: originalUrl.trim(),
     fileName: fileName?.trim() || "file",
+    disposition: disposition,
   });
-  if (disposition === "inline") {
-    params.set("disposition", "inline");
-  }
   const path = `/api/download?${params.toString()}`;
   return base ? `${base}${path}` : path;
 }
 
 /**
- * Open the download in the current window (or use as href for a link). Prefer using
- * getDownloadApiUrl as href for <a download> so the proxy handles the file and sets
- * Content-Disposition: attachment.
+ * Trigger download via hidden anchor (avoids window.open being blocked by the browser).
+ * Builds proxy URL with getDownloadApiUrl and programmatically clicks a temporary <a download>.
  */
 export function downloadFile(originalUrl: string, fileName: string): void {
-  const url = getDownloadApiUrl(originalUrl, fileName, "attachment");
-  if (!url) return;
-  window.open(url, "_blank", "noopener,noreferrer");
+  try {
+    const url = getDownloadApiUrl(originalUrl, fileName, "attachment");
+    if (!url) return;
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName ?? "download";
+    link.setAttribute("rel", "noopener noreferrer");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  } catch {
+    // Silent fail; avoid logging sensitive data
+  }
 }

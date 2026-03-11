@@ -32,9 +32,12 @@ export function useUsers(triggerFetch: unknown = null, enabled: boolean = true) 
     }, [enabled]);
 
     useEffect(() => {
-        if (enabled) fetchData();
-        else setItems([]);
-    }, [fetchData, triggerFetch, enabled]);
+        if (enabled) {
+            // ຄັ້ງທຳອິດ (ຍັງບໍ່ມີຂໍ້ມູນ) ເອີ້ນ API; ກັບມາແຖບອີກຄັ້ງ ບໍ່ refetch ເພື່ອບໍ່ໃຫ້ຂໍ້ມູນຫາຍ/loading ຊ້ຳ
+            if (items.length === 0) fetchData();
+        }
+        // ບໍ່ລ້າງ items ເມື່ອ enabled=false ເພື່ອເມື່ອກັບມາແຖບ ສະແດງຂໍ້ມູນເກົ່າໄດ້ທັນທີ
+    }, [fetchData, triggerFetch, enabled, items.length]);
 
     return { items, loading, fetchData };
 }

@@ -1,4 +1,4 @@
-// src/uikit/MenuApps/Detail-category_Issues/IssuesIconTable.tsx
+// src/uikit/MenuApps/Detail-category-Issues/IssuesIconTable.tsx
 import React, { useState } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
@@ -77,7 +77,7 @@ export default function IssuesIconTable({ items, header, globalFilter, onEdit, o
 
     return (
         <DataTable
-            value={items}
+            value={items ?? []}
             header={header}
             globalFilter={globalFilter}
             paginator

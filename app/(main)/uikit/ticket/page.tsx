@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useSelectCategories } from '../GroupProblem/hooks/useSelectCategories';
 import { useSelectTickets } from './hooks/useSelectTickets';
 import { TicketCard } from './TicketCard';
+import InlineLoading from '@/app/components/InlineLoading';
 
 export default function TicketListPage() {
   const router = useRouter();
@@ -33,8 +34,8 @@ export default function TicketListPage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-content-center align-items-center h-screen">
-        <i className="pi pi-spin pi-spinner text-4xl" />
+      <div className="flex justify-content-center align-items-center min-h-[50vh]">
+        <InlineLoading />
       </div>
     );
   }

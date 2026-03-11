@@ -1,4 +1,4 @@
-// src/uikit/MenuApps/Detail-category_Issues/IssuesIconCreateDialog.tsx
+// src/uikit/MenuApps/Detail-category-Issues/IssuesIconCreateDialog.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';

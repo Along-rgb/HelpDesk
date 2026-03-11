@@ -5,13 +5,14 @@ import { TicketForm, MasterData, City } from './types';
 import { ticketService } from '@/app/services/ticketService';
 import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
 import { HELPDESK_ENDPOINTS } from '@/config/endpoints';
+import { env } from '@/config/env';
 import { useUserProfileStore } from '@/app/store/user/userProfileStore';
 
 /** Endpoint: POST .../helpdesk/api/helpdeskrequests */
 const HELPDESK_REQUESTS_PATH = 'helpdeskrequests';
 
 /** ข้อความเมื่อเจอ 413 (Nginx/เซิร์ฟเวอร์จำกัดขนาด request) */
-const ERROR_413_MESSAGE = 'ขนาดไฟล์+รูปใหญ่เกินที่เซิร์ฟเวอร์อนุญาต (413) — ลดขนาดหรือจำนวนไฟล์/รูป หรือติดต่อ Admin เพื่อขยาย client_max_body_size';
+const ERROR_413_MESSAGE = 'file ໃຫຍ່ເກີນໄປ';
 
 const INITIAL_FORM: TicketForm = {
     ticketId: null,
@@ -186,14 +187,6 @@ export const useTicketForm = () => {
                 toastRef.current?.show({ severity: 'warn', summary: 'ແຈ້ງເຕືອນ', detail: 'ແນບໄຟລ໌ໄດ້ສູງສຸດ 2 ໄຟລ໌', life: 4000 });
                 return;
             }
-            const MAX_SIZE_MB = 3;
-            const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
-            const totalSizeCurrent = currentFiles.reduce((acc, file) => acc + file.size, 0);
-            const totalSizeNew = newFiles.reduce((acc, file) => acc + file.size, 0);
-            if (totalSizeCurrent + totalSizeNew > MAX_SIZE_BYTES) {
-                toastRef.current?.show({ severity: 'warn', summary: 'ແຈ້ງເຕືອນ', detail: `ຂະໜາດໄຟລ໌ລວມບໍ່ເກີນ ${MAX_SIZE_MB}MB`, life: 4000 });
-                return;
-            }
             setForm((prev) => ({ ...prev, attachments: [...prev.attachments, ...newFiles] }));
         }
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -206,8 +199,6 @@ export const useTicketForm = () => {
         }));
     };
 
-    const IMAGE_MAX_SIZE_MB = 2;
-    const IMAGE_MAX_TOTAL_MB = 5;
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             const newFiles = Array.from(e.target.files);
@@ -221,32 +212,6 @@ export const useTicketForm = () => {
             const totalImages = form.images.length + newFiles.length;
             if (totalImages > 6) {
                 toastRef.current?.show({ severity: 'warn', summary: 'ແຈ້ງເຕືອນ', detail: 'ແນບຮູບໄດ້ສູງສຸດ 6 ຮູບ', life: 4000 });
-                return;
-            }
-            const maxPerImage = IMAGE_MAX_SIZE_MB * 1024 * 1024;
-            const maxTotalImages = IMAGE_MAX_TOTAL_MB * 1024 * 1024;
-            const currentTotal = form.images.reduce((acc, f) => acc + f.size, 0);
-            for (const file of newFiles) {
-                if (file.size > maxPerImage) {
-                    toastRef.current?.show({
-                        severity: 'warn',
-                        summary: 'ແຈ້ງເຕືອນ',
-                        detail: `ແນບຮູບຕໍ່ຮູບບໍ່ເກີນ ${IMAGE_MAX_SIZE_MB} MB`,
-                        life: 4000,
-                    });
-                    if (imageInputRef.current) imageInputRef.current.value = '';
-                    return;
-                }
-            }
-            const newTotal = newFiles.reduce((acc, f) => acc + f.size, 0);
-            if (currentTotal + newTotal > maxTotalImages) {
-                toastRef.current?.show({
-                    severity: 'warn',
-                    summary: 'ແຈ້ງເຕືອນ',
-                    detail: `ຂະໜາດຮູບລວມບໍ່ເກີນ ${IMAGE_MAX_TOTAL_MB} MB`,
-                    life: 4000,
-                });
-                if (imageInputRef.current) imageInputRef.current.value = '';
                 return;
             }
             setForm((prev) => ({ ...prev, images: [...prev.images, ...newFiles] }));
@@ -274,7 +239,6 @@ export const useTicketForm = () => {
 
     const handleCancel = () => router.back();
 
-    const PAYLOAD_MAX_MB = 2;
     const handleSubmit = async () => {
         if (isSubmitting) return;
         if (!canSubmit) {
@@ -287,25 +251,13 @@ export const useTicketForm = () => {
             return;
         }
         if (form.ticketId == null) {
-            toastRef.current?.show({ severity: 'warn', summary: 'ແຈ້ງເຕືອນ', detail: 'ກະລຸນາເລືອກຫົວຂໍ້ຈາກຫນ້າ ແຈ້ງບັນຫາ', life: 4000 });
-            return;
-        }
-        const totalFileSize =
-            form.attachments.reduce((acc, f) => acc + f.size, 0) +
-            form.images.reduce((acc, f) => acc + f.size, 0);
-        if (totalFileSize > PAYLOAD_MAX_MB * 1024 * 1024) {
-            toastRef.current?.show({
-                severity: 'warn',
-                summary: 'ແຈ້ງເຕືອນ',
-                detail: `ຂະໜາດໄຟລ໌+ຮູບລວມບໍ່ເກີນ ${PAYLOAD_MAX_MB} MB (ປ້ອງກັນ error 413)`,
-                life: 5000,
-            });
+            toastRef.current?.show({ severity: 'warn', summary: 'ແຈ້ງເຕືອນ', detail: 'ກະລຸນາເລືອກຫົວຂໍ້ຈາກໜ້າ ແຈ້ງບັນຫາ', life: 4000 });
             return;
         }
 
         setIsSubmitting(true);
         try {
-            // FormData: Key hdFile = PDF 1 ไฟล์, Key hdImgs = append ซ้ำสำหรับหลายรูป
+            // FormData: key จาก env.helpdeskFieldFile (PDF 1 ไฟล์), env.helpdeskFieldImages (append ซ้ำสำหรับหลายรูป)
             // baseURL = .../helpdesk/api (หรือ proxy), path = helpdeskrequests → POST multipart/form-data
             // Authorization: ใส่โดย interceptor ใน axiosClientsHelpDesk (Bearer token)
             const formData = new FormData();
@@ -318,11 +270,13 @@ export const useTicketForm = () => {
             formData.append('telephone', form.phoneNumber ?? '');
             formData.append('details', form.description ?? '');
 
+            const fileField = env.helpdeskFieldFile;
+            const imagesField = env.helpdeskFieldImages;
             if (form.attachments.length > 0) {
-                formData.append('hdFile', form.attachments[0]);
+                formData.append(fileField, form.attachments[0]);
             }
             form.images.forEach((file) => {
-                formData.append('hdImgs', file);
+                formData.append(imagesField, file);
             });
 
             if (editIdParam) {
@@ -356,8 +310,12 @@ export const useTicketForm = () => {
                     ? (data as { message: string }).message
                     : undefined;
             const errMsg = err && typeof err === 'object' && 'message' in err ? String((err as { message?: unknown }).message) : '';
+            const errStr = String(err);
 
-            const is413 = status === 413 || /413|Request Entity Too Large|Payload Too Large/i.test(errMsg);
+            const is413 =
+                status === 413 ||
+                /413|Request Entity Too Large|Payload Too Large/i.test(errMsg) ||
+                /413|Request Entity Too Large|Payload Too Large/i.test(errStr);
             if (is413) {
                 toastRef.current?.show({
                     severity: 'error',

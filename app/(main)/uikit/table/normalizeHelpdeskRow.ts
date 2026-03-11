@@ -1,5 +1,7 @@
 // table/normalizeHelpdeskRow.ts — shared normalizer for Helpdesk API row → Ticket
 import { formatDateTime } from "@/utils/dateUtils";
+import { useHelpdeskStatusStore } from "@/app/store/helpdesk";
+import { getAssigneeStatusFromId } from "@/utils/helpdeskStatusMapping";
 import type { Ticket, Assignee, HelpdeskRequestRow } from "./types";
 import type { AssignmentItem } from "./types";
 
@@ -25,6 +27,20 @@ export type HelpdeskRowInput = HelpdeskRequestRow & {
     employee?: { department?: { department_name?: string }; division?: { division_name?: string }; email?: string };
   };
 };
+
+/** เทียบ ID กับรายการจาก selecthelpdeskstatus — ดึง map จาก store/helpdesk */
+function mapAssignmentStatusIdToAssigneeStatus(statusId: number | undefined): Assignee["status"] {
+  const statusIdMap = useHelpdeskStatusStore.getState().statusIdMap;
+  return getAssigneeStatusFromId(statusId, statusIdMap);
+}
+
+function mapAssignmentStatusNameToAssigneeStatus(name: string | undefined): Assignee["status"] {
+  const n = (name ?? "").trim();
+  if (n === "ກຳລັງດຳເນີນການ") return "doing";
+  if (n === "ແກ້ໄຂແລ້ວ" || n === "ປິດວຽກແລ້ວ") return "done";
+  if (n === "ລໍຖ້າຮັບວຽກ" || n === "ລໍຖ້າຮັບເລື່ອງ") return "waiting";
+  return "waiting";
+}
 
 export function normalizeHelpdeskRow(row: HelpdeskRequestRow | HelpdeskRowInput): Ticket {
   const emp = row.createdBy?.employee;
@@ -53,11 +69,23 @@ export function normalizeHelpdeskRow(row: HelpdeskRequestRow | HelpdeskRowInput)
             : (a as { employee?: { emp_code?: string | number } }).employee?.emp_code;
     const emp_code = rawEmpCode != null && String(rawEmpCode).trim() !== "" ? String(rawEmpCode).trim() : undefined;
     const phone = e && typeof (e as { tel?: string }).tel !== "undefined" ? String((e as { tel?: string }).tel ?? "").trim() || undefined : undefined;
+    const statusName = typeof a.helpdeskStatus?.name === "string" ? a.helpdeskStatus.name.trim() : undefined;
+    const statusId = a.helpdeskStatus?.id != null && Number.isFinite(Number(a.helpdeskStatus.id)) ? Number(a.helpdeskStatus.id) : undefined;
+    const rawStatus = (a.status as Assignee["status"] | undefined) ?? undefined;
+    const status: Assignee["status"] =
+      rawStatus === "doing" || rawStatus === "done" || rawStatus === "waiting"
+        ? rawStatus
+        : statusId != null
+          ? mapAssignmentStatusIdToAssigneeStatus(statusId)
+          : mapAssignmentStatusNameToAssigneeStatus(statusName);
+    const employeeId = e && (e as { id?: number }).id != null ? (e as { id?: number }).id : undefined;
     return {
       id,
       name: name || "—",
       emp_code,
-      status: (a.status as Assignee["status"]) || "waiting",
+      employeeId,
+      status,
+      statusName: statusName && statusName !== "" ? statusName : undefined,
       image: (e as { empimg?: string })?.empimg ?? undefined,
       phone,
     };
@@ -76,6 +104,14 @@ export function normalizeHelpdeskRow(row: HelpdeskRequestRow | HelpdeskRowInput)
         : emp?.email != null && String(emp.email).trim() !== ""
           ? String(emp.email).trim()
           : undefined;
+  /** emp_code ຜູ້ຮ້ອງຂໍ: API ອາດສົ່ງ createdBy.employee.emp_code ຫຼື employeeCode — ຖ້າບໍ່ມີ useTicketTable ຈະ enrich ຈາກ users/admin ໃນພາກຫຼັງ */
+  const createdByEmpCode =
+    (emp as { emp_code?: string })?.emp_code ??
+    (emp as { employeeCode?: string })?.employeeCode ??
+    (createdBy as { emp_code?: string })?.emp_code;
+  const emp_code =
+    createdByEmpCode != null && String(createdByEmpCode).trim() !== "" ? String(createdByEmpCode).trim() : undefined;
+
   return {
     id: row.id,
     title: row.ticket?.title ?? "",
@@ -83,10 +119,10 @@ export function normalizeHelpdeskRow(row: HelpdeskRequestRow | HelpdeskRowInput)
     firstname_req: first || undefined,
     lastname_req: last || undefined,
     requester,
-    emp_code: (emp as { emp_code?: string })?.emp_code ?? undefined,
+    emp_code,
     employeeId: requesterUserId != null ? requesterUserId : undefined,
     contactPhone: row.telephone != null ? String(row.telephone) : undefined,
-    status: row.helpdeskStatus?.name ?? "",
+    status: typeof row.helpdeskStatus?.name === "string" ? row.helpdeskStatus.name.trim() : String(row.helpdeskStatus?.name ?? "").trim(),
     priority: row.priority?.name ?? "ບໍ່ລະບຸ",
     priorityId: row.priority?.id,
     verified: false,
