@@ -11,6 +11,7 @@ import SupportTeamCreateDialog from './SupportTeamCreateDialog';
 import SupportTeamTable from './SupportTeamTable';
 import HeadCategoryCreateDialog from './HeadCategoryCreateDialog';
 import RoleManagementTable from './RoleManagementTable';
+import StaffTable from './StaffTable';
 import RoleAssignDialog from './RoleAssignDialog';
 import { useSupportTeam } from '../hooks/useSupportTeam';
 import { useHeadCategory } from '../hooks/useHeadCategory';
@@ -21,18 +22,22 @@ import { useUsers } from '../hooks/useUsers';
 import { useDivisions } from '../hooks/useDivisions';
 import { useRoles } from '../hooks/useRoles';
 import { useUserRoles } from '../hooks/useUserRoles';
-import { SupportTeamData, CreateSupportTeamPayload, HeadCategoryData, SupportTeamTabs, SupportTeamTechnicalRow, UserRoleData } from '../types';
+import { SupportTeamData, CreateSupportTeamPayload, HeadCategoryData, SupportTeamTabs, SupportTeamTechnicalRow, UserRoleData, AdminAssignUser } from '../types';
 import type { HeadCategorySavePayload } from './HeadCategoryCreateDialog';
 import type { RoleAssignSavePayload } from './RoleAssignDialog';
+import StaffRoleEditDialog, { type StaffRoleSavePayload } from './StaffRoleEditDialog';
+import { getRoleDisplayName } from './roleDisplayNames';
 import { createDataMap } from '../utils/dataMapping';
 import { CUSTOM_TAB_CSS } from '../constants/tabStyles';
 import { useUserProfile } from '@/types/useUserProfile';
+import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
 
-/** tabIndex 0 = ທິມສະໜັບສະໜູນ, 1 = ວິຊາການ, 2 = ສະຖານະ. Tab ສະຖານະ ເຂົ້າໃຊ້ໄດ້ທັງ Role 1 ແລະ 2. */
+/** tabIndex 0 = ທິມສະໜັບສະໜູນ, 1 = ວິຊາການ, 2 = ສະຖານະ (disabled), 3 = ພະນັກງານ. */
 const ALL_TAB_ITEMS = [
     { label: 'ທິມສະໜັບສະໜູນ', tabIndex: SupportTeamTabs.ISSUE_CATEGORY },
     { label: 'ວິຊາການ', tabIndex: SupportTeamTabs.TECHNICAL },
     { label: 'ສະຖານະ', tabIndex: SupportTeamTabs.ROLE_MANAGEMENT },
+    { label: 'ພະນັກງານ', tabIndex: SupportTeamTabs.STAFF },
 ] as const;
 
 /** Role 1: ທິມສະໜັບສະໜູນ only (full GET/POST /api/headcategorys). Role 2: ວິຊາການ only (GET /api/headcategorys/selectheadcategory only). */
@@ -73,19 +78,19 @@ export default function SupportTeamPage() {
         activeIndex,
         profileReady && canAccessTechnical && activeIndex === SupportTeamTabs.TECHNICAL
     );
-    /** Role 1: GET /api/users. Role 2: GET /api/users/admin. ເອີ້ນແຕ່ Hook ທີ່ກົງກັບ role ເພື່ອຫຼີກເວັ້ນ 403. */
-    const needUserList = (canAccessTechnical && activeIndex === SupportTeamTabs.TECHNICAL) || activeIndex === SupportTeamTabs.ROLE_MANAGEMENT;
-    const { items: usersItems, fetchData: fetchUsers } = useUsers(
+    /** Role 1: GET /api/users. Role 2: GET /api/users/admin. ເອີ້ນແຕ່ Hook ທີ່ກົງກັບ role ເພື່ອຫຼີກເວັ້ນ 403. Tab ພະນັກງານ (STAFF) ໃຊ້ລາຍຊື່ຜູ້ໃຊ້ເຊັ່ນກັນ. */
+    const needUserList = (canAccessTechnical && activeIndex === SupportTeamTabs.TECHNICAL) || activeIndex === SupportTeamTabs.ROLE_MANAGEMENT || activeIndex === SupportTeamTabs.STAFF;
+    const { items: usersItems, loading: usersLoading, fetchData: fetchUsers } = useUsers(
         activeIndex,
         profileReady && isRole1(roleId) && needUserList
     );
-    const { items: adminUsersItems, fetchData: fetchAdminUsers } = useAdminUsers(
+    const { items: adminUsersItems, loading: adminUsersLoading, fetchData: fetchAdminUsers } = useAdminUsers(
         activeIndex,
         profileReady && isRole2(roleId) && needUserList
     );
     const adminUsers = isRole1(roleId) ? usersItems : adminUsersItems;
     const fetchAdminUsersRef = isRole1(roleId) ? fetchUsers : fetchAdminUsers;
-    const { options: roleOptions, fetchData: fetchRoles } = useRoles(profileReady && activeIndex === SupportTeamTabs.ROLE_MANAGEMENT);
+    const { options: roleOptions, fetchData: fetchRoles } = useRoles(profileReady && (activeIndex === SupportTeamTabs.ROLE_MANAGEMENT || activeIndex === SupportTeamTabs.STAFF));
     /** Role 1 ແລະ Role 2 ເຂົ້າໃຊ້ tab ສະຖານະ (Role Management). ດຶງຂໍ້ມູນຈາກ /api/users ຫຼື /api/users/admin ຕາມ API.md (ບໍ່ມີ /api/user-roles). */
     const { toast: userRolesToast, items: userRoleItems, loading: userRolesLoading, saveData: saveUserRole, deleteData: deleteUserRole, fetchData: fetchUserRoles } = useUserRoles(
         roleId,
@@ -112,8 +117,9 @@ export default function SupportTeamPage() {
         if (!profileReady) return true; // ຍັງບໍ່ຮູ້ role — ບໍ່ໃຫ້ແສງ empty
         if (activeIndex === SupportTeamTabs.ISSUE_CATEGORY) return headCategoryLoading;
         if (activeIndex === SupportTeamTabs.ROLE_MANAGEMENT) return userRolesLoading;
+        if (activeIndex === SupportTeamTabs.STAFF) return isRole1(roleId) ? usersLoading : adminUsersLoading;
         return isRole1(roleId) ? supportTeamLoading : (headCategorySelectLoading || adminAssignLoading);
-    }, [profileReady, activeIndex, roleId, headCategoryLoading, userRolesLoading, supportTeamLoading, headCategorySelectLoading, adminAssignLoading]);
+    }, [profileReady, activeIndex, roleId, headCategoryLoading, userRolesLoading, supportTeamLoading, headCategorySelectLoading, adminAssignLoading, usersLoading, adminUsersLoading]);
 
     const issueCategoryMap = useMemo(() => createDataMap(headCategoryItemsForDisplay, 'id', 'name'), [headCategoryItemsForDisplay]);
 
@@ -172,15 +178,30 @@ export default function SupportTeamPage() {
 
     const [isDialogVisible, setDialogVisible] = useState(false);
     const [isSaving, setSaving] = useState(false);
-    const [globalFilter, setGlobalFilter] = useState('');
-    const [selectedItem, setSelectedItem] = useState<SupportTeamData | HeadCategoryData | UserRoleData | null>(null);
+    /** ຊ່ອງຄົ້ນຫາແຍກຕໍ່ tab — tab 0,1,2,3 ເປັນຄົນລະຂໍ້ມູນ */
+    const [globalFilterByTab, setGlobalFilterByTab] = useState<Record<number, string>>({});
+    const [selectedItem, setSelectedItem] = useState<SupportTeamData | HeadCategoryData | UserRoleData | AdminAssignUser | null>(null);
+    /** Tab ພະນັກງານ: ອັບເດດສະຖານະຫຼັງບັນທຶກໂດຍບໍ່ refetch — ບໍ່ໃຫ້ load ຂໍ້ມູນໃໝ່ທຸກຄັ້ງ */
+    const [staffRoleOverrides, setStaffRoleOverrides] = useState<Record<number, { roleId: number; roleName: string }>>({});
 
-    /** Role 1: ວິຊາການ (tab 1) disabled. Role 2: ທິມສະໜັບສະໜູນ (tab 0) disabled. Tab ສະຖານະ ໃຫ້ທັງສອງ role. */
+    /** Tab ພະນັກງານ: ລາຍຊື່ຜູ້ໃຊ້ທີ່ອັບເດດສະຖານະຫຼັງບັນທຶກ (optimistic) ໂດຍບໍ່ refetch */
+    const staffTableItems = useMemo((): AdminAssignUser[] => {
+        const list = Array.isArray(adminUsers) ? adminUsers : [];
+        if (Object.keys(staffRoleOverrides).length === 0) return list;
+        return list.map((u) => {
+            const o = staffRoleOverrides[u.id];
+            if (!o) return u;
+            return { ...u, roleId: o.roleId, role: { id: o.roleId, name: o.roleName, description: u.role?.description ?? '' } };
+        });
+    }, [adminUsers, staffRoleOverrides]);
+
+    /** Role 1: ວິຊາການ (tab 1) disabled. Role 2: ທິມສະໜັບສະໜູນ (tab 0) disabled. Tab ສະຖານະ (tab 2) disabled. */
     const tabItems = useMemo(() => [...ALL_TAB_ITEMS], []);
 
     const tabMenuModel = useMemo(() => tabItems.map((t) => ({
         label: t.label,
         disabled:
+            t.tabIndex === SupportTeamTabs.ROLE_MANAGEMENT ||
             (isRole1(roleId) && t.tabIndex === SupportTeamTabs.TECHNICAL) ||
             (isRole2(roleId) && t.tabIndex === SupportTeamTabs.ISSUE_CATEGORY),
     })), [tabItems, roleId]);
@@ -188,6 +209,7 @@ export default function SupportTeamPage() {
     const config = useMemo(() => {
         if (activeIndex === SupportTeamTabs.ISSUE_CATEGORY) return { header: 'ການຈັດການທີມສະໜັບສະໜູນ', dialogHeader: 'ເພີ່ມທີມສະໜັບສະໜູນ', label: 'ຊື່ທີມສະໜັບສະໜູນ' };
         if (activeIndex === SupportTeamTabs.ROLE_MANAGEMENT) return { header: 'ການຈັດການສະຖານະ', dialogHeader: 'ເພີ່ມສະຖານະ', label: 'ສະຖານະ' };
+        if (activeIndex === SupportTeamTabs.STAFF) return { header: 'ການຈັດການພະນັກງານ', dialogHeader: 'ເພີ່ມພະນັກງານ', label: 'ພະນັກງານ' };
         return { header: 'ການຈັດການວິຊາການ', dialogHeader: 'ເພີ່ມວິຊາການ', label: 'ຊື່ວິຊາການ' };
     }, [activeIndex]);
 
@@ -201,7 +223,9 @@ export default function SupportTeamPage() {
         if (requested != null && !Number.isNaN(requested) && requested >= 0 && requested < tabItems.length) {
             const blockTab1 = isRole1(roleId) && requested === SupportTeamTabs.TECHNICAL;
             const blockTab0 = isRole2(roleId) && requested === SupportTeamTabs.ISSUE_CATEGORY;
-            if (!blockTab1 && !blockTab0) setActiveIndex(requested);
+            const tab2Disabled = requested === SupportTeamTabs.ROLE_MANAGEMENT;
+            if (tab2Disabled) setActiveIndex(SupportTeamTabs.STAFF);
+            else if (!blockTab1 && !blockTab0) setActiveIndex(requested);
             else setActiveIndex(defaultTabIndex);
         } else if (profileReady) {
             setActiveIndex(defaultTabIndex);
@@ -212,6 +236,7 @@ export default function SupportTeamPage() {
         if (isRole2(roleId)) {
             setActiveIndex((prev) => (prev === SupportTeamTabs.ISSUE_CATEGORY ? SupportTeamTabs.TECHNICAL : prev));
         }
+        setActiveIndex((prev) => (prev === SupportTeamTabs.ROLE_MANAGEMENT ? SupportTeamTabs.STAFF : prev));
     }, [searchParams, roleId, profileReady, defaultTabIndex, tabItems.length]);
     /** ຕາຕະລາງສະຖານະ: ຕົວເລືອກຜູ້ໃຊ້ຈາກ adminUsers (Role 1 = /api/users, Role 2 = /api/users/admin). Label = [username] first_name last_name ເພື່ອຄົ້ນຫາດ້ວຍລະຫັດພະນັກງານ. */
     const userOptionsForRoleTab = useMemo(() => {
@@ -224,13 +249,20 @@ export default function SupportTeamPage() {
             return { label, value: u.id };
         });
     }, [adminUsers]);
-    /** ຕົວເລືອກສະຖານະ: ໃຊ້ໃນການເພີ່ມສະຖານະ — ບໍ່ໃຫ້ເລືອກ role 1 (SuperAdmin) */
+    /** ຕົວເລືອກສະຖານະ: ໃຊ້ໃນການເພີ່ມສະຖານະ — ບໍ່ໃຫ້ເລືອກ role 1, ແສງຊື່ພາສາລາວ */
     const roleOptionsForRoleTab = useMemo(() => {
-        return roleOptions.filter((o) => o.value !== 1);
+        return roleOptions
+            .filter((o) => o.value !== 1)
+            .map((r) => ({ value: r.value, label: getRoleDisplayName(r.value) || r.label }));
     }, [roleOptions]);
+    /** ຕົວເລືອກສະຖານະສຳລັບ tab ພະນັກງານ — ແສງຊື່ພາສາລາວ (ແອັດມິນ, ວິຊາການ, ເປັນຜູ້ໃຊ້ງານ) */
+    const staffRoleOptions = useMemo(
+        () => roleOptions.map((r) => ({ value: r.value, label: getRoleDisplayName(r.value) || r.label })),
+        [roleOptions]
+    );
 
     const openNew = () => { setSelectedItem(null); setDialogVisible(true); };
-    const openEdit = (item: SupportTeamData | HeadCategoryData | UserRoleData) => { setSelectedItem(item); setDialogVisible(true); };
+    const openEdit = (item: SupportTeamData | HeadCategoryData | UserRoleData | AdminAssignUser) => { setSelectedItem(item); setDialogVisible(true); };
 
     const handleSaveHeadCategory = async (payload: HeadCategorySavePayload) => {
         setSaving(true);
@@ -238,8 +270,10 @@ export default function SupportTeamPage() {
         const success = await saveHeadCategory(payload, id);
         if (success) {
             setDialogVisible(false);
+            if (isRole1(roleId)) {
+                await fetchHeadCategory();
+            }
             await Promise.all([
-                ...(isRole1(roleId) ? [fetchHeadCategory()] : []),
                 ...(isRole2(roleId) ? [fetchHeadCategorySelect()] : []),
                 fetchSupportTeam(),
                 fetchAdminUsersRef(),
@@ -256,6 +290,26 @@ export default function SupportTeamPage() {
             await Promise.all([fetchUserRoles(), fetchRoles(), fetchAdminUsersRef()]);
         }
         setSaving(false);
+    };
+
+    /** Tab ພະນັກງານ: ແກ້ໄຂສະຖານະເທົ່ານັ້ນ — PUT /api/users/[id]. ບໍ່ refetch ຂໍ້ມູນ, ໃຊ້ optimistic update ເພື່ອບໍ່ໃຫ້ load ໃໝ່ທຸກຄັ້ງ */
+    const handleSaveStaffRole = async (payload: StaffRoleSavePayload) => {
+        setSaving(true);
+        try {
+            await axiosClientsHelpDesk.put(`users/${payload.userId}`, { roleId: payload.roleId });
+            const roleName = (getRoleDisplayName(payload.roleId) || roleOptions.find((r) => r.value === payload.roleId)?.label) ?? '';
+            setStaffRoleOverrides((prev) => ({ ...prev, [payload.userId]: { roleId: payload.roleId, roleName } }));
+            supportToast.current?.show({ severity: 'success', summary: 'Success', detail: 'ແກ້ໄຂສະຖານະສຳເລັດ' });
+            setDialogVisible(false);
+        } catch (err: unknown) {
+            const msg = err && typeof err === 'object' && 'response' in err
+                ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+                : null;
+            const detail = typeof msg === 'string' ? msg : 'ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກ';
+            supportToast.current?.show({ severity: 'error', summary: 'Error', detail, life: 4000 });
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleSaveSupport = async (payload: CreateSupportTeamPayload) => {
@@ -322,6 +376,10 @@ export default function SupportTeamPage() {
     const showCreateButton =
         (isRole1(roleId) && activeIndex === SupportTeamTabs.ISSUE_CATEGORY) ||
         (activeIndex === SupportTeamTabs.ROLE_MANAGEMENT);
+    const currentFilter: string = globalFilterByTab[activeIndex] ?? '';
+    const setCurrentFilter = (value: string) => setGlobalFilterByTab((prev) => ({ ...prev, [activeIndex]: value }));
+    const tableFilterValue = currentFilter;
+
     const renderHeader = () => (
         <div className="flex flex-column md:flex-row justify-content-between align-items-center gap-3">
             <h5 className="m-0 font-bold text-xl">{config.header}</h5>
@@ -329,8 +387,8 @@ export default function SupportTeamPage() {
                 <span className="p-input-icon-left w-full md:w-auto">
                     <i className="pi pi-search" />
                     <InputText
-                        value={globalFilter}
-                        onChange={(e) => setGlobalFilter(e.target.value)}
+                        value={currentFilter}
+                        onChange={(e) => setCurrentFilter(e.target.value)}
                         placeholder="ຄົ້ນຫາ..."
                         className="p-inputtext-sm w-full"
                         disabled={isCardDisabledForCurrentRole}
@@ -359,11 +417,20 @@ export default function SupportTeamPage() {
                 className="mb-4 custom-tabmenu" 
             />
 
-            {activeIndex === SupportTeamTabs.ROLE_MANAGEMENT ? (
+            {activeIndex === SupportTeamTabs.STAFF ? (
+                <StaffTable
+                    items={staffTableItems}
+                    header={renderHeader()}
+                    globalFilter={tableFilterValue}
+                    canEditRole={isRole1(roleId) || isRole2(roleId)}
+                    onEdit={(item) => openEdit(item)}
+                    isLoading={tableLoading}
+                />
+            ) : activeIndex === SupportTeamTabs.ROLE_MANAGEMENT ? (
                 <RoleManagementTable
                     items={userRoleItems}
                     header={renderHeader()}
-                    globalFilter={globalFilter}
+                    globalFilter={tableFilterValue}
                     onEdit={(item) => openEdit(item)}
                     onDelete={(item) => confirmDelete(item)}
                     isLoading={tableLoading}
@@ -372,7 +439,7 @@ export default function SupportTeamPage() {
             <SupportTeamTable
                 items={activeIndex === SupportTeamTabs.ISSUE_CATEGORY ? headCategoryItemsForDisplay : supportItems}
                 header={renderHeader()}
-                globalFilter={globalFilter}
+                globalFilter={tableFilterValue}
                 label={config.label}
                 activeTab={activeIndex}
                 onEdit={(item) => openEdit(item as SupportTeamData | HeadCategoryData)}
@@ -386,7 +453,17 @@ export default function SupportTeamPage() {
             />
             )}
 
-            {activeIndex === SupportTeamTabs.ROLE_MANAGEMENT ? (
+            {activeIndex === SupportTeamTabs.STAFF ? (
+                <StaffRoleEditDialog
+                    visible={isDialogVisible}
+                    onHide={() => setDialogVisible(false)}
+                    onSave={handleSaveStaffRole}
+                    headerTitle="ແກ້ໄຂສະຖານະພະນັກງານ"
+                    isSaving={isSaving}
+                    editData={selectedItem && 'roleId' in selectedItem && 'employee' in selectedItem ? (selectedItem as AdminAssignUser) : null}
+                    roleOptions={staffRoleOptions}
+                />
+            ) : activeIndex === SupportTeamTabs.ROLE_MANAGEMENT ? (
                 <RoleAssignDialog
                     visible={isDialogVisible}
                     onHide={() => setDialogVisible(false)}

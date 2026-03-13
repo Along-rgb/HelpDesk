@@ -221,7 +221,8 @@ export enum IssueTabs {
 export enum SupportTeamTabs {
     ISSUE_CATEGORY = 0,  // ທິມສະໜັບສະໜູນ
     TECHNICAL = 1,       // ວິຊາການ
-    ROLE_MANAGEMENT = 2  // ສະຖານະ (Roles)
+    ROLE_MANAGEMENT = 2, // ສະຖານະ (Roles) — disabled
+    STAFF = 3            // ພະນັກງານ
 }
 
 // --- Role Management (tab ສະຖານະ) ---

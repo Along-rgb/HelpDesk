@@ -1,0 +1,23 @@
+# 🔒 PRIVACY & SECURITY GATEKEEPER
+- DO NOT read, modify, or create any '.env', '.env.*', or credential files.
+- NEVER hard-code API keys, secrets, or payment credentials into the source code.
+- If a secret is required, use 'process.env.VARIABLE_NAME' and assume it's defined elsewhere.
+- DO NOT output sensitive environment variables in console logs.
+
+# ⚡ PERFORMANCE & ARCHITECTURE STANDARDS
+- USE 'shallow' equality for all Zustand store subscriptions to prevent over-rendering.
+- ALWAYS wrap expensive computations, data mapping, and derived state in 'useMemo'.
+- CONSOLIDATE useEffect chains into single data flows to prevent redundant re-renders.
+- FOR ROLE 3: Use parallel batching (chunks of 10) for fetching ticket details to avoid N+1 waterfalls.
+- PREFER Server Components for static layouts; USE 'use client' only for interactivity.
+
+# 🚫 STRICT DEVELOPMENT CONSTRAINTS
+- DO NOT change existing Business Logic or Ticket Status workflows.
+- DO NOT modify UI/UX, layout structures, or PrimeReact component styles.
+- SKIP H3: Server-side file size validation is already handled; do not implement it on the frontend.
+- ALWAYS remove 'console.log' statements before finishing a task.
+
+# 🛠️ TECH STACK CONTEXT
+- Framework: Next.js (App Router)
+- State: Zustand
+- UI: PrimeReact & Tailwind CSS

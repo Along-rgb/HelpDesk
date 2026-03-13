@@ -14,6 +14,25 @@ function getUploadBaseUrl(): string {
   return env.helpdeskUploadRequestBaseUrl;
 }
 
+/**
+ * Security H4: Allowed path prefixes for the proxy.
+ * Only requests whose path starts with one of these prefixes will be forwarded.
+ */
+const ALLOWED_PATH_PREFIXES = [
+  'helpdeskrequests',
+  'helpdeskstatus',
+  'users',
+  'headcategorys',
+  'prioritys',
+  'assignments',
+  'tickets',
+  'upload/',
+] as const;
+
+function isPathAllowed(path: string): boolean {
+  return ALLOWED_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(prefix + '/'));
+}
+
 async function proxy(
   request: NextRequest,
   pathSegments: string[],
@@ -23,6 +42,12 @@ async function proxy(
   if (!path) {
     return NextResponse.json({ error: 'Missing path' }, { status: 400 });
   }
+
+  /** Security H4: Reject paths not in the whitelist */
+  if (!isPathAllowed(path)) {
+    return NextResponse.json({ error: 'Forbidden proxy path' }, { status: 403 });
+  }
+
   const isUpload = path.startsWith('upload/');
   const base = isUpload ? getUploadBaseUrl() : getBackendBaseUrl();
   if (!base) {

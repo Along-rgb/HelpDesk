@@ -13,6 +13,10 @@ interface TicketHeaderTechnProps {
     statusOptions: StatusOption[];
     globalFilter: string;
     onGlobalFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    /** Role 3: ປຸ່ມ ຮັບວຽກເອງ */
+    showReceiveSelfButton?: boolean;
+    receiveSelfDisabled?: boolean;
+    onReceiveTaskSelf?: () => void;
 }
 
 export const TicketHeaderTechn = ({
@@ -20,7 +24,10 @@ export const TicketHeaderTechn = ({
     setStatusFilter,
     statusOptions,
     globalFilter,
-    onGlobalFilterChange
+    onGlobalFilterChange,
+    showReceiveSelfButton,
+    receiveSelfDisabled,
+    onReceiveTaskSelf,
 }: TicketHeaderTechnProps) => {
     const getStatusIcon = (option: StatusOption | null) =>
         option
@@ -52,6 +59,16 @@ export const TicketHeaderTechn = ({
                     itemTemplate={renderStatusOption}
                     valueTemplate={renderStatusOption}
                 />
+                {showReceiveSelfButton && (
+                    <Button
+                        label="ຮັບວຽກເອງ"
+                        icon="pi pi-check"
+                        severity="secondary"
+                        size="small"
+                        disabled={receiveSelfDisabled ?? true}
+                        onClick={onReceiveTaskSelf}
+                    />
+                )}
             </div>
             <div className="flex flex-wrap gap-2 align-items-center justify-content-end">
                 <span className="p-input-icon-left w-full md:w-auto">

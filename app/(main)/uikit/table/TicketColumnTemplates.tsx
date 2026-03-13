@@ -51,7 +51,7 @@ export const ContactBody = (rowData: Ticket) => (
     </span>
 );
 
-export const AssigneeBody = (rowData: Ticket, action: (data: Assignee[]) => void) => {
+export const AssigneeBody = (rowData: Ticket, action: (data: Assignee[]) => void, statusList?: { id: number; name: string }[]) => {
     let displayData = rowData.assignees || [];
     
     if (displayData.length === 0 && rowData.assignTo) {
@@ -62,7 +62,13 @@ export const AssigneeBody = (rowData: Ticket, action: (data: Assignee[]) => void
 
     if (displayData.length === 1) {
         const user = displayData[0];
-        const statusInfo = ASSIGNEE_STATUS_MAP[user.status] || ASSIGNEE_STATUS_MAP['default'];
+        /** ໃຊ້ statusId ຈາກ API ເປັນຫຼັກ (ສະຖານະຂອງ assignment ແຕ່ລະຄົນ) */
+        const statusById = new Map((statusList || []).map((s) => [s.id, s]));
+        const statusFromApi = user.statusId != null ? statusById.get(user.statusId) : undefined;
+        const displayLabel = statusFromApi 
+            ? statusFromApi.name 
+            : (ASSIGNEE_STATUS_MAP[user.status] || ASSIGNEE_STATUS_MAP['default']).label;
+        
         // ใช้สีตาม helpdesk status (จาก updatehelpdeskstatus) ให้ตรงกับคอลัมน์ ສະຖານະ
         const helpdeskSeverity = rowData.status ? (STATUS_MAP[rowData.status] ?? null) : null;
         let textColor = "text-700";
@@ -71,11 +77,11 @@ export const AssigneeBody = (rowData: Ticket, action: (data: Assignee[]) => void
         else if (helpdeskSeverity === "warning") textColor = "text-orange-500";
         else if (helpdeskSeverity === "danger") textColor = "text-red-500";
         else {
+            const statusInfo = ASSIGNEE_STATUS_MAP[user.status] || ASSIGNEE_STATUS_MAP['default'];
             if (statusInfo.severity === "info") textColor = "text-blue-500";
             else if (statusInfo.severity === "success") textColor = "text-green-500";
             else if (statusInfo.severity === "warning") textColor = "text-orange-500";
         }
-        const statusLabel = rowData.status || statusInfo.label;
 
         let displayName = user.name;
         if (displayName) {
@@ -94,12 +100,12 @@ export const AssigneeBody = (rowData: Ticket, action: (data: Assignee[]) => void
                 className={`js-tooltip-target ${textColor} font-bold cursor-pointer text-sm`}
                 onClick={() => action(displayData)}
                 style={{ whiteSpace: 'nowrap' }}
-                data-pr-tooltip={`${user.name} | ${statusLabel}`}
+                data-pr-tooltip={`${user.name} | ${displayLabel}`}
                 data-pr-position="bottom"
             >
                 {displayName}
             </div>
         );
     }
-    return <AssigneeAvatarGroup assignees={displayData} ticketStatus={rowData.status} onClick={() => action(displayData)} />;
+    return <AssigneeAvatarGroup assignees={displayData} ticketStatus={rowData.status} statusList={statusList} onClick={() => action(displayData)} />;
 };

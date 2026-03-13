@@ -4,15 +4,22 @@ import { Dialog } from "primereact/dialog";
 import { Avatar } from "primereact/avatar";
 import { Tag } from "primereact/tag";
 import { Assignee } from "./types";
-import { ASSIGNEE_STATUS_MAP } from "./constants";
+import { ASSIGNEE_STATUS_MAP, STATUS_MAP } from "./constants";
+
+/** ລາຍການຈາກ /api/helpdeskstatus/selecthelpdeskstatus (id, name) */
+export type HelpdeskStatusOption = { id: number; name: string };
 
 interface Props {
     visible: boolean;
     onHide: () => void;
     assignees: Assignee[];
+    /** ລາຍການສະຖານະຈາກ selecthelpdeskstatus — ໃຊ້ id ເປີດບັນທັດ name */
+    statusList?: HelpdeskStatusOption[];
 }
 
-export const AssigneeDialog = ({ visible, onHide, assignees }: Props) => {
+export const AssigneeDialog = ({ visible, onHide, assignees, statusList = [] }: Props) => {
+    const statusById = React.useMemo(() => new Map(statusList.map((s) => [s.id, s])), [statusList]);
+
     return (
         <Dialog
             header="ມອບໝາຍໃຫ້:"
@@ -23,8 +30,32 @@ export const AssigneeDialog = ({ visible, onHide, assignees }: Props) => {
         >
             <div className="flex flex-column gap-3 mt-2">
                 {assignees.map((user) => {
-                    const statusInfo =
-                        ASSIGNEE_STATUS_MAP[user.status] || ASSIGNEE_STATUS_MAP["default"];
+                    /** ໃຊ້ statusId ຈາກ API ເປັນຫຼັກ (ສະຖານະຂອງ assignment ແຕ່ລະຄົນ) */
+                    const statusFromApi = user.statusId != null ? statusById.get(user.statusId) : undefined;
+                    
+                    /** ຖ້າມີ statusId ແລະພົບໃນ statusList ໃຫ້ໃຊ້ຊື່ຈາກ API */
+                    const displayLabel = statusFromApi 
+                        ? statusFromApi.name 
+                        : (ASSIGNEE_STATUS_MAP[user.status] || ASSIGNEE_STATUS_MAP['default']).label;
+                    
+                    /** ກຳນົດສີຂອງ Tag ຕາມຊື່ສະຖານະ */
+                    let rawSeverity: "success" | "info" | "warning" | "danger" | "secondary" | null;
+                    
+                    if (statusFromApi && STATUS_MAP[statusFromApi.name]) {
+                        /** ໃຊ້ສີຈາກ STATUS_MAP ຖ້າພົບຊື່ສະຖານະຈາກ API */
+                        rawSeverity = STATUS_MAP[statusFromApi.name] as "success" | "info" | "warning" | "danger" | null;
+                    } else if (user.status && ASSIGNEE_STATUS_MAP[user.status]) {
+                        /** Fallback ໄປໃຊ້ສີຈາກ ASSIGNEE_STATUS_MAP */
+                        rawSeverity = ASSIGNEE_STATUS_MAP[user.status].severity as "success" | "info" | "warning" | "danger" | "secondary";
+                    } else {
+                        rawSeverity = "secondary";
+                    }
+                    
+                    /** PrimeReact Tag ບໍ່ຮອງຮັບ severity="secondary" ໃຫ້ໃຊ້ undefined ແທນ */
+                    const displaySeverity = rawSeverity === "secondary" || rawSeverity === null 
+                        ? undefined 
+                        : (rawSeverity as "success" | "info" | "warning" | "danger");
+
                     return (
                         <div
                             key={user.id}
@@ -44,8 +75,8 @@ export const AssigneeDialog = ({ visible, onHide, assignees }: Props) => {
                                 </div>
                             </div>
                             <Tag
-                                value={statusInfo.label}
-                                severity={statusInfo.severity as any}
+                                value={displayLabel}
+                                severity={displaySeverity}
                                 style={{ fontSize: "0.85rem" }}
                             />
                         </div>

@@ -74,13 +74,17 @@ export interface AssignedTo {
   employee?: Employee;
 }
 
-/** Single assignment (assignments[] item from /api/helpdeskrequests/admin) */
+/** Single assignment (จาก /api/assignments หรือ assignments[] ใน helpdeskrequests) — แยกສະຖານະຕາມ id ຂອງແຕ່ລະ assignment (user role 3) */
 export interface AssignmentItem {
   id?: number;
   assignedToId?: number;
   employee?: Employee;
   assignedTo?: AssignedTo;
   status?: string;
+  /** id ສະຖານະຂອງ assignment ນີ້ (ບໍ່ແມ່ນຂອງ helpdeskRequest) */
+  helpdeskStatusId?: number;
+  /** ສະຖານະຕໍ່ assignment — ໃຊ້ id ເປີດບັນທັດ name ຈາກ selecthelpdeskstatus */
+  helpdeskStatus?: { id?: number; name?: string };
 }
 
 /** Raw item from GET /api/helpdeskrequests/admin */
@@ -104,6 +108,8 @@ export interface Assignee {
   image?: string;
   phone?: string;
   status: 'doing' | 'done' | 'waiting';
+  /** id ສະຖານະຈາກ helpdeskStatus — ໃຊ້ເອີ້ນ selecthelpdeskstatus ແລ້ວແສງ name */
+  statusId?: number;
 }
 
 /**
@@ -123,6 +129,8 @@ export interface Ticket {
   assignees?: Assignee[];
   assignDate?: string;
   status: string;
+  /** id ສະຖານະຈາກ helpdeskStatus (ໃຊ້ເຊັ່ນເງື່ອນໄຂແຖບ checkbox) */
+  statusId?: number;
   priority: string;
   priorityId?: number;
   verified: boolean;

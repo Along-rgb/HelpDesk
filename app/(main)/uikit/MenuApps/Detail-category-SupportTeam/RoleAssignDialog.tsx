@@ -1,10 +1,10 @@
-// src/uikit/MenuApps/Detail-category_SupportTeam/RoleAssignDialog.tsx
+// src/uikit/MenuApps/Detail-category-SupportTeam/RoleAssignDialog.tsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
-import axiosClientsHelpDesk from '../../../../../config/axiosClientsHelpDesk';
+import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
 import type { UserRoleData, CreateUserRolePayload, UpdateUserRolePayload, AdminAssignUser } from '../types';
 
 export type RoleAssignSavePayload = CreateUserRolePayload | UpdateUserRolePayload;

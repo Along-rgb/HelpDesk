@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import { devtools, persist } from 'zustand/middleware';
 import axiosClientsHelpDesk, { getTokenFromStorage } from '@/config/axiosClientsHelpDesk';
 import { AUTH_KEYS, clearAppSession } from '@/utils/authHelper';
@@ -324,14 +325,17 @@ export const useUserProfileStore = create<UserProfileState>()(
 );
 
 // =====================================================
-// Selectors
+// Selectors (shallow equality to prevent over-rendering)
 // =====================================================
 
 export const useProfileData = () => {
-  const profileData = useUserProfileStore((state) => state.profileData);
-  const loading = useUserProfileStore((state) => state.loading);
-  const error = useUserProfileStore((state) => state.error);
-  return { profileData, loading, error };
+  return useUserProfileStore(
+    useShallow((state) => ({
+      profileData: state.profileData,
+      loading: state.loading,
+      error: state.error,
+    }))
+  );
 };
 
 export const useDisplayName = () => {
@@ -343,4 +347,23 @@ export const useDisplayName = () => {
     return `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim();
   }
   return 'User';
+};
+
+export const useUserRoleAndId = () => {
+  return useUserProfileStore(
+    useShallow((state) => ({
+      roleId: state.currentUser?.roleId ?? null,
+      currentUserId: state.currentUser?.id ?? null,
+    }))
+  );
+};
+
+export const useUserProfileSelectors = () => {
+  return useUserProfileStore(
+    useShallow((state) => ({
+      roleId: state.currentUser?.roleId ?? null,
+      currentUserId: state.currentUser?.id ?? null,
+      profileData: state.profileData,
+    }))
+  );
 };

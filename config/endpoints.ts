@@ -11,9 +11,15 @@ export const HELPDESK_ENDPOINTS = {
   requestById: (id: string | number) => `helpdeskrequests/${id}`,
   updateHelpdeskStatus: (id: number) => `helpdeskrequests/updatehelpdeskstatus/${id}`,
   updatePriority: (id: number) => `helpdeskrequests/updatepriority/${id}`,
+  /** POST — บันทึกรายงานการทำงาน (multipart: workDetail, completedDate, imageFiles) */
+  reportWork: (id: string | number) => `helpdeskrequests/${id}/reportwork`,
 
   /** GET — รายการสถานะสำหรับ dropdown/filter */
   STATUS_SELECT: 'helpdeskstatus/selecthelpdeskstatus',
+  /** GET — รายการสถานะสำหรับ admin (ปุ่ม/ dropdown ລາຍລະອຽດ ໃນ table) — id, name */
+  STATUS_ADMIN: 'helpdeskstatus/admin',
+  /** GET — รายการสถานะสำหรับ staff (ปุ่มລາຍລະອຽດ ໃນ pageTechn) */
+  STATUS_STAFF: 'helpdeskstatus/staff',
 
   USERS_ADMINASSIGN: 'users/adminassign',
   /** GET — รายการ Admin + Staff สำหรับ lookup emp_code (Role 2, 3); โครงสร้าง id, username, employee: { id, emp_code, first_name, last_name, empimg, tel } */
@@ -25,4 +31,6 @@ export const HELPDESK_ENDPOINTS = {
   HEADCATEGORY_SELECT: 'headcategorys/selectheadcategory',
   PRIORITY: 'prioritys',
   ASSIGNMENTS: 'assignments',
+  /** PUT — ຮັບວຽກເອງ body: { id: number[] } (assignment id) */
+  ASSIGNMENTS_ACCEPT: 'assignments/accept',
 } as const;

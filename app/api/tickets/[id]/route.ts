@@ -21,6 +21,15 @@ export async function GET(
         );
     }
 
+    /** Security H2: Validate ticket ID is a positive integer to prevent path traversal / injection */
+    const numericId = Number(ticketId.trim());
+    if (!Number.isFinite(numericId) || numericId < 1 || !Number.isInteger(numericId)) {
+        return NextResponse.json(
+            { error: "Invalid ticket ID" },
+            { status: 400 }
+        );
+    }
+
     const baseUrl = getHelpdeskBaseUrl();
     if (!baseUrl) {
         return NextResponse.json(
@@ -30,14 +39,14 @@ export async function GET(
     }
 
     const authHeader = request.headers.get("Authorization");
-    if (!authHeader) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
         return NextResponse.json(
             { error: "Authorization required" },
             { status: 401 }
         );
     }
 
-    const url = `${baseUrl}/helpdeskrequests/${ticketId}`;
+    const url = `${baseUrl}/helpdeskrequests/${numericId}`;
     const res = await fetch(url, {
         method: "GET",
         headers: {

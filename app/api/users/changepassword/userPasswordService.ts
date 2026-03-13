@@ -1,6 +1,14 @@
 /**
  * User password service — ใช้สำหรับ API เปลี่ยนรหัสผ่าน
- * ปัจจุบันเป็น Mock (in-memory); ใน production แทนที่ด้วย Prisma หรือ DB จริง
+ *
+ * ⚠️  PRODUCTION TODO (Security H5):
+ * Replace the in-memory Map below with a real database (e.g. Prisma).
+ * Example:
+ *   getPasswordHashByUserId → prisma.user.findUnique({ where: { id }, select: { password: true } })
+ *   updatePasswordById      → prisma.user.update({ where: { id }, data: { password: hash } })
+ *
+ * The current mock is acceptable for development / demo only.
+ * Data is lost on every server restart.
  */
 import bcrypt from 'bcrypt';
 

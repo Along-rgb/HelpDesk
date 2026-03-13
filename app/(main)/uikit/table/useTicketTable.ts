@@ -10,7 +10,7 @@ import { getApiErrorMessage } from "@/utils/errorMessage";
 import { Ticket, Assignee, StatusOption, AssigneeOption } from "./types";
 import type { HelpdeskRequestRow, AdminAssignUserRow, HeadCategorySelectRow } from "./types";
 import { normalizeHelpdeskRow } from "./normalizeHelpdeskRow";
-import { useUserProfileStore } from "@/app/store/user/userProfileStore";
+import { useUserRoleAndId } from "@/app/store/user/userProfileStore";
 
 const STAFF_ROLE_ID = 3;
 /** Role 2 (Admin) + Role 3 (Staff) — ເກັບທັງຄູ່ໃນ assignOptions ເພື່ອ lookup emp_code */
@@ -18,8 +18,8 @@ const ROLE_IDS_FOR_ASSIGN_OPTIONS = [2, 3] as const;
 const STAFF_HEAD_CATEGORY_TAB_INDEX = 1;
 /** ສະຖານະຫຼັງມອບໝາຍວຽກ — ກຳລັງດຳເນີນການ (auto ເມື່ອມອບໝາຍວຽກແລ້ວ) */
 const HELPDESK_STATUS_IN_PROGRESS = 2;
-/** ສະຖານະທີ່ສາມາດກົດຮັບວຽກເອງໄດ້ (role 2) — ລໍຖ້າຮັບວຽກ ເທົ່ານັ້ນ */
-const STATUS_WAITING_ACCEPT = "ລໍຖ້າຮັບວຽກ";
+/** ສະຖານະ id 1 — ໃຫ້ແຖບ checkbox ເມື່ອສະຖານະເປັນ id ນີ້ (logic เดิม) */
+const STATUS_ID_SHOW_CHECKBOX = 1;
 const TECHNICIAN_ROLE_ID = 2;
 /** Role 2 ไม่มีสิทธิ์ GET prioritys — ใช้รายการ fallback เพื่อให้เลือกได้ */
 const ROLE_ID_NO_PRIORITY_LIST = 2;
@@ -78,19 +78,21 @@ function buildStaffPhoneMap(options: AssigneeOption[]): Map<number, string> {
   return map;
 }
 
-/** ຫົວຂໍ້ທີ່ສາມາດຮັບວຽກເອງໄດ້: ສະຖານະ ລໍຖ້າຮັບວຽກ ແລະ ຍັງບໍ່ມີຄົນມອບໝາຍ */
+/** ເງື່ອນໄຂແຖບ checkbox (role 2): ໃຫ້ເບິ່ງແຖບເມື່ອ ສະຖານະ ເປັນ id 1 ເທົ່ານັ້ນ */
 function canReceiveSelf(t: Ticket): boolean {
-  if ((t.status ?? "").trim() !== STATUS_WAITING_ACCEPT) return false;
-  const assignees = t.assignees ?? [];
-  return assignees.length === 0;
+  const statusId = t.statusId ?? (t._raw?.helpdeskStatus?.id != null ? Number(t._raw.helpdeskStatus.id) : undefined);
+  return statusId === STATUS_ID_SHOW_CHECKBOX;
 }
 
 export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
-  const roleId = useUserProfileStore((s) => s.currentUser?.roleId ?? null);
-  const currentUserId = useUserProfileStore((s) => s.currentUser?.id ?? null) as number | null;
-  const { list: statusList } = useHelpdeskStatusOptions();
+  const { roleId, currentUserId } = useUserRoleAndId();
+  /** รายการสถานะสำหรับ dropdown ເລືອກສະຖານະ (filter) — จาก helpdeskstatus/selecthelpdeskstatus */
+  const { list: statusListForFilter } = useHelpdeskStatusOptions();
+  /** รายการสถานะจาก helpdeskstatus/admin สำหรับ dropdown ລາຍລະອຽດ (ปุ่มในแต่ละแถว) */
+  const [statusList, setStatusList] = useState<{ id: number; name: string }[]>([]);
+  /** รายการสถานะจาก helpdeskstatus/selecthelpdeskstatus สำหรับ AssigneeDialog (Modal ສະຖານະຊ່າງ) */
+  const [statusListForModal, setStatusListForModal] = useState<{ id: number; name: string }[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -104,15 +106,38 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
   const [assignmentSectionTitle, setAssignmentSectionTitle] = useState<string>("ມອບໝາຍໃຫ້");
   const [priorityOptions, setPriorityOptions] = useState<{ id: number; name: string }[]>([]);
 
+  /** โหลดรายการสถานะจาก helpdeskstatus/admin สำหรับ dropdown ລາຍລະອຽດ (ปุ่มในแต่ละแถว) */
+  useEffect(() => {
+    axiosClientsHelpDesk
+      .get(HELPDESK_ENDPOINTS.STATUS_ADMIN)
+      .then((response) => {
+        const list = normalizeIdNameList(response?.data ?? []);
+        setStatusList(list);
+      })
+      .catch(() => setStatusList([]));
+  }, []);
+
+  /** โหลดรายการสถานะจาก helpdeskstatus/selecthelpdeskstatus สำหรับ AssigneeDialog (Modal ສະຖານະຊ່າງ) */
+  useEffect(() => {
+    axiosClientsHelpDesk
+      .get(HELPDESK_ENDPOINTS.STATUS_SELECT)
+      .then((response) => {
+        const list = normalizeIdNameList(response?.data ?? []);
+        setStatusListForModal(list);
+      })
+      .catch(() => setStatusListForModal([]));
+  }, []);
+
+  /** ตัวเลือกสำหรับ dropdown ເລືອກສະຖານະ (filter) — จาก selecthelpdeskstatus */
   const statusOptions: StatusOption[] = useMemo(
     () => [
       ALL_STATUS_OPTION,
-      ...statusList.map((item) => {
+      ...statusListForFilter.map((item) => {
         const name = typeof item.name === "string" ? item.name.trim() : String(item.name ?? "").trim();
         return { label: name, value: name };
       }),
     ],
-    [statusList]
+    [statusListForFilter]
   );
 
   const filterTickets = useCallback((data: Ticket[], filterValue: string, statusVal: string | null) => {
@@ -188,6 +213,32 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
       .catch(() => setPriorityOptions(FALLBACK_PRIORITY_OPTIONS));
   }, [roleId]);
 
+  /** Memoize staff lookup Maps — rebuilt only when assignOptions changes */
+  const staffMaps = useMemo(() => ({
+    labelMap: buildStaffLabelMap(assignOptions),
+    empCodeMap: buildStaffEmpCodeMap(assignOptions),
+    imageMap: buildStaffImageMap(assignOptions),
+    phoneMap: buildStaffPhoneMap(assignOptions),
+  }), [assignOptions]);
+
+  /** Enrich ticket assignees with staff lookup data (memoized) */
+  const enrichTickets = useCallback((list: Ticket[]): Ticket[] => {
+    return list.map((t) => ({
+      ...t,
+      assignees: (t.assignees ?? []).map((a) => {
+        const key = Number(a.id);
+        const enrichedEmpCode = a.emp_code?.trim() || staffMaps.empCodeMap.get(key);
+        return {
+          ...a,
+          name: !a.name || a.name === "—" || !a.name.trim() ? staffMaps.labelMap.get(key) ?? a.name : a.name,
+          emp_code: enrichedEmpCode != null && enrichedEmpCode !== "" ? enrichedEmpCode : a.emp_code,
+          image: a.image ?? staffMaps.imageMap.get(key),
+          phone: a.phone ?? staffMaps.phoneMap.get(key),
+        };
+      }),
+    }));
+  }, [staffMaps]);
+
   const fetchData = useCallback(() => {
     setLoading(true);
     setError(null);
@@ -196,67 +247,26 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
       .then((response) => {
         const rawList = normalizeDataList<HelpdeskRequestRow>(response.data);
         const list = rawList.map(normalizeHelpdeskRow).sort((a, b) => Number(b.id) - Number(a.id));
-        const staffMap = buildStaffLabelMap(assignOptions);
-        const staffEmpCodeMap = buildStaffEmpCodeMap(assignOptions);
-        const staffImageMap = buildStaffImageMap(assignOptions);
-        const staffPhoneMap = buildStaffPhoneMap(assignOptions);
-        const enriched = list.map((t) => ({
-          ...t,
-          assignees: (t.assignees ?? []).map((a) => {
-            const key = Number(a.id);
-            const enrichedEmpCode = a.emp_code?.trim() || staffEmpCodeMap.get(key);
-            return {
-              ...a,
-              name: !a.name || a.name === "—" || !a.name.trim() ? staffMap.get(key) ?? a.name : a.name,
-              emp_code: enrichedEmpCode != null && enrichedEmpCode !== "" ? enrichedEmpCode : a.emp_code,
-              image: a.image ?? staffImageMap.get(key),
-              phone: a.phone ?? staffPhoneMap.get(key),
-            };
-          }),
-        }));
+        const enriched = enrichTickets(list);
         setTickets(enriched);
-        setFilteredTickets(filterTickets(enriched, globalFilter, statusFilter?.value ?? null));
       })
       .catch((err: unknown) => {
         setError(getApiErrorMessage(err, "ເກີດຂໍ້ຜິດພາດໃນການໂຫຼດຂໍ້ມູນ"));
         setTickets([]);
-        setFilteredTickets([]);
       })
       .finally(() => setLoading(false));
-  }, [globalFilter, statusFilter?.value, filterTickets, assignOptions]);
+  }, [enrichTickets]);
 
-  /** ເອີ້ນ fetchData ເມື່ອ fetchData ປ່ຽນ (รวมເວລາ assignOptions โหลดແລ້ວ) เพื่อให้ enrich emp_code ໄດ້ */
+  /** ເອີ້ນ fetchData ເມື່ອ enrichTickets ປ່ຽນ (รวมເວລາ assignOptions โหลดແລ້ວ) เพื่อให้ enrich emp_code ໄດ້ */
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  useEffect(() => {
-    setFilteredTickets(filterTickets(tickets, globalFilter, statusFilter?.value ?? null));
-  }, [tickets, globalFilter, statusFilter?.value, filterTickets]);
-
-  useEffect(() => {
-    if (assignOptions.length === 0) return;
-    const staffMap = buildStaffLabelMap(assignOptions);
-    const staffEmpCodeMap = buildStaffEmpCodeMap(assignOptions);
-    const staffImageMap = buildStaffImageMap(assignOptions);
-    const staffPhoneMap = buildStaffPhoneMap(assignOptions);
-    setTickets((prev) =>
-      prev.map((t) => ({
-        ...t,
-        assignees: (t.assignees ?? []).map((a) => {
-          const key = Number(a.id);
-          const enrichedEmpCode = (a.emp_code?.trim() || staffEmpCodeMap.get(key))?.trim();
-          return {
-            ...a,
-            name: !a.name || a.name === "—" || !a.name.trim() ? staffMap.get(key) ?? a.name : a.name,
-            emp_code: enrichedEmpCode != null && enrichedEmpCode !== "" ? enrichedEmpCode : a.emp_code,
-            image: a.image ?? staffImageMap.get(key),
-            phone: a.phone ?? staffPhoneMap.get(key),
-          };
-        }),
-      }))
-    );
-  }, [assignOptions]);
+  /** Derived filtered tickets — no separate state or effect needed */
+  const filteredTickets = useMemo(
+    () => filterTickets(tickets, globalFilter, statusFilter?.value ?? null),
+    [tickets, globalFilter, statusFilter?.value, filterTickets]
+  );
 
   const onCheckboxChange = (e: { checked?: boolean }, rowData: Ticket) => {
     if (e.checked) setSelectedTickets((prev) => [...prev, rowData]);
@@ -350,15 +360,41 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
     }
     try {
       setLoading(true);
-      await axiosClientsHelpDesk.post(HELPDESK_ENDPOINTS.ASSIGNMENTS, {
+      /** ສ້າງ assignment ກ່ອນ (POST) ແລ້ວຮັບ response ທີ່ມີ assignment IDs */
+      const createResponse = await axiosClientsHelpDesk.post(HELPDESK_ENDPOINTS.ASSIGNMENTS, {
         helpdeskRequestId: helpdeskRequestIds,
         assignedToId: [currentUserId],
       });
-      await Promise.all(
-        helpdeskRequestIds.map((id) =>
-          axiosClientsHelpDesk.put(HELPDESK_ENDPOINTS.updateHelpdeskStatus(id), { helpdeskStatusId: HELPDESK_STATUS_IN_PROGRESS })
-        )
-      );
+      
+      /** ດຶງ assignment IDs ຈາກ response (ຖ້າ API ສົ່ງກັບມາ) */
+      const assignmentIds: number[] = [];
+      if (createResponse?.data) {
+        const responseData = Array.isArray(createResponse.data) 
+          ? createResponse.data 
+          : createResponse.data.data;
+        if (Array.isArray(responseData)) {
+          responseData.forEach((item: any) => {
+            if (item?.id != null && Number.isFinite(Number(item.id))) {
+              assignmentIds.push(Number(item.id));
+            }
+          });
+        }
+      }
+      
+      /** ຖ້າມີ assignment IDs ໃຫ້ເອີ້ນ PUT /api/assignments/accept ເພື່ອຮັບວຽກ (ປ່ຽນສະຖານະເປັນກຳລັງດຳເນີນການ) */
+      if (assignmentIds.length > 0) {
+        await axiosClientsHelpDesk.put(HELPDESK_ENDPOINTS.ASSIGNMENTS_ACCEPT, {
+          id: assignmentIds,
+        });
+      } else {
+        /** Fallback: ຖ້າບໍ່ມີ assignment IDs ໃຫ້ອັບເດດສະຖານະຂອງ helpdesk request ແທນ (ວິທີເດີມ) */
+        await Promise.all(
+          helpdeskRequestIds.map((id) =>
+            axiosClientsHelpDesk.put(HELPDESK_ENDPOINTS.updateHelpdeskStatus(id), { helpdeskStatusId: HELPDESK_STATUS_IN_PROGRESS })
+          )
+        );
+      }
+      
       await fetchData();
       setSelectedTickets([]);
       toastRef?.current?.show({
@@ -383,6 +419,40 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
     setCurrentTicketStatus(ticketStatus ?? null);
     setDialogVisible(true);
   };
+
+  /**
+   * ປ່ຽນສະຖານະຈາກ dropdown ລາຍລະອຽດ.
+   * API: PUT /api/helpdeskrequests/updatehelpdeskstatus/[id] body: { helpdeskStatusId } (id ຈາກ helpdeskstatus/admin: 4–8).
+   */
+  const onStatusChange = useCallback(
+    async (ticketId: string | number, helpdeskStatusId: number) => {
+      const id = Number(ticketId);
+      if (!Number.isFinite(id) || !Number.isFinite(helpdeskStatusId)) return;
+      try {
+        setLoading(true);
+        await axiosClientsHelpDesk.put(HELPDESK_ENDPOINTS.updateHelpdeskStatus(id), {
+          helpdeskStatusId,
+        });
+        await fetchData();
+        toastRef?.current?.show({
+          severity: "success",
+          summary: "ສຳເລັດ",
+          detail: "ປ່ຽນສະຖານະສຳເລັດ",
+          life: 3000,
+        });
+      } catch {
+        setLoading(false);
+        toastRef?.current?.show({
+          severity: "error",
+          summary: "ຜິດພາດ",
+          detail: "ປ່ຽນສະຖານະບໍ່ສຳເລັດ",
+          life: 4000,
+        });
+        fetchData();
+      }
+    },
+    [fetchData, toastRef]
+  );
 
   const isRole2 = roleId === TECHNICIAN_ROLE_ID;
   const selectedEligibleForReceiveSelf = useMemo(() => selectedTickets.filter(canReceiveSelf), [selectedTickets]);
@@ -416,5 +486,8 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
     onReceiveTaskSelf,
     receiveSelfDisabled,
     canReceiveSelf,
+    statusList,
+    statusListForModal,
+    onStatusChange,
   };
 };

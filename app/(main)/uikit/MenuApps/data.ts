@@ -10,7 +10,7 @@ export const MENU_ITEMS: MenuItem[] = [
         subMenus: [
             { label: 'ທິມສະໜັບສະໜູນ', tabIndex: 0 },
             { label: 'ວິຊາການ', tabIndex: 1 },
-            { label: 'ສະຖານະ', tabIndex: 2 }
+            { label: 'ພະນັກງານ', tabIndex: 3 }
         ]
     },
     {

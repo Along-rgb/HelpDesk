@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Button } from 'primereact/button';
 import { SplitButton } from 'primereact/splitbutton';
 import { useRouter } from 'next/navigation';
 import { encryptId } from '@/lib/crypto';
@@ -20,6 +21,8 @@ export interface TicketActionMenuProps {
   variant?: 'techn' | 'user';
   /** เมนูเพิ่มเติม (ถ้าไม่ส่ง ใช้ค่า default ตาม variant) */
   menuItems?: TicketActionMenuItem[];
+  /** ซ่อน dropdown (แสดงเฉพาะปุ่ม "ລາຍລະອຽດ") */
+  hideDropdown?: boolean;
 }
 
 const DEFAULT_ITEMS_TECHN: TicketActionMenuItem[] = [
@@ -38,6 +41,7 @@ export function TicketActionMenu({
   ticket,
   variant = 'techn',
   menuItems,
+  hideDropdown = false,
 }: TicketActionMenuProps) {
   const router = useRouter();
   const items = menuItems ?? (variant === 'user' ? DEFAULT_ITEMS_USER : DEFAULT_ITEMS_TECHN);
@@ -57,17 +61,27 @@ export function TicketActionMenu({
 
   return (
     <div className="flex justify-content-center">
-      <SplitButton
-        label="ລາຍລະອຽດ"
-        icon="pi pi-file"
-        model={model}
-        className={isUser ? 'p-button-secondary p-button-sm custom-splitbutton-xs' : 'p-button-secondary p-button-sm'}
-        style={isUser ? { height: '26px' } : { height: '28px', fontSize: '12px' }}
-        buttonProps={{ style: buttonStyle }}
-        menuButtonProps={{ style: { width: menuButtonWidth, padding: isUser ? '0' : undefined } }}
-        onClick={() => router.push(`/uikit/ticket-detail/${encryptId(ticket.id)}`)}
-        dropdownIcon="pi pi-chevron-down"
-      />
+      {hideDropdown ? (
+        <Button
+          label="ລາຍລະອຽດ"
+          icon="pi pi-file"
+          className={isUser ? 'p-button-secondary p-button-sm custom-splitbutton-xs' : 'p-button-secondary p-button-sm'}
+          style={isUser ? { height: '26px' } : { height: '28px', fontSize: '12px' }}
+          onClick={() => router.push(`/uikit/ticket-detail/${encryptId(ticket.id)}`)}
+        />
+      ) : (
+        <SplitButton
+          label="ລາຍລະອຽດ"
+          icon="pi pi-file"
+          model={model}
+          className={isUser ? 'p-button-secondary p-button-sm custom-splitbutton-xs' : 'p-button-secondary p-button-sm'}
+          style={isUser ? { height: '26px' } : { height: '28px', fontSize: '12px' }}
+          buttonProps={{ style: buttonStyle }}
+          menuButtonProps={{ style: { width: menuButtonWidth, padding: isUser ? '0' : undefined } }}
+          onClick={() => router.push(`/uikit/ticket-detail/${encryptId(ticket.id)}`)}
+          dropdownIcon="pi pi-chevron-down"
+        />
+      )}
     </div>
   );
 }

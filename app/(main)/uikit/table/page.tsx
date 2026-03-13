@@ -8,7 +8,7 @@ import { Toast } from "primereact/toast";
 import { useRouter } from "next/navigation";
 import { useTicketTable } from "./useTicketTable";
 import { Ticket } from "./types";
-import { STATUS_MAP, CUSTOM_TOOLTIP_CSS } from "./constants";
+import { STATUS_MAP, STATUS_ICON_MAP, STATUS_ICON_FALLBACK, CUSTOM_TOOLTIP_CSS } from "./constants";
 import { sanitizeStyleContent } from "@/utils/sanitizeHtml";
 import { TicketActionMenu } from "@/app/components/TicketActionMenu";
 import { PrioritySelector } from "./PrioritySelector";
@@ -33,12 +33,13 @@ export default function TableDemo() {
         assignmentSectionTitle,
         priorityOptions,
         onCheckboxChange, onPriorityChange,
-        dialogVisible, currentAssignees, currentTicketStatus, openAssigneeDialog, closeDialog,
+        dialogVisible, currentAssignees, currentTicketStatus, statusList, statusListForModal, openAssigneeDialog, closeDialog,
         onBulkAssign,
         isRole2,
         onReceiveTaskSelf,
         receiveSelfDisabled,
         canReceiveSelf,
+        onStatusChange,
     } = useTicketTable(toastRef);
 
     const [first, setFirst] = useState(0);
@@ -54,7 +55,7 @@ export default function TableDemo() {
             <div className="col-12">
                 <div className="card">
                     <TableTooltip target=".js-tooltip-target" dependencies={[tickets, first]} />
-                    <AssigneeDialog visible={dialogVisible} onHide={closeDialog} assignees={currentAssignees} ticketStatus={currentTicketStatus} sectionTitle={assignmentSectionTitle} />           
+                    <AssigneeDialog visible={dialogVisible} onHide={closeDialog} assignees={currentAssignees} statusList={statusListForModal} ticketStatus={currentTicketStatus} sectionTitle={assignmentSectionTitle} />           
                     <TicketHeader
                         statusFilter={statusFilter} setStatusFilter={setStatusFilter}
                         statusOptions={statusOptions}
@@ -123,7 +124,7 @@ export default function TableDemo() {
                         <Column field="date" header="ວັນທີ່ຮ້ອງຂໍ" style={{ minWidth: "170px" }} {...centerProps} />
                         <Column header="ຜູ້ຮ້ອງຂໍ" body={RequesterBody} style={{ minWidth: "120px" }} {...centerProps} />
                         <Column header="ເບີຕິດຕໍ່" body={ContactBody} style={{ minWidth: "110px" }} {...centerProps} />
-                        <Column header="ມອບໝາຍໃຫ້" body={(rowData: Ticket) => AssigneeBody(rowData, (assignees) => openAssigneeDialog(assignees, rowData.status))} style={{ minWidth: "140px" }} {...centerProps} />   
+                        <Column header="ມອບໝາຍໃຫ້" body={(rowData: Ticket) => AssigneeBody(rowData, (assignees) => openAssigneeDialog(assignees, rowData.status), statusListForModal)} style={{ minWidth: "140px" }} {...centerProps} />   
                         <Column
                             field="status"
                             header="ສະຖານະ"
@@ -150,7 +151,20 @@ export default function TableDemo() {
                             )}
                         />    
                         <Column header="ດຳເນີນການ" style={{ minWidth: "160px" }} {...centerProps}
-                            body={(rowData) => <TicketActionMenu ticket={rowData} />} 
+                            body={(rowData) => {
+                                const menuItems = statusList.map((s) => ({
+                                    label: s.name,
+                                    icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
+                                    command: () => onStatusChange(rowData.id, s.id),
+                                }));
+                                return (
+                                    <TicketActionMenu
+                                        ticket={rowData}
+                                        variant="techn"
+                                        menuItems={menuItems.length > 0 ? menuItems : undefined}
+                                    />
+                                );
+                            }}
                         />
                     </DataTable>
                 </div>

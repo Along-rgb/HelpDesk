@@ -9,12 +9,15 @@ interface Props {
     assignees: Assignee[];
     /** helpdesk status (จาก updatehelpdeskstatus) ใช้แสดงใน tooltip ให้ตรงกับคอลัมน์ ສະຖານະ */
     ticketStatus?: string;
+    /** ລາຍການສະຖານະຈາກ API ເພື່ອ lookup ຊື່ສະຖານະຈາກ statusId */
+    statusList?: { id: number; name: string }[];
     onClick: () => void;
 }
 
-export const AssigneeAvatarGroup = ({ assignees, ticketStatus, onClick }: Props) => {
+export const AssigneeAvatarGroup = React.memo(({ assignees, ticketStatus, statusList = [], onClick }: Props) => {
     
     const safeAssignees = assignees || [];
+    const statusById = React.useMemo(() => new Map(statusList.map((s) => [s.id, s])), [statusList]);
 
     const getInitials = (name: string) => {
         return name ? name.substring(0, 2).toUpperCase() : '??';
@@ -36,9 +39,12 @@ export const AssigneeAvatarGroup = ({ assignees, ticketStatus, onClick }: Props)
         >
             <AvatarGroup className="mb-0">
                 {safeAssignees.slice(0, 3).map((user) => {
-                    // Logic Tooltip: ชื่อ | สถานะ
-                    const statusInfo = ASSIGNEE_STATUS_MAP[user.status] || ASSIGNEE_STATUS_MAP['default'];
-                    const tooltipText = ticketStatus ? `${user.name} | ${ticketStatus}` : `${user.name} | ${statusInfo.label}`;
+                    /** ໃຊ້ statusId ຈາກ API ເປັນຫຼັກ (ສະຖານະຂອງ assignment ແຕ່ລະຄົນ) */
+                    const statusFromApi = user.statusId != null ? statusById.get(user.statusId) : undefined;
+                    const displayLabel = statusFromApi 
+                        ? statusFromApi.name 
+                        : (ASSIGNEE_STATUS_MAP[user.status] || ASSIGNEE_STATUS_MAP['default']).label;
+                    const tooltipText = `${user.name} | ${displayLabel}`;
 
                     return (
                         <Avatar 
@@ -72,4 +78,4 @@ export const AssigneeAvatarGroup = ({ assignees, ticketStatus, onClick }: Props)
             </AvatarGroup>
         </div>
     );
-};
+});

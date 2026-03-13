@@ -29,7 +29,7 @@ export function getHelpdeskFileUrl(
   const name = filename.trim().replace(/^\//, "");
   if (!name) return "";
   const encoded = encodeURIComponent(name);
-  const pathSegment = field === "hdImgs" ? env.helpdeskImagesPath : "hdFile";
+  const pathSegment = field === "hdImgs" ? env.helpdeskImagesPath : env.helpdeskFilePath;
   const apiBase = getUploadBaseFromEnv();
   if (apiBase) {
     return `${apiBase}/upload/${pathSegment}/${encoded}`;
@@ -49,7 +49,7 @@ export function getHelpdeskFileUrlAbsolute(field: HelpdeskFileField, filename: s
   const name = filename.trim().replace(/^\//, "");
   if (!name) return "";
   const encoded = encodeURIComponent(name);
-  const pathSegment = field === "hdImgs" ? env.helpdeskImagesPath : "hdFile";
+  const pathSegment = field === "hdImgs" ? env.helpdeskImagesPath : env.helpdeskFilePath;
   const apiBase = getUploadBaseFromEnv();
   if (!apiBase) return "";
   return `${apiBase}/upload/${pathSegment}/${encoded}`;

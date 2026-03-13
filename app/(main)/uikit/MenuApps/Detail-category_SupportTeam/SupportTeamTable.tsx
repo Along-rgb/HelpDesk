@@ -5,6 +5,7 @@ import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Tooltip } from 'primereact/tooltip';
 import { SupportTeamData, IssueData, HeadCategoryData, SupportTeamTabs, SupportTeamTechnicalRow, DivisionOption } from '../types';
+import { getRoleDisplayName } from './roleDisplayNames';
 
 const TOOLTIP_TARGET = '.js-support-team-cell-tooltip';
 const TECHNICAL_TABLE_COL_COUNT = 5;
@@ -82,7 +83,7 @@ const EMPTY_MSG_SURFACE = <div className="text-center p-4 text-gray-500 surface-
 export default function SupportTeamTable({
     items,
     header,
-    globalFilter,
+    globalFilter = '',
     label,
     activeTab,
     onEdit,
@@ -98,6 +99,22 @@ export default function SupportTeamTable({
     const isIssueCategoryTab = activeTab === SupportTeamTabs.ISSUE_CATEGORY;
     const isTechnicalTab = activeTab === SupportTeamTabs.TECHNICAL;
     const useTechnicalGrouped = isTechnicalTab && Array.isArray(technicalTabRows);
+
+    /** Tab 0: ค้นหาเฉพาะ ທີມສະໜັບສະໜູນ (division) + ຊື່ທີມສະໜັບສະໜູນ (name) */
+    const issueCategoryFilteredItems = useMemo(() => {
+        if (!isIssueCategoryTab || !Array.isArray(items)) return items;
+        const q = (globalFilter?.trim() ?? '').toLowerCase();
+        if (!q) return items;
+        return items.filter((row) => {
+            const r = row as HeadCategoryData;
+            const divisionName = headCategoryHasNestedData
+                ? (r.division?.division_name ?? '')
+                : (divisions.find((d) => d.id === r.divisionId)?.division_name ?? '');
+            const name = (r.name ?? '').toLowerCase();
+            const div = divisionName.toLowerCase();
+            return div.includes(q) || name.includes(q);
+        });
+    }, [isIssueCategoryTab, items, globalFilter, headCategoryHasNestedData, divisions]);
 
     const filteredTechnicalRows = useMemo(() => {
         if (!useTechnicalGrouped || !globalFilter?.trim()) return technicalTabRows;
@@ -232,7 +249,8 @@ export default function SupportTeamTable({
                                     }
                                     if (isTechnicalUserRow(row)) {
                                         const rowIndex = technicalRowIndexByPosition[idx];
-                                        const roleName = (row.raw as { role?: { name?: string } })?.role?.name ?? '-';
+                                        const roleId = (row.raw as { roleId?: number })?.roleId;
+                                        const roleName = (getRoleDisplayName(roleId) || (row.raw as { role?: { name?: string } })?.role?.name) ?? '-';
                                         return (
                                             <tr key={`row-${idx}`} className="p-datatable-row">
                                                 <td className="p-datatable-cell text-center">{rowIndex}</td>
@@ -265,9 +283,10 @@ export default function SupportTeamTable({
                 hideDelay={100}
             />
             <DataTable
-                value={items}
+                value={isIssueCategoryTab ? (Array.isArray(issueCategoryFilteredItems) ? issueCategoryFilteredItems : []) : (Array.isArray(items) ? items : [])}
                 header={header}
-                globalFilter={globalFilter}
+                filters={{}}
+                globalFilter={isIssueCategoryTab ? '' : (globalFilter ?? '')}
                 paginator
                 rows={10}
                 className="p-datatable-sm"

@@ -53,11 +53,21 @@ export function normalizeHelpdeskRow(row: HelpdeskRequestRow | HelpdeskRowInput)
             : (a as { employee?: { emp_code?: string | number } }).employee?.emp_code;
     const emp_code = rawEmpCode != null && String(rawEmpCode).trim() !== "" ? String(rawEmpCode).trim() : undefined;
     const phone = e && typeof (e as { tel?: string }).tel !== "undefined" ? String((e as { tel?: string }).tel ?? "").trim() || undefined : undefined;
+    /** ສະຖານະແຍກຕາມ assignment — ໃຊ້ helpdeskStatusId/helpdeskStatus ຂອງ assignment ນີ້ (ບໍ່ໃຊ້ຂອງ helpdeskRequest) */
+    /** ⭐ ດຶງຈາກ helpdeskStatus.id ກ່ອນເສມອ (API ສົ່ງມາແບບນີ້) ຫຼັງຈາກນັ້ນຈຶ່ງ fallback ໄປ helpdeskStatusId */
+    const statusId =
+      (a.helpdeskStatus?.id != null && Number.isFinite(Number(a.helpdeskStatus.id)))
+        ? Number(a.helpdeskStatus.id)
+        : (a.helpdeskStatusId != null && Number.isFinite(Number(a.helpdeskStatusId)))
+          ? Number(a.helpdeskStatusId)
+          : undefined;
+    
     return {
       id,
       name: name || "—",
       emp_code,
       status: (a.status as Assignee["status"]) || "waiting",
+      statusId,
       image: (e as { empimg?: string })?.empimg ?? undefined,
       phone,
     };
@@ -87,6 +97,7 @@ export function normalizeHelpdeskRow(row: HelpdeskRequestRow | HelpdeskRowInput)
     employeeId: requesterUserId != null ? requesterUserId : undefined,
     contactPhone: row.telephone != null ? String(row.telephone) : undefined,
     status: row.helpdeskStatus?.name ?? "",
+    statusId: row.helpdeskStatus?.id != null && Number.isFinite(Number(row.helpdeskStatus.id)) ? Number(row.helpdeskStatus.id) : undefined,
     priority: row.priority?.name ?? "ບໍ່ລະບຸ",
     priorityId: row.priority?.id,
     verified: false,

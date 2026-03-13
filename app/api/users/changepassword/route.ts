@@ -16,6 +16,22 @@ import {
 const MIN_PASSWORD_LENGTH = 6;
 const JWT_SECRET = process.env.JWT_SECRET?.trim() || process.env.HELPDESK_JWT_SECRET?.trim();
 
+/** Security M2: Simple in-memory rate limiter per IP */
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const RATE_LIMIT_MAX = 5; // max attempts per window
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > RATE_LIMIT_MAX;
+}
+
 export type ChangePasswordBody = {
   oldpassword?: string;
   password1?: string;
@@ -110,6 +126,15 @@ function validateBody(body: ChangePasswordBody): { ok: true } | { ok: false; mes
 }
 
 export async function POST(request: NextRequest) {
+  /** Security M2: Rate limiting */
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  if (isRateLimited(clientIp)) {
+    return NextResponse.json(
+      { message: 'ເກີນຈຳນວນຄັ້ງທີ່ອະນຸຍາດ ກະລຸນາລໍຖ້າ 15 ນາທີ (Too many attempts)' },
+      { status: 429 }
+    );
+  }
+
   const authResult = await getBearerUserId(request);
   if ('error' in authResult) return authResult.error;
   const { userId } = authResult;

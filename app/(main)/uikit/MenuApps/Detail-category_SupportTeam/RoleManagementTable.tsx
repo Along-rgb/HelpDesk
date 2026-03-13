@@ -4,6 +4,7 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import type { UserRoleData } from '../types';
+import { getRoleDisplayName } from './roleDisplayNames';
 
 interface Props {
     items: UserRoleData[];
@@ -54,7 +55,8 @@ export default function RoleManagementTable({
         <DataTable
             value={safeItems}
             header={header}
-            globalFilter={globalFilter}
+            filters={{}}
+            globalFilter={globalFilter ?? ''}
             paginator
             rows={10}
             className="p-datatable-sm"
@@ -63,7 +65,7 @@ export default function RoleManagementTable({
         >
             <Column header="#" body={(_, opts) => opts.rowIndex + 1} className="text-center w-4rem" alignHeader="center" bodyStyle={centerAlign} />
             <Column field="userName" header="ຊື່ຄົນ" style={{ minWidth: '180px' }} alignHeader="center" bodyStyle={centerAlign} />
-            <Column field="roleName" header="ສະຖານະ" style={{ minWidth: '160px' }} alignHeader="center" bodyStyle={centerAlign} />
+            <Column header="ສະຖານະ" style={{ minWidth: '160px' }} alignHeader="center" bodyStyle={centerAlign} body={(row: UserRoleData) => (getRoleDisplayName(row.roleId) || row.roleName) ?? ''} />
             <Column field="description" header="ຄຳອະທິບາຍ" style={{ minWidth: '200px' }} alignHeader="center" bodyStyle={centerAlign} />
             <Column header="ດຳເນີນການ" body={actionTemplate} className="text-center w-8rem" alignHeader="center" bodyStyle={centerAlign} />
         </DataTable>

@@ -16,7 +16,7 @@ const getColor = (name: string) => {
 };
 
 /** แสดง assignee เดียวเป็น Avatar + ชื่อ ในบล็อกเดียว */
-export const AssigneeSingleAvatar = ({
+export const AssigneeSingleAvatar = React.memo(({
     assignee,
     ticketStatus,
     displayName,
@@ -67,7 +67,7 @@ export const AssigneeSingleAvatar = ({
         );
     }
     return <div className="flex align-items-center p-1">{content}</div>;
-};
+});
 
 interface Props {
     assignees: Assignee[];
@@ -75,7 +75,7 @@ interface Props {
     onClick: () => void;
 }
 
-export const AssigneeAvatarGroup = ({ assignees, ticketStatus, onClick }: Props) => {
+export const AssigneeAvatarGroup = React.memo(({ assignees, ticketStatus, onClick }: Props) => {
     const safeAssignees = assignees || [];
 
     return (
@@ -130,4 +130,4 @@ export const AssigneeAvatarGroup = ({ assignees, ticketStatus, onClick }: Props)
             </AvatarGroup>
         </div>
     );
-};
+});

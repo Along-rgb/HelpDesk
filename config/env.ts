@@ -91,6 +91,10 @@ export const env = {
   get useHelpdeskProxy() {
     return getEnv('NEXT_PUBLIC_USE_HELPDESK_PROXY', 'false').toLowerCase() === 'true';
   },
+  /** Path segment สำหรับโหลด PDF (hdFile) บน Backend — default hdfile ຕາມ upload/hdfile */
+  get helpdeskFilePath() {
+    return getEnv('NEXT_PUBLIC_HELPDESK_FILE_PATH', 'hdfile').trim() || 'hdfile';
+  },
   /** Path segment สำหรับโหลดรูป (hdImgs) บน Backend — default hdimage, ຖ້າ Backend ໃຊ້ hdImgs ໃຫ້ຕັ້ງທີ່ນີ້ */
   get helpdeskImagesPath() {
     return getEnv('NEXT_PUBLIC_HELPDESK_IMAGES_PATH', 'hdimage').trim() || 'hdimage';
