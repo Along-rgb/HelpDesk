@@ -12,7 +12,9 @@ import SupportTeamTable from './SupportTeamTable';
 import HeadCategoryCreateDialog from './HeadCategoryCreateDialog';
 import RoleManagementTable from './RoleManagementTable';
 import StaffTable from './StaffTable';
+import UserStatusTable from './UserStatusTable';
 import RoleAssignDialog from './RoleAssignDialog';
+import UserStatusDialog, { type UserStatusSavePayload } from './UserStatusDialog';
 import { useSupportTeam } from '../hooks/useSupportTeam';
 import { useHeadCategory } from '../hooks/useHeadCategory';
 import { useHeadCategorySelect } from '../hooks/useHeadCategorySelect';
@@ -22,7 +24,8 @@ import { useUsers } from '../hooks/useUsers';
 import { useDivisions } from '../hooks/useDivisions';
 import { useRoles } from '../hooks/useRoles';
 import { useUserRoles } from '../hooks/useUserRoles';
-import { SupportTeamData, CreateSupportTeamPayload, HeadCategoryData, SupportTeamTabs, SupportTeamTechnicalRow, UserRoleData, AdminAssignUser } from '../types';
+import { useRolesManagement } from '../hooks/useRolesManagement';
+import { SupportTeamData, CreateSupportTeamPayload, HeadCategoryData, SupportTeamTabs, SupportTeamTechnicalRow, UserRoleData, AdminAssignUser, RoleData } from '../types';
 import type { HeadCategorySavePayload } from './HeadCategoryCreateDialog';
 import type { RoleAssignSavePayload } from './RoleAssignDialog';
 import StaffRoleEditDialog, { type StaffRoleSavePayload } from './StaffRoleEditDialog';
@@ -31,16 +34,19 @@ import { createDataMap } from '../utils/dataMapping';
 import { CUSTOM_TAB_CSS } from '../constants/tabStyles';
 import { useUserProfile } from '@/types/useUserProfile';
 import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
+import SyncDataPanel from './SyncDataPanel';
 
-/** tabIndex 0 = ທິມສະໜັບສະໜູນ, 1 = ວິຊາການ, 2 = ສະຖານະ (disabled), 3 = ພະນັກງານ. */
+/** tabIndex 0 = ທິມສະໜັບສະໜູນ, 1 = ວິຊາການ, 2 = ສະຖານະ (disabled), 3 = ພະນັກງານ, 4 = ສະຖານະຜູ້ໃຊ້, 5 = ການ Sync ຂໍ້ມູນພະນັກງານ. */
 const ALL_TAB_ITEMS = [
     { label: 'ທິມສະໜັບສະໜູນ', tabIndex: SupportTeamTabs.ISSUE_CATEGORY },
     { label: 'ວິຊາການ', tabIndex: SupportTeamTabs.TECHNICAL },
     { label: 'ສະຖານະ', tabIndex: SupportTeamTabs.ROLE_MANAGEMENT },
     { label: 'ພະນັກງານ', tabIndex: SupportTeamTabs.STAFF },
+    { label: 'ສະຖານະຜູ້ໃຊ້', tabIndex: SupportTeamTabs.USER_STATUS },
+    { label: 'ການ Sync ຂໍ້ມູນພະນັກງານ', tabIndex: SupportTeamTabs.DATA_SYNC },
 ] as const;
 
-/** Role 1: ທິມສະໜັບສະໜູນ only (full GET/POST /api/headcategorys). Role 2: ວິຊາການ only (GET /api/headcategorys/selectheadcategory only). */
+/** Role 1: ທິມສະໜັບສະໜູນ only (full GET/POST /api/headcategorys). Role 2: ວິຊາການ + ສະຖານະ only (GET /api/headcategorys/selectheadcategory only). */
 const isRole2 = (r: number | string | null | undefined) => Number(r) === 2;
 const isRole1 = (r: number | string | null | undefined) => Number(r) === 1;
 
@@ -55,8 +61,8 @@ export default function SupportTeamPage() {
     /** Role 1 only: full CRUD on /api/headcategorys (nested department/division). Role 2 must NOT call it (403). */
     const canAccessFullHeadCategory = isRole1(roleId);
 
-    /** Default tab ตาม role: Role 1 = ທິມສະໜັບສະໜູນ (0), Role 2 = ວິຊາການ (1). Tab ສະຖານະ (2) ໃຫ້ທັງສອງ role. */
-    const defaultTabIndex = useMemo(() => (canAccessFullHeadCategory ? SupportTeamTabs.ISSUE_CATEGORY : SupportTeamTabs.TECHNICAL), [canAccessFullHeadCategory]);
+    /** Default tab ตาม role: Role 1 = ທິມສະໜັບສະໜູນ (0), Role 2 = ສະຖານີ/ພະນັກງານ (2). */
+    const defaultTabIndex = useMemo(() => (canAccessFullHeadCategory ? SupportTeamTabs.ISSUE_CATEGORY : SupportTeamTabs.ROLE_MANAGEMENT), [canAccessFullHeadCategory]);
 
     const { toast: headCategoryToast, items: headCategoryItems, loading: headCategoryLoading, saveData: saveHeadCategory, deleteData: deleteHeadCategory, fetchData: fetchHeadCategory } = useHeadCategory(
         0,
@@ -91,10 +97,14 @@ export default function SupportTeamPage() {
     const adminUsers = isRole1(roleId) ? usersItems : adminUsersItems;
     const fetchAdminUsersRef = isRole1(roleId) ? fetchUsers : fetchAdminUsers;
     const { options: roleOptions, fetchData: fetchRoles } = useRoles(profileReady && (activeIndex === SupportTeamTabs.ROLE_MANAGEMENT || activeIndex === SupportTeamTabs.STAFF));
-    /** Role 1 ແລະ Role 2 ເຂົ້າໃຊ້ tab ສະຖານະ (Role Management). ດຶງຂໍ້ມູນຈາກ /api/users ຫຼື /api/users/admin ຕາມ API.md (ບໍ່ມີ /api/user-roles). */
+    /** Role 1 ແລະ Role 2 ເຂົ້າໃຊ້ tab ສະຖານີ (Role Management). ດຶງຂໍ້ມູນຈາກ /api/users ຫຼື /api/users/admin ຕາມ API.md (ບໍ່ມີ /api/user-roles). */
     const { toast: userRolesToast, items: userRoleItems, loading: userRolesLoading, saveData: saveUserRole, deleteData: deleteUserRole, fetchData: fetchUserRoles } = useUserRoles(
         roleId,
         profileReady && activeIndex === SupportTeamTabs.ROLE_MANAGEMENT
+    );
+    /** Role 1 only: GET /api/roles for tab ສະຖານະຜູ້ໃຊ້ */
+    const { toast: rolesManagementToast, items: rolesManagementItems, loading: rolesManagementLoading, saveData: saveRole, deleteData: deleteRole, fetchData: fetchRolesManagement } = useRolesManagement(
+        profileReady && isRole1(roleId) && activeIndex === SupportTeamTabs.USER_STATUS
     );
 
     /** Role 1: full list from GET /api/headcategorys (nested department/division). Role 2: list from GET /api/headcategorys/selectheadcategory (departmentId/divisionId only), filtered by division. */
@@ -109,7 +119,7 @@ export default function SupportTeamPage() {
         return normalized;
     }, [roleId, headCategoryItems, headCategorySelectItems, userDivisionId]);
 
-    const toast = activeIndex === SupportTeamTabs.ISSUE_CATEGORY ? headCategoryToast : activeIndex === SupportTeamTabs.ROLE_MANAGEMENT ? userRolesToast : supportToast;
+    const toast = activeIndex === SupportTeamTabs.ISSUE_CATEGORY ? headCategoryToast : activeIndex === SupportTeamTabs.ROLE_MANAGEMENT ? userRolesToast : activeIndex === SupportTeamTabs.USER_STATUS ? rolesManagementToast : supportToast;
     const items = activeIndex === SupportTeamTabs.ISSUE_CATEGORY ? headCategoryItemsForDisplay : activeIndex === SupportTeamTabs.ROLE_MANAGEMENT ? userRoleItems : supportItems;
 
     /** loading ຂອງ tab ປັດຈຸບັນ — ບໍ່ໃຫ້ແສງ "ບໍ່ພົບຂໍ້ມູນ" ຕອນເປີດໜ້າ/refresh ຫຼື ຍັງໂຫຼດຂໍ້ມູນ */
@@ -118,8 +128,9 @@ export default function SupportTeamPage() {
         if (activeIndex === SupportTeamTabs.ISSUE_CATEGORY) return headCategoryLoading;
         if (activeIndex === SupportTeamTabs.ROLE_MANAGEMENT) return userRolesLoading;
         if (activeIndex === SupportTeamTabs.STAFF) return isRole1(roleId) ? usersLoading : adminUsersLoading;
+        if (activeIndex === SupportTeamTabs.USER_STATUS) return rolesManagementLoading;
         return isRole1(roleId) ? supportTeamLoading : (headCategorySelectLoading || adminAssignLoading);
-    }, [profileReady, activeIndex, roleId, headCategoryLoading, userRolesLoading, supportTeamLoading, headCategorySelectLoading, adminAssignLoading, usersLoading, adminUsersLoading]);
+    }, [profileReady, activeIndex, roleId, headCategoryLoading, userRolesLoading, supportTeamLoading, headCategorySelectLoading, adminAssignLoading, usersLoading, adminUsersLoading, rolesManagementLoading]);
 
     const issueCategoryMap = useMemo(() => createDataMap(headCategoryItemsForDisplay, 'id', 'name'), [headCategoryItemsForDisplay]);
 
@@ -180,36 +191,55 @@ export default function SupportTeamPage() {
     const [isSaving, setSaving] = useState(false);
     /** ຊ່ອງຄົ້ນຫາແຍກຕໍ່ tab — tab 0,1,2,3 ເປັນຄົນລະຂໍ້ມູນ */
     const [globalFilterByTab, setGlobalFilterByTab] = useState<Record<number, string>>({});
-    const [selectedItem, setSelectedItem] = useState<SupportTeamData | HeadCategoryData | UserRoleData | AdminAssignUser | null>(null);
-    /** Tab ພະນັກງານ: ອັບເດດສະຖານະຫຼັງບັນທຶກໂດຍບໍ່ refetch — ບໍ່ໃຫ້ load ຂໍ້ມູນໃໝ່ທຸກຄັ້ງ */
+    const [selectedItem, setSelectedItem] = useState<SupportTeamData | HeadCategoryData | UserRoleData | AdminAssignUser | RoleData | null>(null);
+    /** Tab ພະນັກງານ: ອັບເດດສະຖານີຫຼັງບັນທຶກໂດຍບໍ່ refetch — ບໍ່ໃຫ້ load ຂໍ້ມູນໃໝ່ທຸກຄັ້ງ */
     const [staffRoleOverrides, setStaffRoleOverrides] = useState<Record<number, { roleId: number; roleName: string }>>({});
+    const [staffActivedOverrides, setStaffActivedOverrides] = useState<Record<number, string>>({});
 
-    /** Tab ພະນັກງານ: ລາຍຊື່ຜູ້ໃຊ້ທີ່ອັບເດດສະຖານະຫຼັງບັນທຶກ (optimistic) ໂດຍບໍ່ refetch */
+    /** Tab ພະນັກງານ: ລາຍຊື່ຜູ້ໃຊ້ທີ່ອັບເດດສະຖານີຫຼັງບັນທຶກ (optimistic) ໂດຍບໍ່ refetch */
     const staffTableItems = useMemo((): AdminAssignUser[] => {
         const list = Array.isArray(adminUsers) ? adminUsers : [];
-        if (Object.keys(staffRoleOverrides).length === 0) return list;
+        const hasRoleOverrides = Object.keys(staffRoleOverrides).length > 0;
+        const hasActivedOverrides = Object.keys(staffActivedOverrides).length > 0;
+        if (!hasRoleOverrides && !hasActivedOverrides) return list;
         return list.map((u) => {
+            let updated = u;
             const o = staffRoleOverrides[u.id];
-            if (!o) return u;
-            return { ...u, roleId: o.roleId, role: { id: o.roleId, name: o.roleName, description: u.role?.description ?? '' } };
+            if (o) updated = { ...updated, roleId: o.roleId, role: { id: o.roleId, name: o.roleName, description: u.role?.description ?? '' } };
+            const a = staffActivedOverrides[u.id];
+            if (a != null) updated = { ...updated, actived: a } as AdminAssignUser;
+            return updated;
         });
-    }, [adminUsers, staffRoleOverrides]);
+    }, [adminUsers, staffRoleOverrides, staffActivedOverrides]);
 
-    /** Role 1: ວິຊາການ (tab 1) disabled. Role 2: ທິມສະໜັບສະໜູນ (tab 0) disabled. Tab ສະຖານະ (tab 2) disabled. */
-    const tabItems = useMemo(() => [...ALL_TAB_ITEMS], []);
-
-    const tabMenuModel = useMemo(() => tabItems.map((t) => ({
-        label: t.label,
-        disabled:
-            t.tabIndex === SupportTeamTabs.ROLE_MANAGEMENT ||
-            (isRole1(roleId) && t.tabIndex === SupportTeamTabs.TECHNICAL) ||
-            (isRole2(roleId) && t.tabIndex === SupportTeamTabs.ISSUE_CATEGORY),
-    })), [tabItems, roleId]);
+    /** Role 1: ເຫັນ ທິມສະໜັບສະໜູນ + ພະນັກງານ. Role 2: ເຫັນ ສະຖານີ (ຊື່ ພະນັກງານ). */
+    const tabItems = useMemo(() => {
+        if (isRole1(roleId)) {
+            return ALL_TAB_ITEMS.filter(t =>
+                t.tabIndex !== SupportTeamTabs.TECHNICAL &&
+                t.tabIndex !== SupportTeamTabs.ROLE_MANAGEMENT
+            );
+        }
+        if (isRole2(roleId)) {
+            return ALL_TAB_ITEMS
+                .filter(t =>
+                    t.tabIndex !== SupportTeamTabs.ISSUE_CATEGORY &&
+                    t.tabIndex !== SupportTeamTabs.STAFF &&
+                    t.tabIndex !== SupportTeamTabs.TECHNICAL &&
+                    t.tabIndex !== SupportTeamTabs.USER_STATUS &&
+                    t.tabIndex !== SupportTeamTabs.DATA_SYNC
+                )
+                .map(t => t.tabIndex === SupportTeamTabs.ROLE_MANAGEMENT ? { ...t, label: 'ພະນັກງານ' as const } : t);
+        }
+        return [...ALL_TAB_ITEMS];
+    }, [roleId]);
 
     const config = useMemo(() => {
         if (activeIndex === SupportTeamTabs.ISSUE_CATEGORY) return { header: 'ການຈັດການທີມສະໜັບສະໜູນ', dialogHeader: 'ເພີ່ມທີມສະໜັບສະໜູນ', label: 'ຊື່ທີມສະໜັບສະໜູນ' };
-        if (activeIndex === SupportTeamTabs.ROLE_MANAGEMENT) return { header: 'ການຈັດການສະຖານະ', dialogHeader: 'ເພີ່ມສະຖານະ', label: 'ສະຖານະ' };
+        if (activeIndex === SupportTeamTabs.ROLE_MANAGEMENT) return { header: 'ການຈັດການສະຖານີ', dialogHeader: 'ເພີ່ມສະຖານີ', label: 'ສະຖານີ' };
         if (activeIndex === SupportTeamTabs.STAFF) return { header: 'ການຈັດການພະນັກງານ', dialogHeader: 'ເພີ່ມພະນັກງານ', label: 'ພະນັກງານ' };
+        if (activeIndex === SupportTeamTabs.USER_STATUS) return { header: 'ການຈັດການສະຖານະຜູ້ໃຊ້', dialogHeader: 'ເພີ່ມສະຖານະຜູ້ໃຊ້', label: 'ສະຖານະຜູ້ໃຊ້' };
+        if (activeIndex === SupportTeamTabs.DATA_SYNC) return { header: 'ການ Sync ຂໍ້ມູນພະນັກງານ', dialogHeader: '', label: '' };
         return { header: 'ການຈັດການວິຊາການ', dialogHeader: 'ເພີ່ມວິຊາການ', label: 'ຊື່ວິຊາການ' };
     }, [activeIndex]);
 
@@ -220,25 +250,27 @@ export default function SupportTeamPage() {
     useEffect(() => {
         const tabParam = searchParams.get('tab');
         const requested = tabParam != null && tabParam !== '' ? Number(tabParam) : null;
-        if (requested != null && !Number.isNaN(requested) && requested >= 0 && requested < tabItems.length) {
-            const blockTab1 = isRole1(roleId) && requested === SupportTeamTabs.TECHNICAL;
-            const blockTab0 = isRole2(roleId) && requested === SupportTeamTabs.ISSUE_CATEGORY;
-            const tab2Disabled = requested === SupportTeamTabs.ROLE_MANAGEMENT;
-            if (tab2Disabled) setActiveIndex(SupportTeamTabs.STAFF);
-            else if (!blockTab1 && !blockTab0) setActiveIndex(requested);
-            else setActiveIndex(defaultTabIndex);
+        const matchedTab = requested != null && !Number.isNaN(requested) ? tabItems.find((t) => t.tabIndex === requested) : undefined;
+        if (matchedTab) {
+            setActiveIndex(matchedTab.tabIndex);
         } else if (profileReady) {
             setActiveIndex(defaultTabIndex);
         }
         if (isRole1(roleId)) {
             setActiveIndex((prev) => (prev === SupportTeamTabs.TECHNICAL ? SupportTeamTabs.ISSUE_CATEGORY : prev));
+            setActiveIndex((prev) => (prev === SupportTeamTabs.ROLE_MANAGEMENT ? SupportTeamTabs.STAFF : prev));
         }
         if (isRole2(roleId)) {
-            setActiveIndex((prev) => (prev === SupportTeamTabs.ISSUE_CATEGORY ? SupportTeamTabs.TECHNICAL : prev));
+            setActiveIndex((prev) => (prev === SupportTeamTabs.ISSUE_CATEGORY ? SupportTeamTabs.ROLE_MANAGEMENT : prev));
+            setActiveIndex((prev) => (prev === SupportTeamTabs.STAFF ? SupportTeamTabs.ROLE_MANAGEMENT : prev));
+            setActiveIndex((prev) => (prev === SupportTeamTabs.TECHNICAL ? SupportTeamTabs.ROLE_MANAGEMENT : prev));
         }
-        setActiveIndex((prev) => (prev === SupportTeamTabs.ROLE_MANAGEMENT ? SupportTeamTabs.STAFF : prev));
-    }, [searchParams, roleId, profileReady, defaultTabIndex, tabItems.length]);
-    /** ຕາຕະລາງສະຖານະ: ຕົວເລືອກຜູ້ໃຊ້ຈາກ adminUsers (Role 1 = /api/users, Role 2 = /api/users/admin). Label = [username] first_name last_name ເພື່ອຄົ້ນຫາດ້ວຍລະຫັດພະນັກງານ. */
+    }, [searchParams, roleId, profileReady, defaultTabIndex, tabItems]);
+
+    const tabMenuModel = useMemo(() => tabItems.map((t) => ({
+        label: t.label,
+    })), [tabItems]);
+
     const userOptionsForRoleTab = useMemo(() => {
         const list = Array.isArray(adminUsers) ? adminUsers : [];
         return list.map((u) => {
@@ -249,20 +281,20 @@ export default function SupportTeamPage() {
             return { label, value: u.id };
         });
     }, [adminUsers]);
-    /** ຕົວເລືອກສະຖານະ: ໃຊ້ໃນການເພີ່ມສະຖານະ — ບໍ່ໃຫ້ເລືອກ role 1, ແສງຊື່ພາສາລາວ */
+
     const roleOptionsForRoleTab = useMemo(() => {
         return roleOptions
             .filter((o) => o.value !== 1)
             .map((r) => ({ value: r.value, label: getRoleDisplayName(r.value) || r.label }));
     }, [roleOptions]);
-    /** ຕົວເລືອກສະຖານະສຳລັບ tab ພະນັກງານ — ແສງຊື່ພາສາລາວ (ແອັດມິນ, ວິຊາການ, ເປັນຜູ້ໃຊ້ງານ) */
+
     const staffRoleOptions = useMemo(
         () => roleOptions.map((r) => ({ value: r.value, label: getRoleDisplayName(r.value) || r.label })),
         [roleOptions]
     );
 
     const openNew = () => { setSelectedItem(null); setDialogVisible(true); };
-    const openEdit = (item: SupportTeamData | HeadCategoryData | UserRoleData | AdminAssignUser) => { setSelectedItem(item); setDialogVisible(true); };
+    const openEdit = (item: SupportTeamData | HeadCategoryData | UserRoleData | AdminAssignUser | RoleData) => { setSelectedItem(item); setDialogVisible(true); };
 
     const handleSaveHeadCategory = async (payload: HeadCategorySavePayload) => {
         setSaving(true);
@@ -292,14 +324,13 @@ export default function SupportTeamPage() {
         setSaving(false);
     };
 
-    /** Tab ພະນັກງານ: ແກ້ໄຂສະຖານະເທົ່ານັ້ນ — PUT /api/users/[id]. ບໍ່ refetch ຂໍ້ມູນ, ໃຊ້ optimistic update ເພື່ອບໍ່ໃຫ້ load ໃໝ່ທຸກຄັ້ງ */
     const handleSaveStaffRole = async (payload: StaffRoleSavePayload) => {
         setSaving(true);
         try {
             await axiosClientsHelpDesk.put(`users/${payload.userId}`, { roleId: payload.roleId });
             const roleName = (getRoleDisplayName(payload.roleId) || roleOptions.find((r) => r.value === payload.roleId)?.label) ?? '';
             setStaffRoleOverrides((prev) => ({ ...prev, [payload.userId]: { roleId: payload.roleId, roleName } }));
-            supportToast.current?.show({ severity: 'success', summary: 'Success', detail: 'ແກ້ໄຂສະຖານະສຳເລັດ' });
+            supportToast.current?.show({ severity: 'success', summary: 'Success', detail: 'ແກ້ໄຂສະຖານີສຳເລັດ' });
             setDialogVisible(false);
         } catch (err: unknown) {
             const msg = err && typeof err === 'object' && 'response' in err
@@ -309,6 +340,16 @@ export default function SupportTeamPage() {
             supportToast.current?.show({ severity: 'error', summary: 'Error', detail, life: 4000 });
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleToggleStatus = async (userId: number, newStatus: 'A' | 'C') => {
+        try {
+            await axiosClientsHelpDesk.put(`users/updatestatus/${userId}?actived=${newStatus}`);
+            setStaffActivedOverrides((prev) => ({ ...prev, [userId]: newStatus }));
+            toast.current?.show({ severity: 'success', summary: 'Success', detail: newStatus === 'A' ? 'ເປີດໃຊ້ງານສຳເລັດ' : 'ປິດໃຊ້ງານສຳເລັດ' });
+        } catch {
+            toast.current?.show({ severity: 'error', summary: 'Error', detail: 'ເກີດຂໍ້ຜິດພາດໃນການອັບເດດສະຖານະ', life: 4000 });
         }
     };
 
@@ -330,7 +371,16 @@ export default function SupportTeamPage() {
         setSaving(false);
     };
 
-    const confirmDelete = (item: SupportTeamData | HeadCategoryData | UserRoleData | { id: number; employee?: { first_name?: string; last_name?: string }; username?: string }) => {
+    const handleSaveUserStatus = async (payload: UserStatusSavePayload, id?: number) => {
+        setSaving(true);
+        const success = await saveRole(payload, id);
+        if (success) {
+            setDialogVisible(false);
+        }
+        setSaving(false);
+    };
+
+    const confirmDelete = (item: SupportTeamData | HeadCategoryData | UserRoleData | RoleData | { id: number; employee?: { first_name?: string; last_name?: string }; username?: string }) => {
         let displayName = 'ລາຍການນີ້';
         if ('userName' in item && (item as UserRoleData).userName) displayName = (item as UserRoleData).userName + ((item as UserRoleData).roleName ? ` (${(item as UserRoleData).roleName})` : '');
         else if ('name' in item && typeof (item as { name?: string }).name === 'string') displayName = (item as { name: string }).name;
@@ -356,6 +406,10 @@ export default function SupportTeamPage() {
                     deleteHeadCategory(item as HeadCategoryData);
                     return;
                 }
+                if (activeIndex === SupportTeamTabs.USER_STATUS) {
+                    deleteRole(item as RoleData);
+                    return;
+                }
                 if (isRole2(roleId)) {
                     const ok = await deleteAdminAssign(item as { id: number });
                     if (ok) {
@@ -370,12 +424,12 @@ export default function SupportTeamPage() {
         });
     };
 
-    /** ปิด search + ปุ่มເພີ່ມໃນ card เมื่อ role ບໍ່ມີສິດໃນ tab ນີ້: Role 2 ໃນ tab 0, Role 1 ໃນ tab 1. */
     const isCardDisabledForCurrentRole =
         (isRole2(roleId) && activeIndex === SupportTeamTabs.ISSUE_CATEGORY) || (isRole1(roleId) && activeIndex === SupportTeamTabs.TECHNICAL);
     const showCreateButton =
         (isRole1(roleId) && activeIndex === SupportTeamTabs.ISSUE_CATEGORY) ||
-        (activeIndex === SupportTeamTabs.ROLE_MANAGEMENT);
+        (activeIndex === SupportTeamTabs.ROLE_MANAGEMENT) ||
+        (isRole1(roleId) && activeIndex === SupportTeamTabs.USER_STATUS);
     const currentFilter: string = globalFilterByTab[activeIndex] ?? '';
     const setCurrentFilter = (value: string) => setGlobalFilterByTab((prev) => ({ ...prev, [activeIndex]: value }));
     const tableFilterValue = currentFilter;
@@ -406,15 +460,15 @@ export default function SupportTeamPage() {
             <style>{CUSTOM_TAB_CSS}</style>
             <Toast ref={toast} position="top-center" />
             <ConfirmDialog />
-            <TabMenu 
-                model={tabMenuModel} 
-                activeIndex={safeMenuActiveIndex} 
+            <TabMenu
+                model={tabMenuModel}
+                activeIndex={safeMenuActiveIndex}
                 onTabChange={(e) => {
                     const tab = tabItems[e.index];
-                    if (!tab || (tabMenuModel[e.index] as { disabled?: boolean })?.disabled) return;
+                    if (!tab) return;
                     setActiveIndex(tab.tabIndex);
-                }} 
-                className="mb-4 custom-tabmenu" 
+                }}
+                className="mb-4 custom-tabmenu"
             />
 
             {activeIndex === SupportTeamTabs.STAFF ? (
@@ -424,6 +478,16 @@ export default function SupportTeamPage() {
                     globalFilter={tableFilterValue}
                     canEditRole={isRole1(roleId) || isRole2(roleId)}
                     onEdit={(item) => openEdit(item)}
+                    onToggleStatus={handleToggleStatus}
+                    isLoading={tableLoading}
+                />
+            ) : activeIndex === SupportTeamTabs.USER_STATUS ? (
+                <UserStatusTable
+                    items={rolesManagementItems}
+                    header={renderHeader()}
+                    globalFilter={tableFilterValue}
+                    onEdit={(item) => openEdit(item)}
+                    onDelete={(item) => confirmDelete(item)}
                     isLoading={tableLoading}
                 />
             ) : activeIndex === SupportTeamTabs.ROLE_MANAGEMENT ? (
@@ -435,22 +499,24 @@ export default function SupportTeamPage() {
                     onDelete={(item) => confirmDelete(item)}
                     isLoading={tableLoading}
                 />
+            ) : activeIndex === SupportTeamTabs.DATA_SYNC ? (
+                <SyncDataPanel toast={toast} />
             ) : (
-            <SupportTeamTable
-                items={activeIndex === SupportTeamTabs.ISSUE_CATEGORY ? headCategoryItemsForDisplay : supportItems}
-                header={renderHeader()}
-                globalFilter={tableFilterValue}
-                label={config.label}
-                activeTab={activeIndex}
-                onEdit={(item) => openEdit(item as SupportTeamData | HeadCategoryData)}
-                onDelete={(item) => confirmDelete(item as SupportTeamData | HeadCategoryData)}
-                issueCategoryMap={issueCategoryMap}
-                technicalTabRows={technicalTabRows}
-                disableActions={isCardDisabledForCurrentRole || (isRole2(roleId) && (activeIndex === SupportTeamTabs.ISSUE_CATEGORY || activeIndex === SupportTeamTabs.TECHNICAL))}
-                headCategoryHasNestedData={isRole1(roleId)}
-                divisions={divisions}
-                isLoading={tableLoading}
-            />
+                <SupportTeamTable
+                    items={activeIndex === SupportTeamTabs.ISSUE_CATEGORY ? headCategoryItemsForDisplay : supportItems}
+                    header={renderHeader()}
+                    globalFilter={tableFilterValue}
+                    label={config.label}
+                    activeTab={activeIndex}
+                    onEdit={(item) => openEdit(item as SupportTeamData | HeadCategoryData)}
+                    onDelete={(item) => confirmDelete(item as SupportTeamData | HeadCategoryData)}
+                    issueCategoryMap={issueCategoryMap}
+                    technicalTabRows={technicalTabRows}
+                    disableActions={isCardDisabledForCurrentRole || (isRole2(roleId) && (activeIndex === SupportTeamTabs.ISSUE_CATEGORY || activeIndex === SupportTeamTabs.TECHNICAL))}
+                    headCategoryHasNestedData={isRole1(roleId)}
+                    divisions={divisions}
+                    isLoading={tableLoading}
+                />
             )}
 
             {activeIndex === SupportTeamTabs.STAFF ? (
@@ -462,6 +528,15 @@ export default function SupportTeamPage() {
                     isSaving={isSaving}
                     editData={selectedItem && 'roleId' in selectedItem && 'employee' in selectedItem ? (selectedItem as AdminAssignUser) : null}
                     roleOptions={staffRoleOptions}
+                />
+            ) : activeIndex === SupportTeamTabs.USER_STATUS ? (
+                <UserStatusDialog
+                    visible={isDialogVisible}
+                    onHide={() => setDialogVisible(false)}
+                    onSave={handleSaveUserStatus}
+                    headerTitle={selectedItem ? 'ແກ້ໄຂສະຖານະຜູ້ໃຊ້' : config.dialogHeader}
+                    isSaving={isSaving}
+                    editData={selectedItem && 'name' in selectedItem && !('divisionId' in selectedItem) && !('employee' in selectedItem) ? (selectedItem as RoleData) : null}
                 />
             ) : activeIndex === SupportTeamTabs.ROLE_MANAGEMENT ? (
                 <RoleAssignDialog

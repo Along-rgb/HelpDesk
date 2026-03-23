@@ -8,8 +8,8 @@ import { STATUS_ICON_MAP, STATUS_ICON_FALLBACK } from "../table/constants";
 type StatusOption = { label: string; value: string };
 
 interface TicketHeaderTechnProps {
-    statusFilter: StatusOption | null;
-    setStatusFilter: (value: StatusOption | null) => void;
+    statusFilter: string | StatusOption | null;
+    setStatusFilter: (value: string | StatusOption | null) => void;
     statusOptions: StatusOption[];
     globalFilter: string;
     onGlobalFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -31,7 +31,7 @@ export const TicketHeaderTechn = ({
 }: TicketHeaderTechnProps) => {
     const getStatusIcon = (option: StatusOption | null) =>
         option
-            ? STATUS_ICON_MAP[option.value] ?? STATUS_ICON_MAP[option.value?.trim() ?? ""] ?? STATUS_ICON_MAP[option.label] ?? STATUS_ICON_MAP[option.label?.trim() ?? ""] ?? STATUS_ICON_FALLBACK
+            ? STATUS_ICON_MAP[option.label] ?? STATUS_ICON_MAP[option.label?.trim() ?? ""] ?? STATUS_ICON_MAP[option.value] ?? STATUS_ICON_FALLBACK
             : STATUS_ICON_FALLBACK;
 
     const renderStatusOption = (option: StatusOption | null) => {

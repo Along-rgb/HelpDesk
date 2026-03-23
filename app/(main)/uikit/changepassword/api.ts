@@ -1,12 +1,8 @@
 /**
- * API เปลี่ยนรหัสผ่าน — เรียก POST /api/users/changepassword (Next.js Route)
- * หรือเรียก Backend โดยตรงถ้าตั้ง NEXT_PUBLIC_CHANGE_PASSWORD_API_URL
+ * API เปลี่ยนรหัสผ่าน — เรียก PUT /users/changepassword/:id
  * Body ตาม spec: oldpassword, password1, password2
  */
-import { env, isConfigured } from '@/config/env';
-import { createAuthAxios } from '@/config/createAuthAxios';
-import { UnauthorizedError } from '@/global/types/api';
-import { HELPDESK_ENDPOINTS } from '@/config/endpoints';
+import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -37,59 +33,24 @@ export const validateForm = (data: {
 };
 
 /**
- * ส่ง body ตาม spec: oldpassword, password1, password2
- * - ถ้ามี NEXT_PUBLIC_CHANGE_PASSWORD_API_URL จะยิงไปที่ URL นั้น (path ว่าง หรือ path ตาม endpoint)
- * - ถ้าไม่มี จะยิงไปที่ same-origin /api/users/changepassword
+ * PUT /users/changepassword/:userId
+ * Body: oldpassword, password1, password2
  */
-export const changePasswordAPI = async (data: ChangePasswordForm): Promise<unknown> => {
+export const changePasswordAPI = async (data: ChangePasswordForm, userId: number | string): Promise<unknown> => {
   const body = {
     oldpassword: data.currentPassword,
     password1: data.newPassword,
     password2: data.confirmPassword,
   };
 
-  if (isConfigured('changePasswordApiUrl')) {
-    const baseUrl = env.changePasswordApiUrl.trim().replace(/\/+$/, '');
-    const client = createAuthAxios(baseUrl);
-    try {
-      const path = HELPDESK_ENDPOINTS.CHANGE_PASSWORD.startsWith('/') ? HELPDESK_ENDPOINTS.CHANGE_PASSWORD : `/${HELPDESK_ENDPOINTS.CHANGE_PASSWORD}`;
-      const response = await client.post(path, body);
-      return response.data;
-    } catch (error: unknown) {
-      if (error instanceof UnauthorizedError) throw error;
-      const msg =
-        error && typeof error === 'object' && 'response' in error
-          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
-          : null;
-      throw new Error(typeof msg === 'string' ? msg : 'ລະບົບມີບັນຫາ ຫຼື ບໍ່ສາມາດເຊື່ອມຕໍ່ລະບົບໄດ້');
-    }
+  try {
+    const response = await axiosClientsHelpDesk.put(`users/changepassword/${userId}`, body);
+    return response.data;
+  } catch (error: unknown) {
+    const msg =
+      error && typeof error === 'object' && 'response' in error
+        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+        : null;
+    throw new Error(typeof msg === 'string' ? msg : 'ລະບົບມີບັນຫາ ຫຼື ບໍ່ສາມາດເຊື່ອມຕໍ່ລະບົບໄດ້');
   }
-
-  // ใช้ Next.js API Route ในแอป (same-origin)
-  const token = (await import('@/config/axiosClientsHelpDesk')).getTokenFromStorage();
-  if (!token) {
-    throw new UnauthorizedError('Unauthorized');
-  }
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const url = `${origin}/api/users/changepassword`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
-  });
-  const json = await res.json().catch(() => ({}));
-  const message = typeof (json as { message?: string }).message === 'string' ? (json as { message: string }).message : '';
-
-  if (res.status === 401) {
-    const { clearAppSession } = await import('@/utils/authHelper');
-    clearAppSession();
-    throw new UnauthorizedError(message || 'Unauthorized');
-  }
-  if (!res.ok) {
-    throw new Error(message || 'ລະບົບມີບັນຫາ ຫຼື ບໍ່ສາມາດເຊື່ອມຕໍ່ລະບົບໄດ້');
-  }
-  return json;
 };

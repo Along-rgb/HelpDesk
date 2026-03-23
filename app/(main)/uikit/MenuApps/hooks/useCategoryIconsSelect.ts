@@ -1,43 +1,18 @@
 // src/uikit/MenuApps/hooks/useCategoryIconsSelect.ts
-import { useState, useCallback, useEffect } from 'react';
-import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
-import type { CategoryIconSelectItem } from '../types';
-
-/** ເລືອກຮູບໄອຄອນ — response: array of { id, catIcon?, sortOrder?, ... } */
-const ENDPOINT = 'categoryicons/selectcategoryicon';
+import { useEffect, useCallback } from 'react';
+import { useSelectDataStore } from '@/app/store/selectDataStore';
 
 /** shouldFetch=false: ไม่เรียก API ເພື່ອຫຼີກເວັ້ນ 403 */
 export function useCategoryIconsSelect(triggerFetch: unknown = null, shouldFetch: boolean = true) {
-    const [items, setItems] = useState<CategoryIconSelectItem[]>([]);
-    const [loading, setLoading] = useState(false);
-
-    const fetchData = useCallback(async () => {
-        if (!shouldFetch) return;
-        setLoading(true);
-        try {
-            const response = await axiosClientsHelpDesk.get(ENDPOINT);
-            const data = response.data;
-            if (Array.isArray(data)) {
-                setItems(data);
-            } else if (data?.data && Array.isArray(data.data)) {
-                setItems(data.data);
-            } else {
-                setItems([]);
-            }
-        } catch {
-            setItems([]);
-        } finally {
-            setLoading(false);
-        }
-    }, [shouldFetch]);
+    const items = useSelectDataStore((s) => s.categoryIcons);
+    const loading = useSelectDataStore((s) => s.iconsLoading);
+    const fetchCategoryIcons = useSelectDataStore((s) => s.fetchCategoryIcons);
 
     useEffect(() => {
-        if (shouldFetch) {
-            fetchData();
-        } else {
-            setItems([]);
-        }
-    }, [fetchData, triggerFetch, shouldFetch]);
+        if (shouldFetch) fetchCategoryIcons();
+    }, [shouldFetch, triggerFetch, fetchCategoryIcons]);
+
+    const fetchData = useCallback(() => fetchCategoryIcons(true), [fetchCategoryIcons]);
 
     return { items, loading, fetchData };
 }

@@ -126,7 +126,8 @@ axiosClientsHelpDesk.interceptors.response.use(
       return handle401();
     }
     if (is403(error)) {
-      if (typeof window !== 'undefined') {
+      const skipToast = (error as { config?: Record<string, unknown> }).config?.__skipForbiddenToast === true;
+      if (typeof window !== 'undefined' && !skipToast) {
         window.dispatchEvent(new CustomEvent(AUTH_FORBIDDEN_TOAST_EVENT, { detail: { message: AUTH_FORBIDDEN_MSG } }));
       }
       return Promise.reject(new Error(AUTH_FORBIDDEN_MSG));

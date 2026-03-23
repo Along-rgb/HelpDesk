@@ -24,18 +24,33 @@ const SettingsPage = () => {
     /** ทุกการ์ดใช้ PrimeReact icon จาก MENU_ITEMS เท่านั้น — ไม่ใช้รูปจาก API เพื่อหลีกเลี่ยง placeholder/รูปโหลดไม่ขึ้น. Role 2 ບໍ່ເຫັນກາດ ອາຄານສະຖານທີ່ (locations). */
     const visibleItems = useMemo(() => {
         const base = MENU_ITEMS.map((item) => ({ ...item, iconUrl: undefined }));
-        if (roleId === 2) return base.filter((item) => item.id !== 'locations');
+        if (roleId === 2) {
+            return base
+                .filter((item) => item.id !== 'locations')
+                .map((item) => {
+                    if (item.id === 'users' && item.subMenus) {
+                        return { ...item, subMenus: item.subMenus.map((sub) => sub.tabIndex === 2 ? { ...sub, label: 'ພະນັກງານ' } : sub) };
+                    }
+                    return item;
+                });
+        }
         return base;
     }, [roleId]);
 
     /** Role 1: tab ໝວດໝູ່, ລາຍການຫົວຂໍ້ (0,1) disabled. Role 2: tab ເພີ່ມໄອຄອນ (2) disabled.
-     * ການແຈ້ງບັນຫາ/ການຮ້ອງຂໍ: Role 1 ກົດໄດ້ແຕ່ ເພີ່ມໄອຄອນ (tabIndex=2). Role 2 ກົດໄດ້ແຕ່ ໝວດໝູ່, ລາຍການຫົວຂໍ້ (tabIndex=0,1). */
+     * ການແຈ້ງບັນຫາ/ການຮ້ອງຂໍ: Role 1 ກົດໄດ້ແຕ່ ເພີ່ມໄອຄອນ (tabIndex=2). Role 2 ກົດໄດ້ແຕ່ ໝວດໝູ່, ລາຍການຫົວຂໍ້ (tabIndex=0,1).
+     * ຜູ້ໃຊ້: Role 2 ກົດໄດ້ແຕ່ ສະຖານະ (tabIndex=2), ບໍ່ກົດໄດ້ພະນັກງານ (tabIndex=3). Role 1 ກົດໄດ້ແຕ່ ພະນັກງານ (tabIndex=3). Role 1 ບໍ່ເຫັນສະຖານະ (tabIndex=2). */
     const getSubMenuDisabled = useMemo(() => {
         const r = Number(roleId);
         return (itemId: string, tabIndex: number) => {
             if (itemId === 'users') {
                 if (r === 1 && tabIndex === 1) return true;
+                if (r === 1 && tabIndex === 2) return true; // Role 1 ບໍ່ເຫັນສະຖານະ
                 if (r === 2 && tabIndex === 0) return true;
+                if (r === 2 && tabIndex === 1) return true; // Role 2 ບໍ່ເຫັນວິຊາການ
+                if (r === 2 && tabIndex === 3) return true; // Role 2 ບໍ່ເຫັນພະນັກງານ
+                if (r === 2 && tabIndex === 4) return true; // Role 2 ບໍ່ເຫັນສະຖານະຜູ້ໃຊ້
+                if (r === 2 && tabIndex === 5) return true; // Role 2 ບໍ່ເຫັນການ Sync ຂໍ້ມູນ
                 return false;
             }
             if (itemId === 'issues') {
@@ -61,6 +76,12 @@ const SettingsPage = () => {
         if (tabIndex !== undefined && itemId === 'issues') {
             if (!canManageCategoryAndTopic && (tabIndex === 0 || tabIndex === 1)) return;
             if (!canManageIcons && tabIndex === 2) return;
+        }
+        if (tabIndex !== undefined && itemId === 'users') {
+            // Role 2 ບໍ່ສາມາດເຂົ້າໃຊ້ tabIndex=0 (ທິມສະໜັບສະໜູນ) ແລະ tabIndex=3 (ພະນັກງານ)
+            if (isRole2(roleId) && (tabIndex === 0 || tabIndex === 3 || tabIndex === 4 || tabIndex === 5)) return;
+            // Role 1 ບໍ່ສາມາດເຂົ້າໃຊ້ tabIndex=1 (ວິຊາການ) ແລະ tabIndex=2 (ສະຖານະ)
+            if (isRole1(roleId) && (tabIndex === 1 || tabIndex === 2)) return;
         }
         const uniqueKey = `${itemId}-${label}`;
         setActiveButton(uniqueKey);

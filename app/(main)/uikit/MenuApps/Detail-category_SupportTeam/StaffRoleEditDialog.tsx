@@ -116,8 +116,8 @@ export default function StaffRoleEditDialog({
                         <ReadOnlyField label="ລະຫັດພະນັກງານ" value={displayValues.emp_code} />
                         <ReadOnlyField label="ຊື່" value={displayValues.first_name} />
                         <ReadOnlyField label="ນາມສະກຸນ" value={displayValues.last_name} />
-                        <ReadOnlyField label="ຝ່າຍ" value={displayValues.division_name} />
-                        <ReadOnlyField label="ພະແນກ/ສູນ/ສາຂາ" value={displayValues.department_name} />
+                        <ReadOnlyField label="ຝ່າຍ" value={displayValues.department_name} />
+                        <ReadOnlyField label="ພະແນກ/ສູນ/ສາຂາ" value={displayValues.division_name} />
                         <ReadOnlyField label="ຕຳແໜ່ງ" value={displayValues.pos_name} />
                         <ReadOnlyField label="ເບີໂທຕິດຕໍ່" value={displayValues.tel} />
                     </>

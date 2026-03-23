@@ -20,8 +20,6 @@ interface Props {
     onEdit: (item: RowData) => void;
     onDelete: (item: RowData) => void;
     categoryMap: Map<string | number, string>;
-    /** Tab 0: headCategoryId -> name (from /api/headcategorys/selectheadcategory) */
-    headCategoryMap: Map<string | number, string>;
     /** Tab 0: catIconId -> catIcon path/URL (from /api/categoryicons/selectcategoryicon) */
     categoryIconMap: Map<number, string>;
     /** Role-based: false = ซ่อนปุ่มແກ້ໄຂ/ລຶບ */
@@ -43,7 +41,6 @@ export default function IssuesTable({
     onEdit,
     onDelete,
     categoryMap,
-    headCategoryMap,
     categoryIconMap,
     canManage,
     isLoading = false,
@@ -51,11 +48,6 @@ export default function IssuesTable({
 }: Props) {
     const isCategoryTab = activeTab === 0;
     const isTopicTab = activeTab === 1;
-
-    const headCategoryNameTemplate = (row: RowData) => {
-        if (!isCategoryRow(row)) return '-';
-        return headCategoryMap.get(row.headCategoryId) ?? '-';
-    };
 
     const categoryIconTemplate = (row: RowData) => {
         if (!isCategoryRow(row)) return <span className="text-500">-</span>;
@@ -130,9 +122,6 @@ export default function IssuesTable({
         >
             <Column header="#" body={(_, opts) => opts.rowIndex + 1} className="text-center w-4rem" alignHeader="center" bodyStyle={centerAlign} />
 
-            {isCategoryTab && (
-                <Column header="ທີມຊ່ວຍເຫຼືອ" body={headCategoryNameTemplate} style={{ minWidth: '150px' }} className="text-center" alignHeader="center" bodyStyle={centerAlign} />
-            )}
             {isCategoryTab && <Column field="title" header="ຊື່ໝວດໝູ່" style={{ minWidth: '200px' }} className="text-center" alignHeader="center" bodyStyle={centerAlign} />}
             {isCategoryTab && (
                 <Column header="ຮູບໄອຄອນ" body={categoryIconTemplate} style={{ minWidth: '80px' }} className="text-center" alignHeader="center" bodyStyle={centerAlign} />

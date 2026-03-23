@@ -31,6 +31,10 @@ export const HELPDESK_ENDPOINTS = {
   HEADCATEGORY_SELECT: 'headcategorys/selectheadcategory',
   PRIORITY: 'prioritys',
   ASSIGNMENTS: 'assignments',
+  /** GET — ดึงประวัติแชท, POST — ส่งข้อความใหม่ */
+  CHATS: 'chats',
+  /** SSE — real-time chat stream */
+  CHATS_SSE: 'chats/sse',
   /** PUT — ຮັບວຽກເອງ body: { id: number[] } (assignment id) */
   ASSIGNMENTS_ACCEPT: 'assignments/accept',
 } as const;

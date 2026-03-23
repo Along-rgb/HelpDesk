@@ -223,13 +223,13 @@ const RequestForm = () => {
                 <i className="pi pi-images mr-2" /> ແນບຮູບ
               </label>
               <span className="text-sm font-medium text-600">
-                ຈຳນວນຮູບ ({form.images.length}/6)
+                ຈຳນວນຮູບ ({form.images.length}/2)
               </span>
             </div>
             <div
-              className={`border-dashed border-1 border-round p-4 flex flex-column align-items-center justify-content-center cursor-pointer hover:surface-hover transition-colors ${form.images.length >= 6 ? "opacity-70" : ""}`}
+              className={`border-dashed border-1 border-round p-4 flex flex-column align-items-center justify-content-center cursor-pointer hover:surface-hover transition-colors ${form.images.length >= 2 ? "opacity-70" : ""}`}
               onClick={() => {
-                if (form.images.length < 6) imageInputRef.current?.click();
+                if (form.images.length < 2) imageInputRef.current?.click();
               }}
             >
               <input

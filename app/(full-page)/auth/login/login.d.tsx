@@ -87,6 +87,7 @@ export default function Loginform(props: ILoginformProps) {
             onChange={onChange}
             placeholder="Password"
             toggleMask
+            feedback={false}
             className={classNames('w-full mb-5', { 'p-invalid': errors.password })}
             inputStyle={{ borderRadius: '10px', height: "2.5rem" }}
             inputClassName="w-full p-3"

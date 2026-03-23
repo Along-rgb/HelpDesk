@@ -14,7 +14,9 @@ interface SettingsCardProps {
 }
 
 export const SettingsCard: React.FC<SettingsCardProps> = ({ item, activeButton, onSubMenuClick, getSubMenuDisabled, cardDisabled = false }) => {
-    const displayItems = item.subMenus || [];
+    const displayItems = (item.subMenus || []).filter(
+        (sub) => !(getSubMenuDisabled?.(item.id, sub.tabIndex))
+    );
 
     return (
         <div
@@ -36,7 +38,6 @@ export const SettingsCard: React.FC<SettingsCardProps> = ({ item, activeButton, 
                     {displayItems.map((subItem, index) => {
                         const uniqueKey = `${item.id}-${subItem.label}`;
                         const isLastItem = index === displayItems.length - 1;
-                        const disabled = getSubMenuDisabled?.(item.id, subItem.tabIndex) ?? false;
 
                         return (
                             <React.Fragment key={uniqueKey}>
@@ -44,7 +45,6 @@ export const SettingsCard: React.FC<SettingsCardProps> = ({ item, activeButton, 
                                     label={subItem.label}
                                     isActive={activeButton === uniqueKey}
                                     onClick={() => onSubMenuClick(item.id, subItem.label, item.path, subItem.tabIndex)}
-                                    disabled={disabled}
                                 />
                                 {!isLastItem && <span className="text-400 select-none">|</span>}
                             </React.Fragment>

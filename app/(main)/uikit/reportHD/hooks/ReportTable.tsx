@@ -1,3 +1,4 @@
+'use client';
 // src/app/reports/ReportTable.tsx
 import React, { useMemo, useState, useEffect } from 'react';
 import { DataTable } from 'primereact/datatable';
@@ -7,6 +8,8 @@ import { Row } from 'primereact/row';
 import { Tooltip } from 'primereact/tooltip';
 import { getGroupConfig, getViewConfig } from '../utils/reportConfig';
 import { ReportItem } from '../types';
+import { renderTruncateText } from '../../shared/TruncateText';
+import { REPORT_TABLE_CSS, WHITE_TOOLTIP_PROPS } from '../../shared/reportTableStyles';
 
 interface Props {
     data: ReportItem[];
@@ -37,48 +40,10 @@ export const ReportTable = ({ data, activeIndex }: Props) => {
         return () => clearTimeout(timer);
     }, [data, activeIndex]);
 
-    const renderTruncateText = (text: string | undefined | null, maxWidth: string = '150px', align: 'left' | 'center' = 'left') => {
-        const displayText = text || '-';
-
-        const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
-            const element = e.currentTarget;
-            if (element.scrollWidth > element.clientWidth) {
-                element.setAttribute('data-pr-tooltip', displayText);
-                element.style.cursor = 'pointer';
-            } else {
-                element.removeAttribute('data-pr-tooltip');
-                element.style.cursor = 'text'; 
-            }
-        };
-
-        return (
-            <div
-                className="custom-tooltip-target"
-                onMouseEnter={handleMouseEnter}
-                data-pr-position="bottom"
-                data-pr-at="center bottom"
-                data-pr-my="center top"
-                style={{
-                    maxWidth: maxWidth,
-                    width: 'fit-content',
-                    minWidth: '20px', 
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    cursor: 'text',
-                    textAlign: align,
-                    margin: align === 'center' ? '0 auto' : '0'
-                }}
-            >
-                {displayText}
-            </div>
-        );
-    };
-
     const rowGroupHeaderTemplate = (rowData: ReportItem) => {
         const field = groupConfig.field as keyof ReportItem;
         const value = (rowData[field] as string);
-        const count = groupCounts[value] || 0;
+        const count = rowData._groupTotal ?? groupCounts[value] ?? 0;
 
         return (
             <div className="flex align-items-center justify-content-between w-full pr-4">
@@ -93,6 +58,8 @@ export const ReportTable = ({ data, activeIndex }: Props) => {
             <Row>
                 <Column header="#" rowSpan={2} style={{ width: '40px', textAlign: 'center' }} />
                 <Column header="ລະຫັດ" rowSpan={2} style={{ width: '90px', textAlign: 'center' }} />
+                <Column header="ເລກ ຊຄທ" rowSpan={2} style={{ width: '110px', textAlign: 'center' }} />
+                <Column header="ເບີໂທ" rowSpan={2} style={{ width: '110px', textAlign: 'center' }} />
                 {viewConfig.showTopic && <Column header="ຫົວຂໍ້ເລື່ອງ" rowSpan={2} style={{ minWidth: '100px' }} />}   
                 <Column header="ລາຍລະອຽດການຮ້ອງຂໍ" rowSpan={2} style={{ minWidth: '150px' }} />
                 
@@ -122,6 +89,8 @@ export const ReportTable = ({ data, activeIndex }: Props) => {
                 <Column header="#" rowSpan={2} style={{ width: '40px', textAlign: 'center' }} />
                 <Column header="ພະແນກ" rowSpan={2} style={{ minWidth: '120px', textAlign: 'center' }} />
                 <Column header="ລະຫັດ" rowSpan={2} style={{ width: '90px', textAlign: 'center' }} />
+                <Column header="ເລກ ຊຄທ" rowSpan={2} style={{ width: '110px', textAlign: 'center' }} />
+                <Column header="ເບີໂທ" rowSpan={2} style={{ width: '110px', textAlign: 'center' }} />
                 <Column header="ຫົວຂໍ້ເລື່ອງ" rowSpan={2} style={{ minWidth: '120px' }} />
                 <Column header="ລາຍລະອຽດການຮ້ອງຂໍ" rowSpan={2} style={{ minWidth: '150px' }} />
                 
@@ -145,66 +114,11 @@ export const ReportTable = ({ data, activeIndex }: Props) => {
 
     return (
         <>
-            <style>{`
-                .custom-large-table .p-datatable-thead > tr > th { 
-                    font-size: 14px !important; 
-                    font-weight: bold; 
-                    padding: 0.75rem 0.5rem !important;
-                }
-                .custom-large-table .p-datatable-tbody > tr > td { 
-                    font-size: 14px !important; 
-                    padding: 0.5rem 0.5rem !important;
-                }
-                .custom-large-table .p-rowgroup-header { background-color: #f8f9fa !important; }
-
-                .white-tooltip .p-tooltip-text {
-                    background-color: #ffffff !important;
-                    color: #495057 !important;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
-                    border: 1px solid #e9ecef;
-                    padding: 10px 15px;
-                    border-radius: 6px;
-                    font-size: 14px;
-                    white-space: pre-wrap; 
-                    max-width: 400px; 
-                }
-                .white-tooltip.p-tooltip-bottom .p-tooltip-arrow {
-                    border-bottom-color: #d32f2f !important;
-                }
-
-                .p-paginator {
-                    display: flex;
-                    justify-content: center !important;
-                    align-items: center;
-                    flex-wrap: wrap;
-                    gap: 1.5rem;
-                    padding: 0.5rem 1rem;
-                }
-                .p-paginator-current {
-                    background: transparent;
-                    color: #495057;
-                    font-weight: bold;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                }
-                .p-paginator-rpp-options {
-                    margin: 0 !important;
-                }
-                @media (max-width: 768px) {
-                    .p-paginator {
-                        flex-direction: column;
-                        gap: 10px;
-                    }
-                }
-            `}</style>
-            <Tooltip 
+            <style>{REPORT_TABLE_CSS}</style>
+            <Tooltip
                 key={tooltipVersion}
-                target=".custom-tooltip-target" 
-                className="white-tooltip" 
-                mouseTrack={false}
-                autoZIndex={true}
-                baseZIndex={10000}
-                showDelay={300} 
+                target=".custom-tooltip-target"
+                {...WHITE_TOOLTIP_PROPS}
             />
 
             <DataTable
@@ -220,7 +134,8 @@ export const ReportTable = ({ data, activeIndex }: Props) => {
                 stripedRows
                 className="p-datatable-sm custom-large-table"
                 scrollable
-                scrollHeight="flex"
+                scrollHeight="650px"
+                responsiveLayout="scroll"
                 style={{ minWidth: '100%' }}
                 tableStyle={{ minWidth: 'auto' }}
                 emptyMessage={<div className="text-center p-4">ບໍ່ພົບຂໍ້ມູນ</div>}
@@ -236,15 +151,23 @@ export const ReportTable = ({ data, activeIndex }: Props) => {
                 paginatorTemplate="CurrentPageReport FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
             >
                 {/* 1. คอลัมน์ # */}
-                <Column header="#" body={(d, options) => options.rowIndex + 1} className="text-center" style={{ width: '40px' }} />
+                <Column header="#" body={(d, options) => (
+                    <span style={{ whiteSpace: 'nowrap', display: 'inline-block', minWidth: '24px', textAlign: 'center' }}>{options.rowIndex + 1}</span>
+                )} className="text-center" style={{ width: '50px', minWidth: '50px' }} />
 
                 {/* 2. ถ้าเป็น Tab สังกัด: แสดงคอลัมน์ "แผนก" ก่อน */}
                 {viewConfig.isDepartmentTab && (
                      <Column field="department_sub" header="ພະແນກ" body={(d) => renderTruncateText(d.department_sub, '150px')} style={{ minWidth: '120px' }} />
                 )}
 
-                {/* 3. คอลัมน์ รหัส */}
-                <Column field="code" body={(d) => renderTruncateText(d.code, '100px', 'center')} style={{ width: '90px' }} />    
+                {/* 3. คอลัมน์ ລະຫັດ (Ticket ID) */}
+                <Column field="id" body={(d) => renderTruncateText(String(d.id), '100px', 'center')} style={{ width: '90px' }} />
+
+                {/* 3.1 คอลัมน์ ເລກ ຊຄທ (numberSKT) */}
+                <Column field="code" body={(d) => renderTruncateText(d.code, '110px', 'center')} style={{ width: '110px' }} />
+
+                {/* 3.2 คอลัมน์ ເບີໂທ (telephone) */}
+                <Column field="telephone" body={(d) => renderTruncateText(String(d.telephone), '110px', 'center')} style={{ width: '110px' }} />    
                 
                 {/* 4. คอลัมน์ หัวข้อ */}
                 {(viewConfig.showTopic || viewConfig.isDepartmentTab) && 
@@ -266,12 +189,12 @@ export const ReportTable = ({ data, activeIndex }: Props) => {
                 )}
 
                 {/* 7. กลุ่มสถานที่ */}
-                <Column field="building" className="text-center" style={{ minWidth: '160px' }} />
-                <Column field="floor" className="text-center" style={{ minWidth: '160px' }} />
-                <Column field="room" className="text-center" style={{ minWidth: '160px' }} />               
+                <Column field="building" body={(d: ReportItem) => renderTruncateText(d.building, '140px', 'center')} className="text-center" style={{ minWidth: '100px' }} />
+                <Column field="floor" body={(d: ReportItem) => renderTruncateText(d.floor, '120px', 'center')} className="text-center" style={{ minWidth: '80px' }} />
+                <Column field="room" body={(d: ReportItem) => renderTruncateText(d.room, '100px', 'center')} className="text-center" style={{ minWidth: '70px' }} />               
                 
                 {/* 8. วันที่ */}
-                <Column field="date" className="text-center" style={{ minWidth: '160px' }} />                  
+                <Column field="date" body={(d: ReportItem) => renderTruncateText(d.date, '140px', 'center')} className="text-center" style={{ minWidth: '130px' }} />                  
                 
                 {/* 9. หมายเหตุ */}
                 {viewConfig.showNote && 

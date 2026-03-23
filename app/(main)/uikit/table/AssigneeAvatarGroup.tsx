@@ -3,7 +3,7 @@ import React from "react";
 import { Avatar } from "primereact/avatar";
 import { AvatarGroup } from "primereact/avatargroup";
 import { Assignee } from "./types";
-import { ASSIGNEE_STATUS_MAP } from "./constants"; 
+import { ASSIGNEE_STATUS_MAP, STATUS_MAP } from "./constants"; 
 
 interface Props {
     assignees: Assignee[];
@@ -23,10 +23,21 @@ export const AssigneeAvatarGroup = React.memo(({ assignees, ticketStatus, status
         return name ? name.substring(0, 2).toUpperCase() : '??';
     };
 
-    const getColor = (name: string) => {
-        const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'];
-        const index = (name || '').length % colors.length;
-        return colors[index];
+    const SEVERITY_COLORS: Record<string, { bg: string; text: string }> = {
+        success:   { bg: '#22c55e', text: '#ffffff' },
+        info:      { bg: '#3b82f6', text: '#ffffff' },
+        warning:   { bg: '#f59e0b', text: '#ffffff' },
+        danger:    { bg: '#ef4444', text: '#ffffff' },
+        secondary: { bg: '#9ca3af', text: '#ffffff' },
+        default:   { bg: '#9ca3af', text: '#ffffff' },
+    };
+
+    const getStatusColor = (user: Assignee) => {
+        const statusName = user.statusId != null ? statusById.get(user.statusId)?.name ?? null : null;
+        const severity = statusName
+            ? (STATUS_MAP[statusName] ?? 'secondary')
+            : (ASSIGNEE_STATUS_MAP[user.status]?.severity || 'secondary');
+        return SEVERITY_COLORS[severity] || SEVERITY_COLORS.default;
     };
 
     return (
@@ -53,7 +64,11 @@ export const AssigneeAvatarGroup = React.memo(({ assignees, ticketStatus, status
                             image={user.image}
                             shape="circle"
                             size="normal"
-                            style={{ backgroundColor: getColor(user.name), color: '#ffffff', border: '2px solid #ffffff' }}
+                            style={{
+                                backgroundColor: user.image ? 'transparent' : getStatusColor(user).bg,
+                                color: user.image ? undefined : getStatusColor(user).text,
+                                border: `3px solid ${getStatusColor(user).bg}`,
+                            }}
                             
                             // ✅ ใช้ Class เดียวกันกับหน้า Page
                             className="js-tooltip-target"

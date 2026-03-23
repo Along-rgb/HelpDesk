@@ -67,7 +67,7 @@ export default function GroupProblemPage() {
                 <Link
                   key={item.id}
                   href={`/uikit/ticket?categoryId=${item.id}`}
-                  className="col-12 md:col-4 p-0 no-underline"
+                  className="col-12 sm:col-6 md:col-2 p-0 no-underline"
                   style={{ display: "contents" }}
                 >
                   <MenuCard

@@ -34,14 +34,29 @@ const CANCEL_STATUS_ID = 8;
 const STATUS_DONE_NAME = "ແກ້ໄຂແລ້ວ";
 const STATUS_CLOSED_NAME = "ປິດວຽກແລ້ວ";
 const STATUS_DONE_ID = 4;
+const STATUS_EXTERNAL_ID = 5;
+const STATUS_PAUSE_ID = 6;
 const STATUS_CLOSED_ID = 7;
+
+/** Status IDs ທີ່ຕ້ອງເປີດ modal ກ່ອນບັນທຶກ */
+const MODAL_STATUS_IDS: Record<number, 'full' | 'comment'> = {
+    [STATUS_DONE_ID]: 'full',
+    [STATUS_EXTERNAL_ID]: 'full',
+    [STATUS_PAUSE_ID]: 'comment',
+};
+
+const MODAL_HEADER_LABELS: Record<number, string> = {
+    [STATUS_DONE_ID]: 'ລາຍງານວຽກ',
+    [STATUS_EXTERNAL_ID]: 'ສົ່ງອອກແປງນອກ',
+    [STATUS_PAUSE_ID]: 'ພັກໃວ້',
+};
 
 function buildDetailMenuItems(
     ticket: Ticket,
     currentStatusName: string,
     staffStatusList: { id: number; name: string }[],
     updateTicketStatus: (ticketId: string | number, helpdeskStatusId: number) => Promise<void>,
-    openReportWork: (ticket: Ticket) => void
+    openReportWork: (ticket: Ticket, statusId: number, mode: 'full' | 'comment') => void
 ): TicketActionMenuItem[] {
     const current = (currentStatusName ?? "").trim();
     const canCancel = current === CANCEL_ALLOWED_STATUS_NAME;
@@ -52,8 +67,9 @@ function buildDetailMenuItems(
             label: s.name,
             icon: STAFF_STATUS_ICONS[s.id] ?? "pi pi-circle",
             command: () => {
-                if (s.id === STATUS_DONE_ID) {
-                    openReportWork(ticket);
+                const modalMode = MODAL_STATUS_IDS[s.id];
+                if (modalMode) {
+                    openReportWork(ticket, s.id, modalMode);
                     return;
                 }
                 void updateTicketStatus(ticket.id, s.id);
@@ -96,14 +112,18 @@ export default function PageTechnDemo() {
     const [rowsPerPage, setRowsPerPage] = useState(15);
     const [reportWorkVisible, setReportWorkVisible] = useState(false);
     const [reportWorkTicket, setReportWorkTicket] = useState<Ticket | null>(null);
+    const [reportWorkStatusId, setReportWorkStatusId] = useState<number>(STATUS_DONE_ID);
+    const [reportWorkMode, setReportWorkMode] = useState<'full' | 'comment'>('full');
 
     const centerProps = { align: "center" as const, alignHeader: "center" as const };
 
     /** ໃຊ້ເປີດບັນທັດ name ຈາກ statusId (ສະຖານະຂອງ role 3 / assignment) */
     const statusById = useMemo(() => new Map(statusList.map((s) => [s.id, s])), [statusList]);
 
-    const openReportWork = useCallback((ticket: Ticket) => {
+    const openReportWork = useCallback((ticket: Ticket, statusId: number = STATUS_DONE_ID, mode: 'full' | 'comment' = 'full') => {
         setReportWorkTicket(ticket);
+        setReportWorkStatusId(statusId);
+        setReportWorkMode(mode);
         setReportWorkVisible(true);
     }, []);
 
@@ -140,7 +160,7 @@ export default function PageTechnDemo() {
                     lng: data.longitude,
                     commentImg: data.imageFile ?? null,
                 },
-                STATUS_DONE_ID
+                reportWorkStatusId
             );
             await refetch();
             toastRef.current?.show({
@@ -150,7 +170,7 @@ export default function PageTechnDemo() {
                 life: 3000,
             });
         },
-        [reportWorkTicket, currentUserId, employeeId, refetch]
+        [reportWorkTicket, currentUserId, employeeId, refetch, reportWorkStatusId]
     );
 
     return (
@@ -167,6 +187,8 @@ export default function PageTechnDemo() {
                         onSave={onSaveReportWork}
                         ticketId={reportWorkTicket?.id ?? null}
                         ticketTitle={reportWorkTicket?.title ?? null}
+                        mode={reportWorkMode}
+                        headerLabel={MODAL_HEADER_LABELS[reportWorkStatusId]}
                     />
                     <AssigneeDialog
                         visible={dialogVisible}
@@ -186,7 +208,6 @@ export default function PageTechnDemo() {
                     />
                     <DataTable
                         value={displayRows}
-                        loading={loading}
                         paginator
                         rows={rowsPerPage}
                         rowsPerPageOptions={[15, 25, 50]}
@@ -329,7 +350,11 @@ export default function PageTechnDemo() {
                                                     statusId === STATUS_DONE_ID || statusId === STATUS_CLOSED_ID;
                                                 const hideByName =
                                                     statusName === STATUS_DONE_NAME || statusName === STATUS_CLOSED_NAME;
-                                                return hideById || hideByName;
+                                                const totalAssignees = rowData.assignees?.length ?? 0;
+                                                const tStatusId = rowData.ticketStatusId ?? rowData.statusId;
+                                                const hideForClosedMultiAssign =
+                                                    totalAssignees > 1 && (tStatusId === STATUS_DONE_ID || tStatusId === STATUS_CLOSED_ID);
+                                                return hideById || hideByName || hideForClosedMultiAssign;
                                             })()
                                         }
                                         menuItems={buildDetailMenuItems(

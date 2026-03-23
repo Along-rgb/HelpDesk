@@ -11,9 +11,11 @@ interface Props {
     /** รายการจาก API GET /api/prioritys */
     options: PriorityOption[];
     onChange: (option: PriorityOption) => void;
+    /** ปิดการเลือกเมื่อ status ไม่ใช่ ລໍຖ້າຮັບເລື່ອງ/ລໍຖ້າຮັບວຽກ */
+    disabled?: boolean;
 }
 
-export const PrioritySelector = ({ priority, options, onChange }: Props) => {
+export const PrioritySelector = ({ priority, options, onChange, disabled }: Props) => {
     const getTagStyle = (value: string) => {
         const baseStyle: React.CSSProperties = {
             fontSize: "0.95rem",
@@ -54,7 +56,7 @@ export const PrioritySelector = ({ priority, options, onChange }: Props) => {
         if (selected && typeof selected.id === "number" && selected.name) onChange(selected);
     };
 
-    if (options.length === 0) {
+    if (options.length === 0 || disabled) {
         return (
             <Tag
                 value={priority}

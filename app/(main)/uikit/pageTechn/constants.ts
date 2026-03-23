@@ -17,8 +17,10 @@ export const STATUS_MAP: Record<string, "success" | "info" | "warning" | "danger
     'ລໍຖ້າຮັບເລື່ອງ': 'warning',
     'ລໍຖ້າຮັບວຽກ': 'warning',
     'ຍົກເລີກ': 'danger',
+    'ຍົກເລິກ': 'danger',
     'ປິດວຽກແລ້ວ': 'success',
     'ພັກໄວ້': 'warning',
+    'ພັກໃວ້': 'warning',
     'Allin': null
 };
 

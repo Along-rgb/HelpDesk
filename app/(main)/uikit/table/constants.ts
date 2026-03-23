@@ -27,8 +27,10 @@ export const STATUS_MAP: Record<string, "success" | "info" | "warning" | "danger
     'ລໍຖ້າຮັບເລື່ອງ': 'warning',
     'ລໍຖ້າຮັບວຽກ': 'warning',
     'ຍົກເລິກ': 'danger',
+    'ຍົກເລີກ': 'danger',
     'ປິດວຽກແລ້ວ': 'success',
-    'ພັກໃວ້': 'warning',  // ໃ API
+    'ພັກໃວ້': 'warning',
+    'ພັກໄວ້': 'warning',
     'ສົ່ງອອກແປງນອກ': 'info',
     'Allin': null
 };
@@ -42,7 +44,9 @@ export const STATUS_ICON_MAP: Record<string, string> = {
     'ແກ້ໄຂແລ້ວ': 'pi pi-check-circle',
     'ປິດວຽກແລ້ວ': 'pi pi-check',
     'ພັກໃວ້': 'pi pi-pause',
+    'ພັກໄວ້': 'pi pi-pause',
     'ຍົກເລິກ': 'pi pi-times',
+    'ຍົກເລີກ': 'pi pi-times',
     'ສົ່ງອອກແປງນອກ': 'pi pi-external-link'
 };
 export const STATUS_ICON_FALLBACK = 'pi pi-circle';
@@ -74,7 +78,7 @@ export const ASSIGNEE_STATUS_MAP: Record<string, { label: string; severity: stri
 export const CUSTOM_TOOLTIP_CSS = `
     .custom-red-tooltip .p-tooltip-text {
         background-color: #ffffff !important;
-        color: #4b5563 !important;
+        color: #000000 !important;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
         font-size: 0.875rem;
         padding: 0.5rem 0.75rem !important;

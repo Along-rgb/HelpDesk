@@ -14,8 +14,6 @@ interface Props {
     editData?: IssueData | CategoryData | null;
     activeTab: number;
     categoryOptions: { label: string; value: number }[];
-    /** Tab 0 ໝວດໝູ່: ເລືອກທີມຊ່ວຍເຫຼືອ (from /api/headcategorys/selectheadcategory) */
-    headCategoryOptions?: { label: string; value: number }[];
     /** Tab 0 ໝວດໝູ່: ເລືອກຮູບໄອຄອນ (from /api/categoryicons/selectcategoryicon) */
     iconOptions?: { label: string; value: number; iconUrl?: string }[];
     headerTitle?: string;
@@ -34,7 +32,6 @@ export default function IssuesCreateDialog({
     categoryOptions,
     headerTitle: headerTitleProp,
     optionalFirstFieldLabel,
-    headCategoryOptions = [],
     iconOptions = [],
     hideIconField = false,
 }: Props) {
@@ -43,7 +40,6 @@ export default function IssuesCreateDialog({
     const [optionalFirstValue, setOptionalFirstValue] = useState('');
     const [status, setStatus] = useState<string>('ACTIVE');
     const [parentId, setParentId] = useState<number | null>(null);
-    const [headCategoryId, setHeadCategoryId] = useState<number | null>(null);
     const [catIconId, setCatIconId] = useState<number | null>(null);
     const [submitted, setSubmitted] = useState(false);
 
@@ -57,7 +53,6 @@ export default function IssuesCreateDialog({
                 setDescription(editData.description ?? '');
                 if ('status' in editData) setStatus((editData as IssueData).status ?? 'ACTIVE');
                 if ('parentId' in editData) setParentId((editData as IssueData).parentId ?? null);
-                if ('headCategoryId' in editData) setHeadCategoryId((editData as CategoryData).headCategoryId ?? null);
                 if ('catIconId' in editData) setCatIconId((editData as CategoryData).catIconId ?? null);
                 setOptionalFirstValue('');
             } else {
@@ -65,7 +60,6 @@ export default function IssuesCreateDialog({
                 setDescription('');
                 setStatus('ACTIVE');
                 setParentId(null);
-                setHeadCategoryId(null);
                 setCatIconId(null);
                 setOptionalFirstValue('');
             }
@@ -78,7 +72,6 @@ export default function IssuesCreateDialog({
         setDescription('');
         setStatus('ACTIVE');
         setParentId(null);
-        setHeadCategoryId(null);
         setCatIconId(null);
         setOptionalFirstValue('');
         onHide();
@@ -89,9 +82,8 @@ export default function IssuesCreateDialog({
         if (!title.trim()) return;
 
         if (isCategoryTab) {
-            if (headCategoryId == null) return;
             const payload: CreateCategoryPayload = {
-                headCategoryId,
+                headCategoryId: 1,
                 title: title.trim(),
                 description: description.trim(),
                 catIconId: catIconId ?? undefined,
@@ -119,7 +111,6 @@ export default function IssuesCreateDialog({
     const renderFooter = () => (
         <div className="flex justify-content-end gap-2 pt-2">
             <Button 
-                tabIndex={0}
                 label="ຍົກເລີກ" 
                 icon="pi pi-times" 
                 onClick={handleHide} 
@@ -127,7 +118,6 @@ export default function IssuesCreateDialog({
                 disabled={isSaving}
             />
             <Button 
-                tabIndex={0}
                 label="ບັນທຶກ" 
                 icon="pi pi-check" 
                 onClick={handleSave} 
@@ -153,28 +143,6 @@ export default function IssuesCreateDialog({
         >
             <div className="flex flex-column gap-3">
                 
-                {isCategoryTab && (
-                    <div className="field mb-0">
-                        <label htmlFor="headCategoryId" className="font-bold block mb-2">
-                            ເລືອກທີມຊ່ວຍເຫຼືອ <span className="text-red-500">*</span>
-                        </label>
-                        <div className="p-inputgroup">
-                            <Dropdown
-                                id="headCategoryId"
-                                value={headCategoryId}
-                                options={headCategoryOptions}
-                                onChange={(e) => setHeadCategoryId(e.value)}
-                                placeholder="ເລືອກທີມຊ່ວຍເຫຼືອ"
-                                className={`flex-1 ${submitted && headCategoryId == null ? 'p-invalid' : ''}`}
-                                filter
-                                showClear
-                            />
-                            <Button tabIndex={0} type="button" icon="pi pi-times" className="p-button-outlined" onClick={() => setHeadCategoryId(null)} tooltip="ລ້າງຄ່າ" />
-                        </div>
-                        {submitted && headCategoryId == null && <small className="text-red-500">ກະລຸນາເລືອກທີມຊ່ວຍເຫຼືອ</small>}
-                    </div>
-                )}
-
                 {isCategoryTab && (
                     <>
                         <div className="field mb-0">
@@ -227,7 +195,7 @@ export default function IssuesCreateDialog({
                                     }
                                     showClear
                                 />
-                                <Button tabIndex={0} type="button" icon="pi pi-times" className="p-button-outlined" onClick={() => setCatIconId(null)} tooltip="ລ້າງຄ່າ" />
+                                <Button type="button" icon="pi pi-times" className="p-button-outlined" onClick={() => setCatIconId(null)} tooltip="ລ້າງຄ່າ" />
                             </div>
                         </div>
                         )}

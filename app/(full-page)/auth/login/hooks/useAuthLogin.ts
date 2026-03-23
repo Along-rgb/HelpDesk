@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { authenStore } from '@/app/store/user/loginAuthStore';
 import { useUsersStore } from '@/app/store/user/usersStore';
 import { useUserProfileStore } from '@/app/store/user/userProfileStore';
-import { getApiErrorMessage } from '@/global/types/api';
+import { getApiErrorMessage, AUTH_FORBIDDEN_MSG } from '@/global/types/api';
+import { clearAppSession } from '@/utils/authHelper';
 import type { LoginInput } from '@/global/validators/login.schema';
 import type { ApiErrorResponseBody, AxiosErrorWithResponse } from '@/global/types/api';
 import type { UserProfile } from '@/global/types';
@@ -97,6 +98,14 @@ export function useAuthLogin(showMessage: ToastShowMessage) {
         }
 
         const { userId, employeeId } = getAuthIds(userObj);
+        const actived = (userObj as unknown as Record<string, unknown> | undefined)?.actived;
+        if (actived === 'C' || userId == null) {
+          clearAppSession();
+          authenStore.getState().clearAuthData();
+          showMessage('error', 'ເຂົ້າລະບົບບໍ່ສຳເລັດ', 'ຂໍ້ມູນທ່ານບໍ່ໄດ້ຢູ່ໃນລະບົບ');
+          setLoading(false);
+          return;
+        }
         setAuthData({
           tokenType: 'Bearer',
           accessToken: token,
@@ -125,6 +134,17 @@ export function useAuthLogin(showMessage: ToastShowMessage) {
       } catch (error: unknown) {
         const err = error as AxiosErrorWithResponse;
         const status = err?.response?.status;
+        const errMsg = err?.message ?? '';
+        const errName = (error as { name?: string })?.name;
+        const errCode = (error as { code?: string })?.code;
+        const isUnauthorized = status === 401 || errName === 'UnauthorizedError' || errCode === 'UNAUTHORIZED';
+        const isForbidden = status === 403 || errMsg === AUTH_FORBIDDEN_MSG;
+        const isDeactivatedOrNotFound = isUnauthorized || isForbidden;
+        if (isDeactivatedOrNotFound) {
+          showMessage('error', 'ເຂົ້າລະບົບບໍ່ສຳເລັດ', 'ທ່ານບໍ່ມີຂໍ້ມູນໃນລະບົບ');
+          setLoading(false);
+          return;
+        }
         const responseData = err?.response?.data as ApiErrorResponseBody | string | undefined;
         const fallback = getLoginErrorFallback(status);
         const msg = err?.message ?? '';

@@ -3,7 +3,7 @@ const ROLE_DISPLAY_NAMES: Record<number, string> = {
     1: 'ຊູເປີແອັດມິນ',
     2: 'ແອັດມິນ',
     3: 'ວິຊາການ',
-    4: 'ເປັນຜູ້ໃຊ້ງານ',
+    4: 'ຜູ້ໃຊ້ງານ',
 };
 
 export function getRoleDisplayName(roleId: number | string | null | undefined): string {

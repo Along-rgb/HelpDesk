@@ -1,60 +1,25 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
-
-const ENDPOINT = 'tickets/selectticket';
-
-function normalizeCount(data: unknown): number {
-  if (Array.isArray(data)) return data.length;
-  if (data && typeof data === 'object' && 'data' in data && Array.isArray((data as { data: unknown }).data)) {
-    return (data as { data: unknown[] }).data.length;
-  }
-  return 0;
-}
+import { useEffect, useCallback, useMemo } from 'react';
+import { useSelectDataStore } from '@/app/store/selectDataStore';
 
 /**
  * Fetches ticket count per category. Returns a map categoryId -> count.
  * Used on Group Problem page to show "N ລາຍການ" on each category card.
+ * Backed by Zustand store for instant navigation (zero-loading on revisit).
  */
 export function useTicketCountByCategory(categoryIds: number[], shouldFetch: boolean) {
-  const [countByCategory, setCountByCategory] = useState<Record<number, number>>({});
-  const [loading, setLoading] = useState(false);
+  const countByCategory = useSelectDataStore((s) => s.ticketCountByCategory);
+  const loading = useSelectDataStore((s) => s.countsLoading);
+  const fetchTicketCounts = useSelectDataStore((s) => s.fetchTicketCounts);
 
-  const fetchData = useCallback(async () => {
-    if (!shouldFetch || categoryIds.length === 0) {
-      setCountByCategory({});
-      return;
-    }
-    setLoading(true);
-    try {
-      const results = await Promise.all(
-        categoryIds.map(async (id) => {
-          try {
-            const response = await axiosClientsHelpDesk.get(ENDPOINT, {
-              params: { categoryId: id },
-            });
-            return { id, count: normalizeCount(response.data) };
-          } catch {
-            return { id, count: 0 };
-          }
-        })
-      );
-      const map: Record<number, number> = {};
-      results.forEach(({ id, count }) => {
-        map[id] = count;
-      });
-      setCountByCategory(map);
-    } catch {
-      setCountByCategory({});
-    } finally {
-      setLoading(false);
-    }
-  }, [shouldFetch, categoryIds.join(',')]);
+  const idsKey = useMemo(() => categoryIds.join(','), [categoryIds]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (shouldFetch && categoryIds.length > 0) fetchTicketCounts(categoryIds);
+  }, [shouldFetch, idsKey, fetchTicketCounts]);
 
-  return { countByCategory, loading, refetch: fetchData };
+  const refetch = useCallback(() => fetchTicketCounts(categoryIds, true), [categoryIds, fetchTicketCounts]);
+
+  return { countByCategory, loading, refetch };
 }

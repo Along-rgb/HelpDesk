@@ -1,5 +1,5 @@
 // src/app/reports/hooks/useReportData.ts
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ReportService } from '@/app/(main)/uikit/reportHD/service';
 import { ReportItem } from '@/app/(main)/uikit/reportHD/types';
 
@@ -8,11 +8,19 @@ export function useReportData(activeIndex: number, dateRange: Date[] | any) {
     const [data, setData] = useState<ReportItem[]>([]);
     const [error, setError] = useState<string | null>(null);
 
+    const startTs = dateRange?.[0] instanceof Date ? dateRange[0].getTime() : 0;
+    const endTs = dateRange?.[1] instanceof Date ? dateRange[1].getTime() : 0;
+
+    const stableDateRange = useMemo(() => {
+        if (!startTs || !endTs) return null;
+        return [new Date(startTs), new Date(endTs)] as const;
+    }, [startTs, endTs]);
+
     useEffect(() => {
         const controller = new AbortController();
 
         const fetchData = async () => {
-            if (!dateRange || dateRange.length < 2 || !dateRange[0] || !dateRange[1]) {
+            if (!stableDateRange) {
                 setData([]);
                 setLoading(false);
                 return;
@@ -23,8 +31,8 @@ export function useReportData(activeIndex: number, dateRange: Date[] | any) {
 
             try {
                 const filter = {
-                    startDate: dateRange[0],
-                    endDate: dateRange[1],
+                    startDate: stableDateRange[0],
+                    endDate: stableDateRange[1],
                     tabIndex: activeIndex
                 };
                 const result = await ReportService.getReports(filter, controller.signal);
@@ -54,7 +62,7 @@ export function useReportData(activeIndex: number, dateRange: Date[] | any) {
         return () => {
             controller.abort();
         };
-    }, [activeIndex, dateRange]);
+    }, [activeIndex, stableDateRange]);
 
     return { data, loading, error };
 }

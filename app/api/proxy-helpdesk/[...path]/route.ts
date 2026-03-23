@@ -26,6 +26,7 @@ const ALLOWED_PATH_PREFIXES = [
   'prioritys',
   'assignments',
   'tickets',
+  'reports',
   'upload/',
 ] as const;
 

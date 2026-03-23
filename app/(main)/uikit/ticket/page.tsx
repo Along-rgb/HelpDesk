@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useSelectCategories } from '../GroupProblem/hooks/useSelectCategories';
 import { useSelectTickets } from './hooks/useSelectTickets';
@@ -25,11 +25,11 @@ export default function TicketListPage() {
 
   const isLoading = ticketsLoading;
 
-  const handleCardClick = (topicId: number, title: string) => {
+  const handleCardClick = useCallback((topicId: number, title: string) => {
     router.push(
       `/uikit/invalidstate?ticketId=${topicId}&title=${encodeURIComponent(title)}`
     );
-  };
+  }, [router]);
 
   if (isLoading) {
     return (
@@ -41,7 +41,7 @@ export default function TicketListPage() {
 
   return (
     <div className="flex justify-content-center px-2">
-      <div className="w-full md:w-10 lg:w-8">
+      <div className="w-full">
         <div className="card mb-0 bg-blue-50">
           <div className="flex flex-column align-items-center justify-content-center mb-4 text-center">
             <h3 className="m-0">ຫົວຂໍ້ຍ່ອຍ (Tickets)</h3>

@@ -13,7 +13,6 @@ import IssuesIconTable from './IssuesIconTable';
 import IssuesIconCreateDialog from './IssuesIconCreateDialog';
 import { useCategories } from '../hooks/useCategories';
 import { useIssues } from '../hooks/useIssues';
-import { useHeadCategorySelect } from '../hooks/useHeadCategorySelect';
 import { useCategoryIconsSelect } from '../hooks/useCategoryIconsSelect';
 import { useCategoryIcons } from '../hooks/useCategoryIcons';
 import { useUserProfile } from '@/types/useUserProfile';
@@ -51,10 +50,6 @@ export default function IssuesPage() {
         activeIndex,
         profileReady && canManageCategoryAndTopic && activeIndex <= 1
     );
-    const { items: headCategorySelectItems } = useHeadCategorySelect(
-        activeIndex,
-        profileReady && canManageCategoryAndTopic && activeIndex <= 1
-    );
     const { items: categoryIconSelectItems } = useCategoryIconsSelect(
         activeIndex,
         profileReady && (canManageCategoryAndTopic && activeIndex <= 1 || canManageIcons && activeIndex === IssueTabs.ICON)
@@ -64,11 +59,6 @@ export default function IssuesPage() {
         profileReady && canManageIcons && activeIndex === IssueTabs.ICON
     );
 
-    const headCategoryMap = useMemo(() => createDataMap(headCategorySelectItems, 'id', 'name'), [headCategorySelectItems]);
-    const headCategoryOptions = useMemo(
-        () => headCategorySelectItems.map((h) => ({ label: h.name, value: h.id })),
-        [headCategorySelectItems]
-    );
     const categoryIconMap = useMemo(() => {
         const m = new Map<number, string>();
         categoryIconSelectItems.forEach((i) => m.set(i.id, getCategoryIconDisplayUrl(i.catIcon ?? '')));
@@ -111,14 +101,25 @@ export default function IssuesPage() {
     const [selectedItem, setSelectedItem] = useState<IssueData | CategoryData | null>(null);
     const [selectedIconItem, setSelectedIconItem] = useState<IconItemData | null>(null);
 
-    const tabItems = useMemo(
-        () => [
-            { label: 'ໝວດໝູ່', disabled: !canManageCategoryAndTopic },
-            { label: 'ລາຍການຫົວຂໍ້', disabled: !canManageCategoryAndTopic },
-            { label: 'ເພີ່ມໄອຄອນ', disabled: !canManageIcons },
-        ],
-        [canManageCategoryAndTopic, canManageIcons]
-    );
+    const ALL_ISSUE_TAB_ITEMS = useMemo(() => [
+        { label: 'ໝວດໝູ່', tabIndex: IssueTabs.CATEGORY },
+        { label: 'ລາຍການຫົວຂໍ້', tabIndex: IssueTabs.TOPIC },
+        { label: 'ເພີ່ມໄອຄອນ', tabIndex: IssueTabs.ICON },
+    ], []);
+
+    const tabItems = useMemo(() => {
+        if (canManageIcons && !canManageCategoryAndTopic) {
+            return ALL_ISSUE_TAB_ITEMS.filter(t => t.tabIndex === IssueTabs.ICON);
+        }
+        if (canManageCategoryAndTopic && !canManageIcons) {
+            return ALL_ISSUE_TAB_ITEMS.filter(t => t.tabIndex !== IssueTabs.ICON);
+        }
+        return [...ALL_ISSUE_TAB_ITEMS];
+    }, [canManageCategoryAndTopic, canManageIcons, ALL_ISSUE_TAB_ITEMS]);
+
+    const tabMenuModel = useMemo(() => tabItems.map((t) => ({ label: t.label })), [tabItems]);
+    const menuActiveIndex = tabItems.findIndex((t) => t.tabIndex === activeIndex);
+    const safeMenuActiveIndex = menuActiveIndex >= 0 ? menuActiveIndex : 0;
 
     const defaultTabIndex = useMemo(() => {
         if (canManageCategoryAndTopic) return 0;
@@ -277,11 +278,12 @@ export default function IssuesPage() {
             <ConfirmDialog />
             <div className="mb-4">
                 <TabMenu
-                    model={tabItems}
-                    activeIndex={activeIndex}
+                    model={tabMenuModel}
+                    activeIndex={safeMenuActiveIndex}
                     onTabChange={(e) => {
-                        const item = tabItems[e.index];
-                        if (!item?.disabled) setActiveIndex(e.index);
+                        const tab = tabItems[e.index];
+                        if (!tab) return;
+                        setActiveIndex(tab.tabIndex);
                     }}
                     className="custom-tabmenu"
                 />
@@ -318,7 +320,6 @@ export default function IssuesPage() {
                         onEdit={openEdit}
                         onDelete={confirmDelete}
                         categoryMap={categoryMap}
-                        headCategoryMap={headCategoryMap}
                         categoryIconMap={categoryIconMap}
                         canManage={canManageCategoryAndTopic}
                         isLoading={tableLoading}
@@ -333,7 +334,6 @@ export default function IssuesPage() {
                         editData={selectedItem}
                         activeTab={activeIndex}
                         categoryOptions={categoryOptions}
-                        headCategoryOptions={headCategoryOptions}
                         iconOptions={iconOptions}
                     />
                 </>

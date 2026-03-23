@@ -1,6 +1,6 @@
 // pageTechn/useTicketTableTechn.ts
 // Role 2: /tickets (TicketService). Role 3: ดึงรายการ helpdeskRequestId จาก GET /api/assignments (role 3 เรียก admin ไม่ได้) แล้วดึง GET helpdeskrequests/[id] ต่อรายการ
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { RefObject } from "react";
 import type { Toast } from "primereact/toast";
 import axiosClientsHelpDesk from "@/config/axiosClientsHelpDesk";
@@ -12,11 +12,23 @@ import { formatDateTime } from "@/utils/dateUtils";
 import { Ticket, TicketRow, Assignee } from "./types";
 import { TicketService } from "@/app/services/ticket.service";
 import { useUserProfileSelectors } from "@/app/store/user/userProfileStore";
+import {
+  type StatusFilterOption,
+  extractStatusFilterVal,
+  matchesGlobalFilter,
+  isCurrentUserByAssigneeId,
+  isCurrentUserAssignee,
+  buildStatusOptions,
+  filterRowsByStatusId,
+} from "../shared/ticketFilterUtils";
 
 /** ກຳລັງດຳເນີນການ — ໃຊ້ເມື່ອຮັບວຽກເອງ */
 const HELPDESK_STATUS_IN_PROGRESS = 2;
 /** ສະຖານະ id 2 — ໃຫ້ເບິ່ງ checkbox ແລະປຸ່ມ ຮັບວຽກເອງ ເມື່ອສະຖານະເປັນ id ນີ້ */
 const STATUS_ID_SHOW_CHECKBOX_AND_ACCEPT_SELF = 2;
+/** ແກ້ໄຂແລ້ວ / ປິດວຽກແລ້ວ — ໃຊ້ເຊື່ອງ checkbox+dropdown ເມື່ອ ticket ມີ >1 assignee */
+const TICKET_STATUS_DONE_ID = 4;
+const TICKET_STATUS_CLOSED_ID = 7;
 
 /** Raw assignment (จาก GET helpdeskrequests/[id] หรือจาก assignments API) */
 interface RawAssignment {
@@ -137,25 +149,6 @@ function helpdeskDetailToTicket(detail: HelpdeskRequestDetail): Ticket {
   };
 }
 
-type StatusFilterOption = { label: string; value: string; icon?: string } | null;
-
-const ALL_STATUS_OPTION = { label: "ທັງໝົດ", value: "Allin" };
-
-function matchesGlobalFilter(ticket: Ticket, query: string): boolean {
-  if (!query.trim()) return true;
-  const q = query.toLowerCase().trim();
-  return (
-    ticket.id.toString().toLowerCase().includes(q) ||
-    (ticket.title ?? "").toLowerCase().includes(q) ||
-    (ticket.firstname_req ?? "").toLowerCase().includes(q) ||
-    (ticket.requester ?? "").toLowerCase().includes(q)
-  );
-}
-
-function matchesStatusFilter(ticket: Ticket, statusFilter: StatusFilterOption): boolean {
-  if (!statusFilter || statusFilter.value === "Allin") return true;
-  return (ticket.status ?? "") === statusFilter.value;
-}
 
 /** แปลง assignTo string "A, B, C" เป็น Assignee[] */
 function assignToToAssignees(assignTo: string, ticketId: string | number): Assignee[] {
@@ -167,28 +160,6 @@ function assignToToAssignees(assignTo: string, ticketId: string | number): Assig
   }));
 }
 
-/** เช็คว่า assignee ນີ້ແມ່ນ current user ຫຼືບໍ່ — ໃຊ້ id ເປີດບັນທັດ (ຕົງກັບ assignedToId ຈາກ API) */
-function isCurrentUserByAssigneeId(
-  assigneeId: number | string | undefined,
-  currentUserId: number | string | null,
-  employeeId: number | string | null
-): boolean {
-  if (assigneeId == null) return false;
-  const a = Number(assigneeId);
-  if (Number.isFinite(a) && currentUserId != null && Number(currentUserId) === a) return true;
-  if (Number.isFinite(a) && employeeId != null && Number(employeeId) === a) return true;
-  if (String(assigneeId) === String(currentUserId)) return true;
-  if (String(assigneeId) === String(employeeId)) return true;
-  return false;
-}
-
-/** เช็คว่าชื่อปัจจุบันตรงกับ assignee หรือไม่ (trim, เปรียบเทียบหรือส่วนหนึ่งตรงกัน) — fallback ເມື່ອບໍ່ມີ id */
-function isCurrentUserAssignee(assigneeName: string, currentUserDisplayName: string): boolean {
-  const a = (assigneeName ?? "").trim();
-  const u = (currentUserDisplayName ?? "").trim();
-  if (!a || !u) return false;
-  return a === u || a.includes(u) || u.includes(a);
-}
 
 /** แปลง response จาก API ให้ตรงกับ Ticket (pageTechn) ถ้าขาดฟิลด์ใส่ default */
 function normalizeAssignee(a: unknown): Assignee | null {
@@ -256,16 +227,6 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
 
   const { list: statusList } = useHelpdeskStatusOptions();
   const { list: staffStatusList } = useHelpdeskStatusStaff();
-  const statusOptions = useMemo(
-    () => [
-      ALL_STATUS_OPTION,
-      ...statusList.map((item) => {
-        const name = typeof item.name === "string" ? item.name.trim() : String(item.name ?? "").trim();
-        return { label: name, value: name };
-      }),
-    ],
-    [statusList]
-  );
 
   const { roleId: _roleId, currentUserId: _currentUserId, profileData } = useUserProfileSelectors();
   const roleId = _roleId ?? 0;
@@ -278,17 +239,33 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
     [profileData]
   );
 
+  const statusOptions = useMemo(
+    () => {
+      const sourceList = roleId === 3 ? [...statusList, ...staffStatusList] : statusList;
+      return buildStatusOptions([sourceList], tickets);
+    },
+    [statusList, staffStatusList, roleId, tickets]
+  );
+
   /** Role 2: /api/tickets. Role 3: helpdeskrequests/admin แล้วกรองเฉพาะที่มอบหมายให้ current user */
   const shouldFetchTicketsRole2 = roleId === 2;
   const shouldFetchTicketsRole3 = roleId === 3;
 
+  /** AbortController ref for cancelling in-flight requests on unmount */
+  const abortRef = useRef<AbortController | null>(null);
+
   /** Role 3: ດຶງລາຍການຈາກ assignments ແລະ helpdeskrequests/[id] — ແຕ່ລະ user ເບິ່ງແຕ່ຂໍ້ມູນທີ່ມອບໝາຍໃຫ້ assignedToId = currentUser.id ເທົ່ານັ້ນ */
   const fetchRole3Tickets = useCallback(async () => {
     if (!currentUserId) return;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const signal = controller.signal;
     setLoading(true);
     try {
       const response = await axiosClientsHelpDesk.get(HELPDESK_ENDPOINTS.ASSIGNMENTS, {
         params: { assignedToId: currentUserId },
+        signal,
       });
       const raw = response.data;
       let list = normalizeDataList<AssignmentListItem>(raw);
@@ -308,11 +285,12 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
       const BATCH_SIZE = 10;
       const allDetails: HelpdeskRequestDetail[] = [];
       for (let i = 0; i < uniqueIds.length; i += BATCH_SIZE) {
+        if (signal.aborted) return;
         const batch = uniqueIds.slice(i, i + BATCH_SIZE);
         const batchResults = await Promise.all(
           batch.map((helpdeskRequestId) =>
             axiosClientsHelpDesk
-              .get<HelpdeskRequestDetail>(HELPDESK_ENDPOINTS.requestById(helpdeskRequestId))
+              .get<HelpdeskRequestDetail>(HELPDESK_ENDPOINTS.requestById(helpdeskRequestId), { signal })
               .then((res) => res.data)
               .catch(() => null)
           )
@@ -321,9 +299,11 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
           if (d != null) allDetails.push(d);
         }
       }
+      if (signal.aborted) return;
       const sorted = allDetails.map(helpdeskDetailToTicket).sort((a, b) => Number(b.id) - Number(a.id));
       setTickets(sorted);
-    } catch {
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       setTickets([]);
     } finally {
       setLoading(false);
@@ -366,6 +346,7 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
       return;
     }
     fetchRole3Tickets();
+    return () => { abortRef.current?.abort(); };
   }, [shouldFetchTicketsRole3, currentUserId, fetchRole3Tickets, roleId]);
 
   const onAcceptSelf = useCallback(async () => {
@@ -403,25 +384,31 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
     }
   }, [selectedTickets, currentUserId, profileData?.employeeId, fetchRole3Tickets, toastRef]);
 
+  /** ດຶງຄ່າ filter — ຮອງຮັບທັງ PrimeReact string value ແລະ object { value } */
+  const statusFilterVal = extractStatusFilterVal(statusFilter);
+
   const filteredTickets = useMemo(() => {
     return tickets
-      .filter(
-        (t) => matchesGlobalFilter(t, globalFilter) && matchesStatusFilter(t, statusFilter)
-      )
+      .filter((t) => matchesGlobalFilter(t, globalFilter))
       .sort((a, b) => {
         const na = Number(a.id);
         const nb = Number(b.id);
         if (!Number.isNaN(na) && !Number.isNaN(nb)) return nb - na;
         return String(b.id).localeCompare(String(a.id));
       });
-  }, [tickets, globalFilter, statusFilter]);
+  }, [tickets, globalFilter]);
 
   const employeeId = profileData?.employeeId != null ? profileData.employeeId : null;
 
   const displayRows = useMemo((): TicketRow[] => {
     const isRole12 = roleId === 1 || roleId === 2;
     if (isRole12) {
-      return filteredTickets.map((t) => ({ ...t, rowId: String(t.id) }));
+      let result = filteredTickets.map((t) => ({ ...t, rowId: String(t.id) }));
+      if (statusFilterVal && statusFilterVal !== "Allin") {
+        const filterStatusId = Number(statusFilterVal);
+        result = result.filter(row => Number(row.statusId) === filterStatusId);
+      }
+      return result;
     }
     /** Role 3: ເບິ່ງແຕ່ແຖວທີ່ມອບໝາຍໃຫ້ current user (ໃຊ້ assignedToId/assignee.id ເປີດບັນທັດ) — ແຍກແຕ່ລະຄົນ ບໍ່ລວມ user ອື່ນ */
     const rows: TicketRow[] = [];
@@ -431,7 +418,7 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
         assignees = assignToToAssignees(t.assignTo, t.id);
       }
       if (assignees.length === 0) {
-        rows.push({ ...t, rowId: String(t.id) });
+        rows.push({ ...t, ticketStatusId: t.statusId, rowId: String(t.id) });
       } else {
         const mineOnly = assignees.filter(
           (a) =>
@@ -439,7 +426,7 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
             isCurrentUserAssignee(a.name, currentUserDisplayName)
         );
         if (mineOnly.length === 0) {
-          rows.push({ ...t, rowId: String(t.id) });
+          rows.push({ ...t, ticketStatusId: t.statusId, rowId: String(t.id) });
         } else {
           mineOnly.forEach((a, i) => {
             const myAssignment = (t.myAssignments ?? []).find(
@@ -449,6 +436,7 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
             rows.push({
               ...t,
               statusId: rowStatusId,
+              ticketStatusId: t.statusId,
               rowId: `${t.id}-${a.id}-${i}`,
               rowAssignee: a,
             });
@@ -456,14 +444,18 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
         }
       }
     }
-    return rows;
-  }, [filteredTickets, roleId, currentUserDisplayName, currentUserId, employeeId]);
+    /** Role 3: ກັ່ນຕອງຕາມສະຖານະຂອງ assignment ຂອງຕົນເອງ */
+    return filterRowsByStatusId(rows, statusFilterVal);
+  }, [filteredTickets, roleId, currentUserDisplayName, currentUserId, employeeId, statusFilterVal]);
 
   /** ສຳລັບ role 3: ໃຫ້ເບິ່ງ checkbox ແລະປຸ່ມ ຮັບວຽກເອງ ເມື່ອ ສະຖານະຂອງ assignment ນັ້ນ (row.statusId) ເປັນ id 2 */
   const showCheckbox = useCallback(
     (row: TicketRow): boolean => {
       if (roleId === 1 || roleId === 2) return true;
       if (!row.rowAssignee) return false;
+      const totalAssignees = row.assignees?.length ?? 0;
+      const tStatusId = row.ticketStatusId ?? row.statusId;
+      if (totalAssignees > 1 && (tStatusId === TICKET_STATUS_DONE_ID || tStatusId === TICKET_STATUS_CLOSED_ID)) return false;
       const isMine =
         isCurrentUserByAssigneeId(row.rowAssignee.id, currentUserId, employeeId) ||
         isCurrentUserAssignee(row.rowAssignee.name, currentUserDisplayName);

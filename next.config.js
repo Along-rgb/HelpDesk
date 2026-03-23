@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const imageHost = process.env.NEXT_PUBLIC_IMAGE_REMOTE_HOSTNAME || '';
+const helpdeskApi = process.env.NEXT_PUBLIC_HELPDESK_API_BASE_URL || '';
 
 const nextConfig = {
   images: {
@@ -17,7 +18,17 @@ const nextConfig = {
             pathname: '/helpdesk/upload/**',
           },
         ]
-      : [],
+      : [], 
+  },
+  async rewrites() {
+    if (!helpdeskApi) return [];
+    const destination = helpdeskApi.replace(/\/+$/, '');
+    return [
+      {
+        source: '/api/helpdesk-proxy/:path*',
+        destination: destination + '/:path*',
+      },
+    ];
   },
 };
 

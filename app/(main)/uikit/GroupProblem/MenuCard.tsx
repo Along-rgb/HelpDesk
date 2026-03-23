@@ -22,13 +22,13 @@ export const MenuCard: React.FC<MenuCardProps> = ({
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <div className="col-12 md:col-4 p-3">
+    <div className="col-12 sm:col-6 md:col-2 p-2">
       <div
         className={`surface-card bg-white border-round-xl cursor-pointer h-full
           flex flex-column align-items-center relative overflow-hidden
           border-1 border-200 ${isHovered ? "shadow-8" : "shadow-2"}`}
         style={{
-          minHeight: "380px",
+          minHeight: "270px",
           transform: isHovered ? "translateY(-12px)" : "translateY(0)",
           transition: "transform 300ms ease, box-shadow 300ms ease",
         }}
@@ -38,7 +38,7 @@ export const MenuCard: React.FC<MenuCardProps> = ({
         {/* Icon container — pure white, same size as before */}
         <div
           className="w-full flex align-items-center justify-content-center bg-white border-bottom-1 border-200"
-          style={{ height: "160px" }}
+          style={{ height: "120px" }}
         >
           {iconUrl ? (
             <img
@@ -46,8 +46,8 @@ export const MenuCard: React.FC<MenuCardProps> = ({
               alt={title}
               className="relative"
               style={{
-                width: "80px",
-                height: "80px",
+                width: "50px",
+                height: "50px",
                 objectFit: "contain",
                 transform: isHovered ? "scale(1.1)" : "scale(1)",
                 transition: "transform 300ms ease",
@@ -57,8 +57,8 @@ export const MenuCard: React.FC<MenuCardProps> = ({
             <div
               className="flex align-items-center justify-content-center border-1 border-200 border-round bg-gray-100"
               style={{
-                width: "80px",
-                height: "80px",
+                width: "50px",
+                height: "50px",
                 transform: isHovered ? "scale(1.1)" : "scale(1)",
                 transition: "transform 300ms ease",
               }}
@@ -69,9 +69,22 @@ export const MenuCard: React.FC<MenuCardProps> = ({
           )}
         </div>
 
-        <div className="flex flex-column flex-grow-1 p-4 text-center mt-2 w-full">
-          <span className="text-xl font-bold text-900 mb-3">{title}</span>
-          <p className="text-600 line-height-3 text-sm m-0">{description}</p>
+        <div className="flex flex-column flex-grow-1 p-3 text-center mt-1 w-full">
+          <span className="font-bold text-900 mb-2" style={{ fontSize: '1.125rem' }}>{title}</span>
+          <p
+            className="text-600 m-0"
+            style={{
+              fontSize: '0.95rem',
+              lineHeight: '1.4',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {description}
+          </p>
         </div>
 
         {ticketCount != null && (

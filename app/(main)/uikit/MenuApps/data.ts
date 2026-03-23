@@ -8,9 +8,12 @@ export const MENU_ITEMS: MenuItem[] = [
         icon: 'pi pi-users',
         path: '/uikit/MenuApps/Detail-category_SupportTeam',
         subMenus: [
-            { label: 'ທິມສະໜັບສະໜູນ', tabIndex: 0 },
+            { label: 'ທີມສະໜັບສະໜູນ', tabIndex: 0 },
             { label: 'ວິຊາການ', tabIndex: 1 },
-            { label: 'ພະນັກງານ', tabIndex: 3 }
+            { label: 'ສະຖານະ', tabIndex: 2 },
+            { label: 'ພະນັກງານ', tabIndex: 3 },
+            { label: 'ສະຖານະຜູ້ໃຊ້', tabIndex: 4 },
+            { label: 'ການ Sync ຂໍ້ມູນ', tabIndex: 5 }
         ]
     },
     {

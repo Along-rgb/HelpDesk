@@ -1,107 +1,152 @@
-// src/app/reports/page.tsx
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { TabMenu } from 'primereact/tabmenu';
 import { Toast } from 'primereact/toast';
-import { Dialog } from 'primereact/dialog';
-import { Button } from 'primereact/button';
 import { useReportData } from './hooks/useReportData';
 import { ReportHeaderControls } from './ReportHeaderControls';
 import { ReportTable } from './hooks/ReportTable';
-import { MENU_ITEMS } from './utils/reportConfig';
+import { MENU_ITEMS, getViewConfig, getGroupConfig } from './utils/reportConfig';
 import { ReportItem } from './types';
+import { formatDateLao } from '@/app/(main)/uikit/shared/formatUtils';
+import { styleHeaderRows, styleDataRow, insertGroupRow } from '@/app/(main)/uikit/shared/excelStyles';
 import { saveAs } from 'file-saver';
 import ExcelJS from 'exceljs';
 
 export default function ReportHD() {
-    // Mock User Data
-    const currentUser = {
-        fullname: "ທ້າວ ສົມດີ ມີໄຊ",
-        department: "ເຕັກໂນໂລຊີ ແລະ ຂໍ້ມູນຂ່າວສານ",
-        division: "ພັດທະນາລະບົບ",
-        phone: "020 9988 7766"
-    };
-
-    // State
     const [dateRange, setDateRange] = useState<Date[] | any>(null);
     const [activeIndex, setActiveIndex] = useState(0);
-    const [printDate, setPrintDate] = useState<Date>(new Date());
 
-    // State ສຳລັບເປີດ/ປິດ Dialog ທາງເລືອກ
-    const [showExportDialog, setShowExportDialog] = useState(false);
     const toast = useRef<Toast>(null);
-    const printableAreaRef = useRef<HTMLDivElement>(null);
     const { data, error } = useReportData(activeIndex, dateRange);
 
-    useEffect(() => {
-        setPrintDate(new Date());
-    }, []);
-
-    // Helper functions
-    const formatDate = (d: Date | null) => d ? d.toLocaleDateString('lo-LA', { day: '2-digit', month: '2-digit', year: 'numeric' }) : "-";
-    const formatTime = (d: Date) => d.toLocaleTimeString('lo-LA', { hour: '2-digit', minute: '2-digit' });
-
-    // Export to Excel (XLSX)
     const exportToExcel = useCallback(async () => {
         if (!data || data.length === 0) return;
-        setShowExportDialog(false);
 
+        const viewConfig = getViewConfig(activeIndex);
+        const groupConfig = getGroupConfig(activeIndex);
         const workbook = new ExcelJS.Workbook();
         const sheet = workbook.addWorksheet('ລາຍງານ', { views: [{ showGridLines: true }] });
 
-        const headers = ['ລຳດັບ', 'ຫົວຂໍ້', 'ໝວດໝູ່', 'ຝ່າຍ', 'ວີຊາການ', 'ວັນທີແຈ້ງ'];
-        const headerRow = sheet.addRow(headers);
-
-        headerRow.eachCell((cell, colNumber) => {
-            cell.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'FF2563EB' }
-            };
-            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-            cell.alignment = { wrapText: true, vertical: 'middle' };
-            cell.border = {
-                top: { style: 'thin' },
-                left: { style: 'thin' },
-                bottom: { style: 'thin' },
-                right: { style: 'thin' }
-            };
+        /* ── Pre-compute group counts ── */
+        const groupField = groupConfig.field as keyof ReportItem;
+        const groupCounts: Record<string, number> = {};
+        data.forEach(item => {
+            const key = (item[groupField] as string) || 'Unknown';
+            groupCounts[key] = (groupCounts[key] || 0) + 1;
         });
-        sheet.getRow(1).height = 22;
 
-        data.forEach((item: ReportItem, index: number) => {
-            const row = sheet.addRow([
-                index + 1,
-                item.topic ?? '-',
-                item.category ?? '-',
-                item.department_main ?? '-',
-                item.technician ?? '-',
-                item.date ?? '-'
-            ]);
-            row.eachCell((cell) => {
-                cell.alignment = { wrapText: true, vertical: 'middle' };
-                cell.border = {
-                    top: { style: 'thin' },
-                    left: { style: 'thin' },
-                    bottom: { style: 'thin' },
-                    right: { style: 'thin' }
-                };
+        if (viewConfig.isDepartmentTab) {
+            /* ═══════ Department Tab ═══════ */
+            const r1 = ['#', 'ພະແນກ', 'ລະຫັດ', 'ເລກ ຊຄທ', 'ເບີໂທ', 'ຫົວຂໍ້ເລື່ອງ', 'ລາຍລະອຽດການຮ້ອງຂໍ', 'ຜູ້ຮ້ອງຂໍ', 'ສະຖານທີ່', '', '', 'ວັນທີຮ້ອງຂໍ'];
+            const r2 = ['', '', '', '', '', '', '', '', 'ຕຶກ', 'ຊັ້ນ', 'ຫ້ອງ', ''];
+            if (viewConfig.showNote) { r1.push('ໝາຍເຫດ'); r2.push(''); }
+            const colCount = r1.length;
+
+            sheet.addRow(r1);
+            sheet.addRow(r2);
+
+            [1, 2, 3, 4, 5, 6, 7, 8, 12].forEach(c => sheet.mergeCells(1, c, 2, c));
+            sheet.mergeCells(1, 9, 1, 11);
+            if (viewConfig.showNote) sheet.mergeCells(1, 13, 2, 13);
+
+            styleHeaderRows(sheet, colCount);
+
+            const centerCols = new Set([1, 3, 4, 5, 9, 10, 11, 12]);
+            let prevGroup = '';
+            let globalSeq = 0;
+            data.forEach((item: ReportItem) => {
+                const grpVal = (item[groupField] as string) || 'Unknown';
+                if (grpVal !== prevGroup) {
+                    const count = item._groupTotal ?? groupCounts[grpVal] ?? 0;
+                    insertGroupRow(sheet, groupConfig.label, grpVal, count, colCount);
+                    prevGroup = grpVal;
+                }
+                globalSeq++;
+                const d: (string | number)[] = [
+                    globalSeq, item.department_sub ?? '-', item.id ?? '-', item.code ?? '-',
+                    String(item.telephone ?? '-'), item.topic ?? '-', item.detail ?? '-',
+                    item.requester ?? '-', item.building ?? '-', item.floor ?? '-',
+                    item.room ?? '-', item.date ?? '-'
+                ];
+                if (viewConfig.showNote) d.push(item.note ?? '-');
+                const row = sheet.addRow(d);
+                styleDataRow(row, colCount, centerCols);
             });
-        });
 
-        sheet.columns = [
-            { width: 10 },
-            { width: 24 },
-            { width: 18 },
-            { width: 22 },
-            { width: 24 },
-            { width: 14 }
-        ];
+            [8, 20, 12, 14, 14, 22, 30, 18, 14, 10, 12, 16, ...(viewConfig.showNote ? [18] : [])]
+                .forEach((w, i) => { sheet.getColumn(i + 1).width = w; });
+
+        } else {
+            /* ═══════ General Tab (Topic / Category / Technician) ═══════ */
+            const r1: string[] = ['#', 'ລະຫັດ', 'ເລກ ຊຄທ', 'ເບີໂທ'];
+            const r2: string[] = ['', '', '', ''];
+            const widths: number[] = [8, 12, 14, 14];
+
+            if (viewConfig.showTopic) { r1.push('ຫົວຂໍ້ເລື່ອງ'); r2.push(''); widths.push(22); }
+            r1.push('ລາຍລະອຽດການຮ້ອງຂໍ'); r2.push(''); widths.push(30);
+
+            const reqCol = r1.length + 1;
+            r1.push('ພາກສ່ວນຮ້ອງຂໍ', '', '');
+            r2.push('ຜູ້ຮ້ອງຂໍ', 'ຝ່າຍ', 'ພະແນກ');
+            widths.push(18, 20, 20);
+
+            const locCol = r1.length + 1;
+            r1.push('ສະຖານທີ່', '', '');
+            r2.push('ຕຶກ', 'ຊັ້ນ', 'ຫ້ອງ');
+            widths.push(14, 10, 12);
+
+            const dateCol = r1.length + 1;
+            r1.push('ວັນທີຮ້ອງຂໍ'); r2.push(''); widths.push(16);
+
+            if (viewConfig.showNote) { r1.push('ໝາຍເຫດ'); r2.push(''); widths.push(18); }
+
+            const colCount = r1.length;
+            sheet.addRow(r1);
+            sheet.addRow(r2);
+
+            let mc = 1;
+            for (let i = 0; i < 4; i++) { sheet.mergeCells(1, mc, 2, mc); mc++; }
+            if (viewConfig.showTopic) { sheet.mergeCells(1, mc, 2, mc); mc++; }
+            sheet.mergeCells(1, mc, 2, mc); mc++;
+
+            sheet.mergeCells(1, reqCol, 1, reqCol + 2);
+            sheet.mergeCells(1, locCol, 1, locCol + 2);
+            sheet.mergeCells(1, dateCol, 2, dateCol);
+            if (viewConfig.showNote) sheet.mergeCells(1, dateCol + 1, 2, dateCol + 1);
+
+            styleHeaderRows(sheet, colCount);
+
+            const centerCols = new Set([1, 2, 3, 4, locCol, locCol + 1, locCol + 2, dateCol]);
+            let prevGroup = '';
+            let globalSeq = 0;
+            data.forEach((item: ReportItem) => {
+                const grpVal = (item[groupField] as string) || 'Unknown';
+                if (grpVal !== prevGroup) {
+                    const count = item._groupTotal ?? groupCounts[grpVal] ?? 0;
+                    insertGroupRow(sheet, groupConfig.label, grpVal, count, colCount);
+                    prevGroup = grpVal;
+                }
+                globalSeq++;
+                const d: (string | number)[] = [globalSeq, item.id ?? '-', item.code ?? '-', String(item.telephone ?? '-')];
+                if (viewConfig.showTopic) d.push(item.topic ?? '-');
+                d.push(
+                    item.detail ?? '-', item.requester ?? '-',
+                    item.department_main ?? '-', item.department_sub ?? '-',
+                    item.building ?? '-', item.floor ?? '-', item.room ?? '-',
+                    item.date ?? '-'
+                );
+                if (viewConfig.showNote) d.push(item.note ?? '-');
+                const row = sheet.addRow(d);
+                styleDataRow(row, colCount, centerCols);
+            });
+
+            widths.forEach((w, i) => { sheet.getColumn(i + 1).width = w; });
+        }
 
         const buf = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const fileName = `report_${formatDate(new Date()).replace(/\//g, '-')}.xlsx`;
+        const fileName = `report_${formatDateLao(new Date()).replace(/\//g, '-')}.xlsx`;
         saveAs(blob, fileName);
 
         toast.current?.show({
@@ -110,74 +155,9 @@ export default function ReportHD() {
             detail: 'ດາວໂຫຼດໄຟລ໌ Excel ສຳເລັດແລ້ວ',
             life: 2500
         });
-    }, [data]);
+    }, [data, activeIndex]);
 
-    // Export to PDF (dynamic import for SSR)
-    const exportToPDF = useCallback(async () => {
-        if (!data || data.length === 0) return;
-        setShowExportDialog(false);
-        setPrintDate(new Date());
-
-        const el = printableAreaRef.current;
-        if (!el) {
-            toast.current?.show({ severity: 'error', summary: 'ຜິດພາດ', detail: 'ບໍ່ພົບພື້ນທີ່ສຳລັບສ້າງ PDF', life: 3000 });
-            return;
-        }
-
-        const headerEls = el.querySelectorAll('.print-only-header');
-        const footerEls = el.querySelectorAll('.print-only-footer');
-        const noPrintEls = el.querySelectorAll('.no-print');
-
-        headerEls.forEach((node) => node.classList.remove('hidden'));
-        footerEls.forEach((node) => node.classList.remove('hidden'));
-        const noPrintDisplays: string[] = [];
-        noPrintEls.forEach((node) => {
-            const htmlEl = node as HTMLElement;
-            noPrintDisplays.push(htmlEl.style.display);
-            htmlEl.style.display = 'none';
-        });
-
-        try {
-            const html2pdf = (await import('html2pdf.js')).default;
-            const fileName = `report_${formatDate(new Date()).replace(/\//g, '-')}.pdf`;
-            await html2pdf()
-                .set({
-                    margin: 8,
-                    filename: fileName,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2, useCORS: true },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-                })
-                .from(el)
-                .save();
-            toast.current?.show({
-                severity: 'success',
-                summary: 'ສຳເລັດ',
-                detail: 'ດາວໂຫຼດໄຟລ໌ PDF ສຳເລັດແລ້ວ',
-                life: 2500
-            });
-        } catch (err) {
-            if (process.env.NODE_ENV === 'development') {
-                const msg = err instanceof Error ? err.message : String(err);
-                console.error('PDF export failed:', msg);
-            }
-            toast.current?.show({
-                severity: 'error',
-                summary: 'ຜິດພາດ',
-                detail: 'ບັນທຶກ PDF ບໍ່ສຳເລັດ',
-                life: 3000
-            });
-        } finally {
-            headerEls.forEach((node) => node.classList.add('hidden'));
-            footerEls.forEach((node) => node.classList.add('hidden'));
-            noPrintEls.forEach((node, i) => {
-                const htmlEl = node as HTMLElement;
-                htmlEl.style.display = noPrintDisplays[i] ?? '';
-            });
-        }
-    }, [data]);
-
-    // ກົດປຸ່ມສົ່ງອອກ (ຂັ້ນຕອນທີ 1: ກວດສອບຂໍ້ມູນກ່ອນ)
+    // ກົດປຸ່ມສົ່ງອອກ → ດາວໂຫຼດ Excel ທັນທີ
     const handleExportClick = () => {
         if (!data || data.length === 0) {
             toast.current?.show({
@@ -188,79 +168,16 @@ export default function ReportHD() {
             });
             return;
         }
-        setShowExportDialog(true);
+        exportToExcel();
     };
 
     return (
         <div className="report-hd-view grid">
             <Toast ref={toast} position="top-center" />
 
-            {/* Dialog ໃຫ້ເລືອກຮູບແບບດາວໂຫຼດ */}
-            <Dialog
-                header="ເລືອກຮູບແບບການສົ່ງອອກ"
-                visible={showExportDialog}
-                style={{ width: '400px' }}
-                onHide={() => setShowExportDialog(false)}
-                footer={
-                    <div className="flex justify-content-end">
-                        <Button label="ຍົກເລີກ" icon="pi pi-times" text onClick={() => setShowExportDialog(false)} />
-                    </div>
-                }
-            >
-                <div className="flex flex-column gap-3 pt-2">
-                    <p className="m-0 text-700">ກະລຸນາເລືອກຮູບແບບທີ່ທ່ານຕ້ອງການດາວໂຫຼດ:</p>
-
-                    <Button
-                        label="ດາວໂຫຼດເປັນ Excel "
-                        icon="pi pi-file-excel"
-                        severity="success"
-                        outlined
-                        className="w-full p-3 text-left justify-content-start"
-                        onClick={() => exportToExcel()}
-                    />
-
-                    <Button
-                        label="ດາວໂຫຼດເປັນ PDF"
-                        icon="pi pi-file-pdf"
-                        severity="danger"
-                        outlined
-                        className="w-full p-3 text-left justify-content-start"
-                        onClick={() => exportToPDF()}
-                    />
-                </div>
-            </Dialog>
-
             <div className="col-12">
-                <div ref={printableAreaRef} id="printable-area" className="card">
-                    {/* Print Header */}
-                    <div className="print-only-header hidden">
-                        <div className="text-center mb-4">
-                            <h3 className="m-0 text-900 font-bold">ສາທາລະນະລັດ ປະຊາທິປະໄຕ ປະຊາຊົນລາວ</h3>
-                            <h4 className="m-0 text-700">ສັນຕິພາບ ເອກະລາດ ປະຊາທິປະໄຕ ເອກະພາບ ວັດທະນາຖາວອນ</h4>
-                            <div className="mt-4"><h2 className="font-bold underline">ບົດລາຍງານການແຈ້ງບັນຫາ ແລະ ການຮ້ອງຂໍບໍລິການ</h2></div>
-                        </div>
-                        <div className="grid mb-3 pb-3 border-bottom-1 border-300 w-full m-0">
-                            <div className="col-6 p-0">
-                                <h5 className="font-bold mb-2 underline">ຂໍ້ມູນລາຍງານ:</h5>
-                                <p className="m-0 mb-1 text-lg"><strong>ປະເພດ:</strong> {MENU_ITEMS[activeIndex].label}</p>
-                                <p className="m-0 text-lg"><strong>ຊ່ວງເວລາຂໍ້ມູນ:</strong> {dateRange && dateRange[0] ? `${formatDate(dateRange[0])} - ${formatDate(dateRange[1])}` : 'ທັງໝົດ'}</p>
-                            </div>
-                            <div className="col-6 text-right p-0">
-                                <div className="inline-block text-left" style={{ minWidth: '250px' }}>
-                                    <h5 className="font-bold mb-2 underline">ຂໍ້ມູນຜູ້ພິມ:</h5>
-                                    <p className="m-0 mb-1"><strong>ວັນທີ:</strong> {formatDate(printDate)}</p>
-                                    <p className="m-0 mb-1"><strong>ເວລາ:</strong> {formatTime(printDate)}</p>
-                                    <p className="m-0 mb-1"><strong>ຊື່ ແລະ ນາມສະກຸນ:</strong> {currentUser.fullname}</p>
-                                    <p className="m-0 mb-1"><strong>ຝ່າຍ:</strong> {currentUser.department}</p>
-                                    <p className="m-0 mb-1"><strong>ພະແນກ/ສູນ/ສາຂາ:</strong> {currentUser.division}</p>
-                                    <p className="m-0"><strong>ເບີໂທ:</strong> {currentUser.phone}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Controls */}
-                    <div className="no-print">
+                <div className="card">
+                    <div>
                         <ReportHeaderControls
                             dateRange={dateRange}
                             setDateRange={setDateRange}
@@ -268,65 +185,15 @@ export default function ReportHD() {
                         />
                     </div>
 
-                    <div className="mb-3 no-print">
+                    <div className="mb-3">
                         <TabMenu activeIndex={activeIndex} model={MENU_ITEMS} onTabChange={(e) => setActiveIndex(e.index)} className="custom-report-tabs" />
                     </div>
 
                     {error && <div className="mb-3 p-3 bg-red-50 text-red-700 border-round">Error: {error}</div>}
 
                     <ReportTable data={data} activeIndex={activeIndex} />
-
-                    {/* Print Footer */}
-                    <div className="print-only-footer hidden mt-5">
-                        <div className="flex justify-content-between px-5">
-                            <div className="text-center">
-                                <p className="font-bold">ຜູ້ລາຍງານ</p><br /><br /><br />
-                                <p>.......................................</p>
-                                <p className="mt-2">({currentUser.fullname})</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="font-bold">ຜູ້ຮັບຮອງ</p><br /><br /><br />
-                                <p>.......................................</p>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
-
-            <style jsx global>{`
-                .hidden { display: none !important; }
-
-                @media print {
-                    @page { size: A4 landscape; margin: 5mm; }
-                    .no-print, .p-button, .p-tabmenu, .p-calendar, .layout-topbar, .layout-sidebar, .p-toast, .p-dialog-mask, .p-paginator, .p-component-overlay {
-                        display: none !important;
-                    }
-                    .print-only-header, .print-only-footer { display: block !important; }
-                    .card { box-shadow: none !important; border: none !important; padding: 0 !important; }
-                    .report-hd-view { margin: 0 !important; padding: 0 !important; background: white; }
-                    body { zoom: 75%; -webkit-print-color-adjust: exact; }
-                    .grid { display: flex !important; flex-wrap: wrap !important; width: 100% !important; margin: 0 !important; }
-                    .col-6 { width: 50% !important; flex: 0 0 auto !important; }
-                    .p-datatable-thead > tr > th, .p-datatable-tbody > tr > td {
-                        font-size: 10px !important;
-                        padding: 4px 2px !important;
-                        color: #000 !important;
-                        border-color: #000 !important;
-                        vertical-align: top !important;
-                    }
-                    .custom-tooltip-target {
-                        white-space: normal !important;
-                        overflow: visible !important;
-                        text-overflow: clip !important;
-                        max-width: none !important;
-                        width: auto !important;
-                    }
-                    .text-right { text-align: right !important; }
-                    .text-center { text-align: center !important; }
-                    p, span, h2, h3, h4, h5 { color: #000 !important; }
-                    ::-webkit-scrollbar { display: none; }
-                }
-            `}</style>
         </div>
     );
 }

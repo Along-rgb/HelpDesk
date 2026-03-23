@@ -222,7 +222,9 @@ export enum SupportTeamTabs {
     ISSUE_CATEGORY = 0,  // ທິມສະໜັບສະໜູນ
     TECHNICAL = 1,       // ວິຊາການ
     ROLE_MANAGEMENT = 2, // ສະຖານະ (Roles) — disabled
-    STAFF = 3            // ພະນັກງານ
+    STAFF = 3,           // ພະນັກງານ
+    USER_STATUS = 4,     // ສະຖານະຜູ້ໃຊ້ (Role 1 only)
+    DATA_SYNC = 5        // ການ Sync ຂໍ້ມູນພະນັກງານ (Role 1 only)
 }
 
 // --- Role Management (tab ສະຖານະ) ---
@@ -230,6 +232,15 @@ export interface RoleSelectItem {
     id: number;
     name: string;
     description?: string;
+}
+
+// --- Role Data (tab ສະຖານະຜູ້ໃຊ້) ---
+export interface RoleData {
+    id: number;
+    name: string;
+    description?: string;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export interface UserRoleData {

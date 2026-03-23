@@ -8,19 +8,17 @@ import { STATUS_ICON_MAP, STATUS_ICON_FALLBACK } from "./constants";
 import type { StatusOption, AssigneeOption } from "./types";
 
 interface TicketHeaderProps {
-    statusFilter: any;
-    setStatusFilter: (value: any) => void;
+    statusFilter: string | StatusOption | null;
+    setStatusFilter: (value: string | StatusOption | null) => void;
     statusOptions: StatusOption[];
     assignOptions: AssigneeOption[];
-    /** หัวข้อส่วนมอบหมาย (จาก headcategorys/selectheadcategory) */
-    assignmentSectionTitle?: string;
-    assignFilter: any;
-    setAssignFilter: (value: any) => void;
+    assignmentSectionTitle: string;
+    assignFilter: AssigneeOption[] | null;
+    setAssignFilter: (value: AssigneeOption[] | null) => void;
     globalFilter: string;
     onGlobalFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
     isSelectionEmpty: boolean;
     onBulkAssign: () => void;
-    /** ສຳລັບ role 2: ເປີດປຸ່ມ ຮັບວຽກເອງ (ເງື່ອນໄຂ ລໍຖ້າຮັບວຽກ ແລະ ຍັງບໍ່ມີຄົນມອບໝາຍ) */
     showReceiveSelfButton?: boolean;
     receiveSelfDisabled?: boolean;
     onReceiveTaskSelf?: () => void;
@@ -33,10 +31,9 @@ export const TicketHeader = ({
 }: TicketHeaderProps) => {
 
     const getStatusIcon = (option: StatusOption) =>
-        STATUS_ICON_MAP[option.value]
-        ?? STATUS_ICON_MAP[option.value?.trim() ?? '']
-        ?? STATUS_ICON_MAP[option.label]
+        STATUS_ICON_MAP[option.label]
         ?? STATUS_ICON_MAP[option.label?.trim() ?? '']
+        ?? STATUS_ICON_MAP[option.value]
         ?? STATUS_ICON_FALLBACK;
 
     const renderStatusOption = (option: StatusOption | null) => {

@@ -219,8 +219,8 @@ export const useTicketForm = () => {
                 return;
             }
             const totalImages = form.images.length + newFiles.length;
-            if (totalImages > 6) {
-                toastRef.current?.show({ severity: 'warn', summary: 'ແຈ້ງເຕືອນ', detail: 'ແນບຮູບໄດ້ສູງສຸດ 6 ຮູບ', life: 4000 });
+            if (totalImages > 2) {
+                toastRef.current?.show({ severity: 'warn', summary: 'ແຈ້ງເຕືອນ', detail: 'ແນບຮູບໄດ້ສູງສຸດ 2 ຮູບ', life: 4000 });
                 return;
             }
             const maxPerImage = IMAGE_MAX_SIZE_MB * 1024 * 1024;

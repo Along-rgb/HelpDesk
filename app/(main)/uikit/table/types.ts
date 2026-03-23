@@ -110,6 +110,8 @@ export interface Assignee {
   status: 'doing' | 'done' | 'waiting';
   /** id ສະຖານະຈາກ helpdeskStatus — ໃຊ້ເອີ້ນ selecthelpdeskstatus ແລ້ວແສງ name */
   statusId?: number;
+  /** Assignment row ID (from assignments[].id) — ໃຊ້ສຳລັບ PUT /api/assignments/{id} */
+  assignmentId?: number;
 }
 
 /**

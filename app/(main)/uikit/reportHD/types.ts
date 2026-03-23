@@ -14,11 +14,13 @@ export interface ReportItem {
     room: string;
     date: string ;           // วันที่ (รับเป็น String จาก API)
     note: string;
+    telephone: string | number;
     
     // Field เสริมที่อาจมีหรือไม่มี
     technician?: string;
     category?: string;
     department?: string;
+    _groupTotal?: number;
 }
 
 // สิ่งที่ส่งไปค้นหา (Filter)

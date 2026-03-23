@@ -68,6 +68,7 @@ export function normalizeHelpdeskRow(row: HelpdeskRequestRow | HelpdeskRowInput)
       emp_code,
       status: (a.status as Assignee["status"]) || "waiting",
       statusId,
+      assignmentId: a.id != null && Number.isFinite(Number(a.id)) ? Number(a.id) : undefined,
       image: (e as { empimg?: string })?.empimg ?? undefined,
       phone,
     };
@@ -93,7 +94,12 @@ export function normalizeHelpdeskRow(row: HelpdeskRequestRow | HelpdeskRowInput)
     firstname_req: first || undefined,
     lastname_req: last || undefined,
     requester,
-    emp_code: (emp as { emp_code?: string })?.emp_code ?? undefined,
+    emp_code: (() => {
+      const raw =
+        (emp as { emp_code?: string | number })?.emp_code ??
+        (emp as { employeeCode?: string | number })?.employeeCode;
+      return raw != null && String(raw).trim() !== "" ? String(raw).trim() : undefined;
+    })(),
     employeeId: requesterUserId != null ? requesterUserId : undefined,
     contactPhone: row.telephone != null ? String(row.telephone) : undefined,
     status: row.helpdeskStatus?.name ?? "",

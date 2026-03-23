@@ -6,11 +6,15 @@ import { Panel } from "primereact/panel";
 import { Dropdown } from "primereact/dropdown";
 import { TabView, TabPanel } from "primereact/tabview";
 import { Toast } from "primereact/toast";
+import { Dialog } from "primereact/dialog";
+import { InputTextarea } from "primereact/inputtextarea";
+import { Avatar } from "primereact/avatar";
 import { Ticket, AssigneeOption, type AdminAssignUserRow } from "@/app/(main)/uikit/table/types";
 import { STATUS_MAP, STATUS_ICON_MAP, STATUS_ICON_FALLBACK } from "@/app/(main)/uikit/table/constants";
 import { normalizeHelpdeskRow, unwrapHelpdeskResponse } from "@/app/(main)/uikit/table/normalizeHelpdeskRow";
 import type { HelpdeskRowInput } from "@/app/(main)/uikit/table/normalizeHelpdeskRow";
-import axiosClientsHelpDesk from "@/config/axiosClientsHelpDesk";
+import axiosClientsHelpDesk, { getTokenFromStorage } from "@/config/axiosClientsHelpDesk";
+import { env } from "@/config/env";
 import { HELPDESK_ENDPOINTS } from "@/config/endpoints";
 import { normalizeDataList } from "@/utils/apiNormalizers";
 import { useUserProfileStore } from "@/app/store/user/userProfileStore";
@@ -19,6 +23,7 @@ import { decryptId } from "@/lib/crypto";
 import { fetchTurningsForSelect } from "@/app/services/ticketService";
 import { getHelpdeskFileUrl, getHelpdeskFileUrlAbsolute } from "@/utils/helpdeskFileUrl";
 import { getDownloadApiUrl } from "@/utils/downloadFile";
+import { authenStore } from "@/app/store/user/loginAuthStore";
 
 /** Role 2 = Admin — ticket-detail ໃຊ້ GET helpdeskrequests/admin ແລ້ວຄົ້ນຫາໂດຍ id */
 const ROLE_ID_ADMIN = 2;
@@ -33,10 +38,25 @@ const STATUS_WAITING_ACCEPT = "ລໍຖ້າຮັບວຽກ";
 /** ກຳລັງດຳເນີນການ — ໃຊ້ເມື່ອຮັບວຽກເອງ (เหมือน pageTechn) */
 const HELPDESK_STATUS_IN_PROGRESS = 2;
 
+interface ChatMessage {
+    id: number;
+    message: string;
+    senderId?: number | string;
+    sender?: {
+        employee?: {
+            first_name?: string;
+            last_name?: string;
+        };
+    };
+    createdAt?: string;
+    isDeleted?: boolean;
+}
+
 export default function TicketDetailPage() {
     const params = useParams();
     const router = useRouter();
     const roleId = useUserProfileStore((s) => s.currentUser?.roleId ?? null);
+    const currentAuthUserId = authenStore((s) => s.authData?.userId ?? null);
     const [ticket, setTicket] = useState<Ticket | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -48,14 +68,24 @@ export default function TicketDetailPage() {
     const [selectedAssignee, setSelectedAssignee] = useState<AssigneeOption | null>(null);
 
     /** ອີເມວ / ຝ່າຍ / ພະແນກ: ดึงจาก GET users/:id (ຜູ້ປ້ອນຂໍ້ມູນ) */
-    const [requesterEmail, setRequesterEmail] = useState<string>("");
-    const [requesterDivision, setRequesterDivision] = useState<string>("");
-    const [requesterDepartment, setRequesterDepartment] = useState<string>("");
+    const [requesterInfo, setRequesterInfo] = useState<{ email: string; division: string; department: string }>({
+        email: "", division: "", department: "",
+    });
     /** ອອກລິບມາ: รายการจาก turnings/selectturning ເພື່ອ resolve turningId → name */
     const [turningOptions, setTurningOptions] = useState<{ id: number; name: string }[]>([]);
     const [acceptLoading, setAcceptLoading] = useState(false);
     const [invalidLink, setInvalidLink] = useState(false);
     const toastRef = useRef<Toast | null>(null);
+
+    // --- Chat State ---
+    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+    const [chatDialogVisible, setChatDialogVisible] = useState(false);
+    const [chatInput, setChatInput] = useState('');
+    const [chatSending, setChatSending] = useState(false);
+    const chatContainerRef = useRef<HTMLDivElement | null>(null);
+    const [editChat, setEditChat] = useState<{ id: number | null; input: string; saving: boolean; visible: boolean }>({
+        id: null, input: '', saving: false, visible: false,
+    });
 
     /** ລອງ GET helpdeskrequests/[id] ກ່ອນເພື່ອໃຫ້ໄດ້ຂໍ້ມູນເຕັມລວມ hdFile, hdImgs. ຖ້າ 403/404 ຈຶ່ງ fallback ໃສ່ list (Admin/User). */
     const fetchTicket = useCallback(
@@ -87,17 +117,24 @@ export default function TicketDetailPage() {
         [roleId]
     );
 
-    /** ມອບໝາຍວຽກ — ເອີ້ນ USERS_ADMINASSIGN ເທົ່ານັ້ນເມື່ອ role 1 ຫຼື 2 (ຫຼີກ 403 ສຳລັບ role 3, 4) */
+    /**
+     * Parallel init: fire assignOptions + turnings in a single effect
+     * instead of 2 sequential useEffect waterfalls.
+     */
     useEffect(() => {
-        const canCall = roleId != null && ROLE_IDS_CAN_ADMIN_ASSIGN.includes(roleId as 1 | 2);
-        if (!canCall) {
-            setAssignOptions([]);
-            return;
-        }
-        axiosClientsHelpDesk
-            .get(HELPDESK_ENDPOINTS.USERS_ADMINASSIGN)
-            .then((response) => {
-                const list = normalizeDataList<AdminAssignUserRow>(response.data);
+        let cancelled = false;
+        const canCallAdmin = roleId != null && ROLE_IDS_CAN_ADMIN_ASSIGN.includes(roleId as 1 | 2);
+
+        const assignPromise = canCallAdmin
+            ? axiosClientsHelpDesk.get(HELPDESK_ENDPOINTS.USERS_ADMINASSIGN).catch(() => null)
+            : Promise.resolve(null);
+
+        const turningsPromise = fetchTurningsForSelect().catch(() => [] as { code: string; name: string }[]);
+
+        Promise.all([assignPromise, turningsPromise]).then(([assignRes, turningsList]) => {
+            if (cancelled) return;
+            if (assignRes) {
+                const list = normalizeDataList<AdminAssignUserRow>(assignRes.data);
                 const staff = list.filter((u) => Number(u.roleId) === ROLE_ID_STAFF);
                 const options: AssigneeOption[] = staff.map((u) => {
                     const first = u.employee?.first_name ?? "";
@@ -106,8 +143,17 @@ export default function TicketDetailPage() {
                     return { id: u.id, label };
                 });
                 setAssignOptions(options);
-            })
-            .catch(() => setAssignOptions([]));
+            } else {
+                setAssignOptions([]);
+            }
+            const options = (turningsList as { code: string; name: string }[]).map((item) => ({
+                id: Number(item.code),
+                name: item.name,
+            })).filter((o) => Number.isFinite(o.id));
+            setTurningOptions(options);
+        });
+
+        return () => { cancelled = true; };
     }, [roleId]);
 
     useEffect(() => {
@@ -157,10 +203,9 @@ export default function TicketDetailPage() {
 
     /** ดึง ອີເມວ, ຝ່າຍ, ພະແນກ ของຜູ້ປ້ອນຂໍ້ມູນ (GET users/:id) */
     useEffect(() => {
+        const empty = { email: "", division: "", department: "" };
         if (!ticket?.employeeId) {
-            setRequesterEmail("");
-            setRequesterDivision("");
-            setRequesterDepartment("");
+            setRequesterInfo(empty);
             return;
         }
         const userId = String(ticket.employeeId);
@@ -181,31 +226,117 @@ export default function TicketDetailPage() {
                     };
                 };
                 const email = obj.employee?.email ?? obj.email;
-                setRequesterEmail(email != null && String(email).trim() !== "" ? String(email).trim() : "");
                 const divName = obj.employee?.division?.division_name;
                 const deptName = obj.employee?.department?.department_name;
-                setRequesterDivision(divName != null && String(divName).trim() !== "" ? String(divName).trim() : "");
-                setRequesterDepartment(deptName != null && String(deptName).trim() !== "" ? String(deptName).trim() : "");
+                setRequesterInfo({
+                    email: email != null && String(email).trim() !== "" ? String(email).trim() : "",
+                    division: divName != null && String(divName).trim() !== "" ? String(divName).trim() : "",
+                    department: deptName != null && String(deptName).trim() !== "" ? String(deptName).trim() : "",
+                });
             })
-            .catch(() => {
-                setRequesterEmail("");
-                setRequesterDivision("");
-                setRequesterDepartment("");
-            });
+            .catch(() => setRequesterInfo(empty));
     }, [ticket?.employeeId]);
 
-    /** โหลดรายการ ອອກລິບມາ (turnings) ເພື່ອ resolve turningId → name */
-    useEffect(() => {
-        fetchTurningsForSelect()
-            .then((list) => {
-                const options = list.map((item) => ({
-                    id: Number(item.code),
-                    name: item.name,
-                })).filter((o) => Number.isFinite(o.id));
-                setTurningOptions(options);
+    // --- Chat: fetch history ---
+    const fetchChatHistory = useCallback(() => {
+        if (!ticket?.id) return;
+        axiosClientsHelpDesk
+            .get(HELPDESK_ENDPOINTS.CHATS, { params: { helpdeskRequestId: ticket.id } })
+            .then((res) => {
+                const raw = res.data;
+                const list: ChatMessage[] = Array.isArray(raw?.data) ? raw.data : Array.isArray(raw) ? raw : [];
+                list.sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime());
+                setChatMessages(list);
             })
-            .catch(() => setTurningOptions([]));
+            .catch(() => {});
+    }, [ticket?.id]);
+
+    // --- Chat: SSE real-time connection ---
+    useEffect(() => {
+        if (!ticket?.id) return;
+        fetchChatHistory();
+
+        const baseUrl = env.useHelpdeskProxy ? '/api/helpdesk-proxy' : env.helpdeskApiUrl;
+        const token = getTokenFromStorage();
+        if (!token) return;
+        const sseParams = new URLSearchParams({ helpdeskRequestId: String(ticket.id), token });
+        const sseUrl = [baseUrl, HELPDESK_ENDPOINTS.CHATS_SSE].join('/') + '?' + sseParams.toString();
+
+        let es: EventSource | null = null;
+        try {
+            es = new EventSource(sseUrl);
+            es.onmessage = (event) => {
+                try {
+                    const msg: ChatMessage = JSON.parse(event.data);
+                    setChatMessages((prev) => {
+                        if (prev.some((m) => m.id === msg.id)) return prev;
+                        return [...prev, msg].sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime());
+                    });
+                } catch { /* ignore parse errors */ }
+            };
+            es.onerror = () => {
+                es?.close();
+            };
+        } catch { /* ignore SSE init errors */ }
+
+        return () => { es?.close(); };
+    }, [ticket?.id, fetchChatHistory]);
+
+    // --- Chat: auto-scroll within container only (no page scroll) ---
+    useEffect(() => {
+        const el = chatContainerRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
+    }, [chatMessages]);
+
+    // --- Chat: send message ---
+    const sendChatMessage = useCallback(async () => {
+        if (!ticket?.id || !chatInput.trim()) return;
+        setChatSending(true);
+        try {
+            await axiosClientsHelpDesk.post(HELPDESK_ENDPOINTS.CHATS, {
+                helpdeskRequestId: Number(ticket.id),
+                message: chatInput.trim(),
+            });
+            setChatInput('');
+            setChatDialogVisible(false);
+            fetchChatHistory();
+        } catch {
+            toastRef.current?.show({
+                severity: 'error',
+                summary: 'ຜິດພາດ',
+                detail: 'ສົ່ງຂໍ້ຄວາມບໍ່ສຳເລັດ',
+                life: 4000,
+            });
+        } finally {
+            setChatSending(false);
+        }
+    }, [ticket?.id, chatInput, fetchChatHistory]);
+
+    // --- Chat: delete message ---
+    const deleteChat = useCallback(async (chatId: number) => {
+        try {
+            await axiosClientsHelpDesk.delete(`${HELPDESK_ENDPOINTS.CHATS}/${chatId}`);
+            setChatMessages((prev) => prev.map((m) => m.id === chatId ? { ...m, isDeleted: true, message: 'ຂໍ້ຄວາມນີ້ຖືກລົບ' } : m));
+        } catch {
+            toastRef.current?.show({ severity: 'error', summary: 'ຜິດພາດ', detail: 'ລົບຂໍ້ຄວາມບໍ່ສຳເລັດ', life: 4000 });
+        }
     }, []);
+
+    // --- Chat: update message ---
+    const updateChat = useCallback(async () => {
+        if (editChat.id == null || !editChat.input.trim()) return;
+        setEditChat((prev) => ({ ...prev, saving: true }));
+        try {
+            await axiosClientsHelpDesk.put(`${HELPDESK_ENDPOINTS.CHATS}/${editChat.id}`, { message: editChat.input.trim() });
+            const savedMsg = editChat.input.trim();
+            const savedId = editChat.id;
+            setChatMessages((prev) => prev.map((m) => m.id === savedId ? { ...m, message: savedMsg } : m));
+            setEditChat({ id: null, input: '', saving: false, visible: false });
+        } catch {
+            toastRef.current?.show({ severity: 'error', summary: 'ຜິດພາດ', detail: 'ແກ້ໄຂຂໍ້ຄວາມບໍ່ສຳເລັດ', life: 4000 });
+            setEditChat((prev) => ({ ...prev, saving: false }));
+        }
+    }, [editChat.id, editChat.input]);
 
     if (invalidLink) return <div className="p-4 text-xl">ລິ້ງຄ໌ບໍ່ຖືກຕ້ອງ ຫຼືໝົດອາຍຸ</div>;
     if (loading) return <div className="p-4 text-xl">ກໍາລັງໂຫຼດຂໍ້ມູນ...</div>;
@@ -232,7 +363,7 @@ export default function TicketDetailPage() {
                                     className="border-1 border-300 text-700"
                                     onClick={() => router.back()}
                                 />
-                                {roleId !== ROLE_ID_STAFF && (
+                                {roleId !== ROLE_ID_STAFF && roleId !== ROLE_ID_USER && !(roleId === ROLE_ID_ADMIN && (ticket.assignees?.length ?? 0) > 0) && (
                                     <Dropdown
                                         value={selectedAssignee}
                                         onChange={(e) => setSelectedAssignee(e.value)}
@@ -257,13 +388,6 @@ export default function TicketDetailPage() {
                             </div>
 
                             <div className="flex align-items-center gap-2 mt-3 md:mt-0 w-full md:w-auto justify-content-end">
-                                <Button
-                                    label="ຕອບກັບ"
-                                    icon="pi pi-reply"
-                                    severity="success"
-                                    className="bg-green-500 border-green-500 hover:bg-green-600"
-                                />
-
                                 {/* ปุ่ม Toggle Sidebar */}
                                 <Button
                                     icon={isSidebarVisible ? "pi pi-chevron-right" : "pi pi-chevron-left"}
@@ -279,8 +403,8 @@ export default function TicketDetailPage() {
 
                         {/* HEADER TITLE */}
                         <div className="mb-4">
-                            <h2 className="m-0 text-900 font-bold text-3xl mb-2">#{ticket.id} {ticket.title}</h2>
-                            <span className="text-600 text-base">
+                            <h2 className="m-0 text-900 font-bold text-2xl mb-2">#{ticket.id} {ticket.title}</h2>
+                            <span className="text-600 text-sm">
                                 ໂດຍ: [{ticket.emp_code ?? ''}]-{requesterName} | ເວລາ: {ticket.date}
                             </span>
                         </div>
@@ -300,9 +424,92 @@ export default function TicketDetailPage() {
                                         </div>
                                     </Panel>
 
-                                    <Panel header="ການສົນທະນາ" toggleable className="border-top-1 border-yellow-500 shadow-none border-1 surface-border border-round-none">
-                                        <div className="text-500 text-base italic py-4 px-3 md:px-4">
-                                            ພື້ນທີ່ສໍາລັບການສະແດງລາຍການສົນທະນາ... (ກໍາລັງອັບເດດ)
+                                    <Panel
+                                        headerTemplate={(options) => {
+                                            const toggleIcon = options.collapsed ? 'pi pi-chevron-down' : 'pi pi-chevron-up';
+                                            return (
+                                                <div className="flex align-items-center justify-content-between w-full px-3 py-2">
+                                                    <div className="flex align-items-center gap-2 cursor-pointer" onClick={options.onTogglerClick}>
+                                                        <i className={toggleIcon} style={{ fontSize: '0.85rem' }} />
+                                                        <span className="font-bold text-900">ສົນທະນາ</span>
+                                                    </div>
+                                                    <Button
+                                                        label="ແຊັດຫາ +"
+                                                        icon="pi pi-plus"
+                                                        size="small"
+                                                        className="p-button-outlined p-button-sm"
+                                                        style={{ height: '28px', fontSize: '12px' }}
+                                                        onClick={(e) => { e.stopPropagation(); setChatDialogVisible(true); }}
+                                                    />
+                                                </div>
+                                            );
+                                        }}
+                                        toggleable
+                                        className="border-top-1 border-yellow-500 shadow-none border-1 surface-border border-round-none"
+                                    >
+                                        <div ref={chatContainerRef} style={{ maxHeight: '400px', overflowY: 'auto' }} className="px-3 md:px-4 py-2">
+                                            {chatMessages.length === 0 ? (
+                                                <div className="text-500 text-base italic py-4">ຍັງບໍ່ມີການສົນທະນາ</div>
+                                            ) : (
+                                                chatMessages.map((msg) => {
+                                                    const senderName = [msg.sender?.employee?.first_name, msg.sender?.employee?.last_name].filter(Boolean).join(' ') || 'Unknown';
+                                                    const initials = senderName.substring(0, 2).toUpperCase();
+                                                    const isOwner = currentAuthUserId != null && msg.senderId != null && String(msg.senderId) === String(currentAuthUserId);
+                                                    const deleted = !!msg.isDeleted;
+                                                    return (
+                                                        <div
+                                                            key={msg.id}
+                                                            className={`flex align-items-start gap-2 mb-3 ${isOwner ? '' : 'flex-row-reverse'}`}
+                                                        >
+                                                            <Avatar
+                                                                label={initials}
+                                                                shape="circle"
+                                                                size="normal"
+                                                                style={{
+                                                                    backgroundColor: isOwner ? '#3b82f6' : '#8b5cf6',
+                                                                    color: '#fff',
+                                                                    flexShrink: 0,
+                                                                }}
+                                                            />
+                                                            <div className={`flex flex-column flex-1 min-w-0 ${isOwner ? '' : 'align-items-end'}`}>
+                                                                <span className="font-bold text-900 text-sm mb-1">{senderName}</span>
+                                                                <div className={`flex align-items-center gap-1 ${isOwner ? '' : 'flex-row-reverse'}`}>
+                                                                    <div
+                                                                        className={`border-round p-3 text-base line-height-3 ${deleted ? 'text-500 italic surface-200' : (isOwner ? 'surface-100 text-700' : 'bg-purple-50 text-800')}`}
+                                                                        style={{ wordBreak: 'break-word', maxWidth: '85%' }}
+                                                                    >
+                                                                        {deleted ? 'ຂໍ້ຄວາມນີ້ຖືກລົບ' : msg.message}
+                                                                    </div>
+                                                                    {isOwner && !deleted && (
+                                                                        <div className="flex flex-column gap-1" style={{ flexShrink: 0 }}>
+                                                                            <Button
+                                                                                icon="pi pi-pencil"
+                                                                                rounded
+                                                                                text
+                                                                                severity="secondary"
+                                                                                style={{ width: '1.8rem', height: '1.8rem' }}
+                                                                                tooltip="ແກ້ໄຂ"
+                                                                                tooltipOptions={{ position: 'top' }}
+                                                                                onClick={() => setEditChat({ id: msg.id, input: msg.message, saving: false, visible: true })}
+                                                                            />
+                                                                            <Button
+                                                                                icon="pi pi-trash"
+                                                                                rounded
+                                                                                text
+                                                                                severity="danger"
+                                                                                style={{ width: '1.8rem', height: '1.8rem' }}
+                                                                                tooltip="ລົບ"
+                                                                                tooltipOptions={{ position: 'top' }}
+                                                                                onClick={() => deleteChat(msg.id)}
+                                                                            />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
                                         </div>
                                     </Panel>
 
@@ -378,12 +585,12 @@ export default function TicketDetailPage() {
 
                             {/* Card 1: Requester Info */}
                             <div className="mb-4">
-                                <div className="text-blue-600 font-bold text-2xl mb-3 border-bottom-1 surface-border pb-2">
+                                <div className="text-blue-600 font-bold text-xl mb-2 border-bottom-1 surface-border pb-2">
                                     ພາກສ່ວນຮ້ອງຂໍ
                                 </div>
 
-                                <ul className="list-none p-0 m-0 text-base">
-                                    <li className="flex align-items-center gap-2 py-3 border-bottom-1 surface-border">
+                                <ul className="list-none p-0 m-0 text-sm">
+                                    <li className="flex align-items-center gap-2 py-2 border-bottom-1 surface-border">
                                         <span className="text-900 font-bold flex-shrink-0">ສະຖານະ </span>
                                         <div className="flex align-items-center gap-2 flex-1 min-w-0">
                                             {(() => {
@@ -399,39 +606,39 @@ export default function TicketDetailPage() {
                                             })()}
                                         </div>
                                     </li>
-                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                    <li className="flex align-items-start gap-2 py-2 border-bottom-1 surface-border">
                                         <span className="text-900 font-bold flex-shrink-0">ວັນທີຮ້ອງຂໍ : </span>
                                         <span className="text-700 flex-1 min-w-0">{ticket.date}</span>
                                     </li>
-                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                    <li className="flex align-items-start gap-2 py-2 border-bottom-1 surface-border">
                                         <span className="text-900 font-bold flex-shrink-0">ຜູ້ຮ້ອງຂໍ : </span>
                                         <span className="text-700 flex-1 min-w-0">[{ticket.emp_code ?? ''}]-{requesterName}</span>
                                     </li>
-                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                    <li className="flex align-items-start gap-2 py-2 border-bottom-1 surface-border">
                                         <span className="text-900 font-bold flex-shrink-0">ຝ່າຍ : </span>
-                                        <span className="text-700 flex-1 min-w-0">{ticket.division || requesterDivision || '-'}</span>
+                                        <span className="text-700 flex-1 min-w-0">{ticket.division || requesterInfo.division || '-'}</span>
                                     </li>
-                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                    <li className="flex align-items-start gap-2 py-2 border-bottom-1 surface-border">
                                         <span className="text-900 font-bold flex-shrink-0">ພະແນກ :</span>
-                                        <span className="text-700 flex-1 min-w-0">{ticket.department || requesterDepartment || '-'}</span>
+                                        <span className="text-700 flex-1 min-w-0">{ticket.department || requesterInfo.department || '-'}</span>
                                     </li>
-                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                    <li className="flex align-items-start gap-2 py-2 border-bottom-1 surface-border">
                                         <span className="text-900 font-bold flex-shrink-0">ເລກ ຊຄທ : </span>
                                         <span className="text-700 flex-1 min-w-0">{ticket.numberSKT ?? '-'}</span>
                                     </li>
-                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                    <li className="flex align-items-start gap-2 py-2 border-bottom-1 surface-border">
                                         <span className="text-900 font-bold flex-shrink-0">ສະຖານທີ່ :</span>
                                         <span className="text-700 flex-1 min-w-0">{ticket.building || 'ຕຶກສໍານັກງານໃຫຍ່'}</span>
                                     </li>
-                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                    <li className="flex align-items-start gap-2 py-2 border-bottom-1 surface-border">
                                         <span className="text-900 font-bold flex-shrink-0">ຊັ້ນ :</span>
                                         <span className="text-700 flex-1 min-w-0">{ticket.level || 'ຊັ້ນ-05'}</span>
                                     </li>
-                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                    <li className="flex align-items-start gap-2 py-2 border-bottom-1 surface-border">
                                         <span className="text-900 font-bold flex-shrink-0">ຫ້ອງ :</span>
                                         <span className="text-700 font-bold flex-1 min-w-0">{ticket.room || '502'}</span>
                                     </li>
-                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                    <li className="flex align-items-start gap-2 py-2 border-bottom-1 surface-border">
                                         <span className="text-900 font-bold flex-shrink-0">ອອກລິບມາ :</span>
                                         <span className="text-700 flex-1 min-w-0">
                                             {ticket.turning ??
@@ -440,13 +647,13 @@ export default function TicketDetailPage() {
                                                     : '-')}
                                         </span>
                                     </li>
-                                    <li className="flex align-items-start gap-2 py-3 border-bottom-1 surface-border">
+                                    <li className="flex align-items-start gap-2 py-2 border-bottom-1 surface-border">
                                         <span className="text-900 font-bold flex-shrink-0">ເບີໂທ :</span>
                                         <span className="text-700 flex-1 min-w-0">{ticket.contactPhone || '020 9999 9999'}</span>
                                     </li>
-                                    <li className="flex align-items-start gap-2 py-3">
+                                    <li className="flex align-items-start gap-2 py-2">
                                         <span className="text-900 font-bold flex-shrink-0">ອີເມວ :</span>
-                                        <span className="text-700 flex-1 min-w-0" style={{ wordBreak: 'break-all' }}>{requesterEmail}</span>
+                                        <span className="text-700 flex-1 min-w-0" style={{ wordBreak: 'break-all' }}>{requesterInfo.email}</span>
                                     </li>
                                 </ul>
                             </div>
@@ -511,6 +718,70 @@ export default function TicketDetailPage() {
                     )}
                 </div>
             </div>
+
+            {/* --- Chat Dialog --- */}
+            <Dialog
+                header="ສົນທະນາ"
+                visible={chatDialogVisible}
+                style={{ width: '500px' }}
+                onHide={() => { setChatDialogVisible(false); setChatInput(''); }}
+                modal
+                draggable={false}
+            >
+                <div className="flex flex-column gap-3">
+                    <InputTextarea
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        rows={4}
+                        autoResize
+                        placeholder="ພິມຂໍ້ຄວາມ..."
+                        className="w-full"
+                    />
+                    {chatInput.trim() !== '' && (
+                        <div className="flex justify-content-end">
+                            <Button
+                                label="Send"
+                                icon="pi pi-telegram"
+                                loading={chatSending}
+                                disabled={chatSending}
+                                onClick={sendChatMessage}
+                            />
+                        </div>
+                    )}
+                </div>
+            </Dialog>
+
+            {/* --- Edit Chat Dialog --- */}
+            <Dialog
+                header="ແກ້ໄຂຂໍ້ຄວາມ"
+                visible={editChat.visible}
+                style={{ width: '500px' }}
+                onHide={() => setEditChat({ id: null, input: '', saving: false, visible: false })}
+                modal
+                draggable={false}
+            >
+                <div className="flex flex-column gap-3">
+                    <InputTextarea
+                        value={editChat.input}
+                        onChange={(e) => setEditChat((prev) => ({ ...prev, input: e.target.value }))}
+                        rows={4}
+                        autoResize
+                        placeholder="ແກ້ໄຂຂໍ້ຄວາມ..."
+                        className="w-full"
+                    />
+                    {editChat.input.trim() !== '' && (
+                        <div className="flex justify-content-end">
+                            <Button
+                                label="ບັນທຶກ"
+                                icon="pi pi-check"
+                                loading={editChat.saving}
+                                disabled={editChat.saving}
+                                onClick={updateChat}
+                            />
+                        </div>
+                    )}
+                </div>
+            </Dialog>
         </div>
     );
 }

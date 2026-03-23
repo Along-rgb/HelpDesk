@@ -27,6 +27,10 @@ export interface ReportWorkModalProps {
   onSave: (data: ReportWorkSaveData) => Promise<void> | void;
   ticketId?: string | number | null;
   ticketTitle?: string | null;
+  /** 'full' = comment + camera + GPS (default), 'comment' = comment only */
+  mode?: 'full' | 'comment';
+  /** Custom header label (default: 'ລາຍງານວຽກ') */
+  headerLabel?: string;
 }
 
 function getCanUseCamera(): boolean {
@@ -66,7 +70,7 @@ function canvasToBlob(canvas: HTMLCanvasElement, type = 'image/jpeg', quality = 
   });
 }
 
-export function ReportWorkModal({ visible, onHide, onSave, ticketId, ticketTitle }: ReportWorkModalProps) {
+export function ReportWorkModal({ visible, onHide, onSave, ticketId, ticketTitle, mode = 'full', headerLabel }: ReportWorkModalProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -194,8 +198,9 @@ export function ReportWorkModal({ visible, onHide, onSave, ticketId, ticketTitle
   }, [cameraReady, cleanupPreview]);
 
   const canSave = useMemo(() => {
+    if (mode === 'comment') return workDetail.trim().length > 0 && !saving;
     return workDetail.trim().length > 0 && imageFile != null && !saving;
-  }, [workDetail, imageFile, saving]);
+  }, [workDetail, imageFile, saving, mode]);
 
   const handleSave = useCallback(async () => {
     if (!canSave) return;
@@ -244,8 +249,8 @@ export function ReportWorkModal({ visible, onHide, onSave, ticketId, ticketTitle
       return;
     }
     resetCaptureState();
-    startCamera();
-  }, [visible]);
+    if (mode !== 'comment') startCamera();
+  }, [visible, mode]);
 
   useEffect(() => {
     return () => {
@@ -275,7 +280,7 @@ export function ReportWorkModal({ visible, onHide, onSave, ticketId, ticketTitle
     <Dialog
       header={
         <div className="flex align-items-center gap-2" style={{ maxWidth: '75vw' }}>
-          <span className="font-semibold">ລາຍງານວຽກ</span>
+          <span className="font-semibold">{headerLabel || 'ລາຍງານວຽກ'}</span>
           {ticketId != null && String(ticketId).trim() !== '' ? (
             <span className="text-600 font-semibold">#{ticketId}</span>
           ) : null}
@@ -313,11 +318,12 @@ export function ReportWorkModal({ visible, onHide, onSave, ticketId, ticketTitle
           />
         </div>
 
+        {mode !== 'comment' && (
         <div className="border-1 surface-border border-round p-3">
           <div className="flex justify-content-between align-items-center mb-3">
             <div className="flex align-items-center gap-2 font-semibold">
               <Camera size={18} />
-              <span>ຖ່າຍຮູບ (Real-time)</span>
+              <span>ຖ່າຍຮູບລາຍງານ</span>
             </div>
             {imageFile ? (
               <Button
@@ -364,9 +370,6 @@ export function ReportWorkModal({ visible, onHide, onSave, ticketId, ticketTitle
                       disabled={saving || loadingCamera || loadingCapture || !cameraReady}
                     />
                   </div>
-                  <div className="text-600 text-sm">
-                    ເມື່ອກົດ "ຖ່າຍຮູບ" ລະບົບຈະດຶງພິກັດ GPS ທັນທີ
-                  </div>
                 </>
               )}
             </div>
@@ -391,6 +394,7 @@ export function ReportWorkModal({ visible, onHide, onSave, ticketId, ticketTitle
             </div>
           )}
         </div>
+        )}
       </div>
     </Dialog>
   );

@@ -8,6 +8,7 @@ import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
 import { changePasswordAPI, validateForm } from './api';
+import { useUserRoleAndId } from '@/app/store/user/userProfileStore';
 
 const ChangePasswordPage = () => {
   const [formData, setFormData] = useState({
@@ -19,6 +20,7 @@ const ChangePasswordPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const toast = useRef<Toast>(null);
   const isSubmittingRef = useRef(false);
+  const { currentUserId } = useUserRoleAndId();
 
   // ✅ แก้ไขฟังก์ชันนี้: เพิ่ม .clear() เพื่อลบข้อความเก่าก่อนเสมอ
   const showToast = (severity: 'success' | 'error' | 'warn', summary: string, detail: string) => {
@@ -50,7 +52,13 @@ const ChangePasswordPage = () => {
     }
 
     try {
-      await changePasswordAPI(formData);
+      if (!currentUserId) {
+        showToast('error', 'ເກີດຂໍ້ຜິດພາດ (Error)', 'ບໍ່ພົບຂໍ້ມູນຜູ້ໃຊ້ ກະລຸນາ Login ໃໝ່');
+        setIsLoading(false);
+        setTimeout(() => { isSubmittingRef.current = false; }, 500);
+        return;
+      }
+      await changePasswordAPI(formData, currentUserId);
       showToast('success', 'ສຳເລັດ (Success)', 'ປ່ຽນລະຫັດຜ່ານສຳເລັດ!');
       setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error: any) {

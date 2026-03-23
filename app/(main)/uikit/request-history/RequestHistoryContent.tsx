@@ -17,7 +17,8 @@ import { TitleColumn } from './TitleColumn';
 import { STATUS_MAP, ASSIGNEE_STATUS_MAP, CUSTOM_TOOLTIP_CSS } from '../table/constants';
 import { sanitizeStyleContent } from '@/utils/sanitizeHtml';
 import { AssigneeAvatarGroup } from '../table/AssigneeAvatarGroup';
-import { AssigneeDialog } from '../table/AssigneeDialog';
+import { Dialog } from 'primereact/dialog';
+import { Avatar } from 'primereact/avatar';
 import { TableTooltip } from '../table/TableTooltip';
 import type { Assignee } from '../table/types';
 import { useProfileData, useUserProfileStore } from '@/app/store/user/userProfileStore';
@@ -48,11 +49,14 @@ export interface RequestHistoryRow {
     status: string;
     statusId?: number;
     createdById?: number | string;
+    updatedAt?: string;
 }
 
 type AssignmentRaw = {
     assignedTo?: { id?: number; employee?: { id?: number; first_name?: string; last_name?: string } };
     employee?: { id?: number; first_name?: string; last_name?: string };
+    helpdeskStatusId?: number;
+    helpdeskStatus?: { id?: number; name?: string };
 };
 
 function normalizeHistoryResponse(data: unknown): RequestHistoryRow[] {
@@ -72,7 +76,9 @@ function normalizeHistoryResponse(data: unknown): RequestHistoryRow[] {
                 const last = emp?.last_name ?? '';
                 const name = [first, last].filter(Boolean).join(' ').trim() || '—';
                 const assigneeId = a.assignedTo?.id ?? emp?.id ?? idx;
-                return { id: assigneeId, name, status: 'doing' as const };
+                const aStatusId = a.helpdeskStatus?.id ?? a.helpdeskStatusId;
+                const aStatus = a.helpdeskStatus?.name ?? status;
+                return { id: assigneeId, name, status: aStatus as Assignee['status'], statusId: aStatusId != null ? aStatusId : (statusId != null ? statusId : undefined) };
             });
             const assignTo = assignees.length > 0 ? assignees[0].name : 'ຍັງບໍ່ໄດ້ມອບໝາຍ';
             const createdById = row.createdById as number | undefined;
@@ -88,7 +94,8 @@ function normalizeHistoryResponse(data: unknown): RequestHistoryRow[] {
                 assignees: assignees.length > 0 ? assignees : undefined,
                 status,
                 statusId: statusId != null ? statusId : undefined,
-                createdById: createdById != null ? createdById : undefined
+                createdById: createdById != null ? createdById : undefined,
+                updatedAt: (row.updatedAt as string | undefined) ?? undefined
             };
         });
     }
@@ -108,6 +115,46 @@ const TAB_CONFIG: { tabIndex: number; statusIds: number[]; label: string }[] = [
     { tabIndex: 5, statusIds: [8], label: 'ຖືກປະຕິເສດ' },
 ];
 
+/** Local Assignee Dialog ສຳລັບ Role 4 — ແສງຊື່ ນາມສະກຸນ ເທົ່ານັ້ນ (ບໍ່ມີ emp_code) */
+const UserAssigneeDialog = ({ visible, onHide, assignees, statusList = [], ticketStatus, sectionTitle = 'ມອບໝາຍໃຫ້' }: {
+    visible: boolean; onHide: () => void; assignees: Assignee[];
+    statusList?: HelpdeskStatusItem[]; ticketStatus?: string | null; sectionTitle?: string;
+}) => {
+    const statusById = React.useMemo(() => new Map(statusList.map((s) => [s.id, s])), [statusList]);
+    return (
+        <Dialog header={sectionTitle} visible={visible} style={{ width: '30vw', minWidth: '350px' }} onHide={onHide} draggable={false}>
+            <div className="flex flex-column gap-3 mt-2">
+                {assignees.map((user) => {
+                    const statusFromApi = user.statusId != null ? statusById.get(user.statusId) : undefined;
+                    const displayLabel = statusFromApi ? statusFromApi.name : (ticketStatus || (ASSIGNEE_STATUS_MAP[user.status] || ASSIGNEE_STATUS_MAP['default']).label);
+                    let rawSeverity: 'success' | 'info' | 'warning' | 'danger' | 'secondary' | null;
+                    if (statusFromApi && STATUS_MAP[statusFromApi.name]) {
+                        rawSeverity = STATUS_MAP[statusFromApi.name] as 'success' | 'info' | 'warning' | 'danger' | null;
+                    } else if (ticketStatus && STATUS_MAP[ticketStatus]) {
+                        rawSeverity = STATUS_MAP[ticketStatus] as 'success' | 'info' | 'warning' | 'danger' | null;
+                    } else if (user.status && ASSIGNEE_STATUS_MAP[user.status]) {
+                        rawSeverity = ASSIGNEE_STATUS_MAP[user.status].severity as 'success' | 'info' | 'warning' | 'danger' | 'secondary';
+                    } else {
+                        rawSeverity = 'secondary';
+                    }
+                    const displaySeverity = rawSeverity === 'secondary' || rawSeverity === null ? undefined : (rawSeverity as 'success' | 'info' | 'warning' | 'danger');
+                    return (
+                        <div key={user.id} className="flex align-items-center justify-content-between p-2 border-bottom-1 surface-border">
+                            <div className="flex align-items-center gap-2">
+                                <Avatar icon="pi pi-user" shape="circle" className="surface-100 text-500 border-1 surface-border" />
+                                <div className="flex flex-column">
+                                    <span className="font-bold text-sm">{user.name}</span>
+                                    <span className="text-xs text-500">Staff / IT Support</span>
+                                </div>
+                            </div>
+                            <Tag value={displayLabel} severity={displaySeverity} style={{ fontSize: '0.85rem' }} />
+                        </div>
+                    );
+                })}
+            </div>
+        </Dialog>
+    );
+};
 export function RequestHistoryContent({ showTitle = false }: RequestHistoryContentProps) {
     const { profileData } = useProfileData();
     const currentUser = useUserProfileStore((s) => s.currentUser);
@@ -251,7 +298,7 @@ export function RequestHistoryContent({ showTitle = false }: RequestHistoryConte
             <ConfirmDialog />
             <style dangerouslySetInnerHTML={{ __html: sanitizeStyleContent(CUSTOM_TOOLTIP_CSS) }} />
             <TableTooltip target=".js-tooltip-target" dependencies={[filteredByTab, first]} />
-            <AssigneeDialog
+            <UserAssigneeDialog
                 visible={dialogVisible}
                 onHide={closeAssigneeDialog}
                 assignees={dialogAssignees}
@@ -370,6 +417,14 @@ export function RequestHistoryContent({ showTitle = false }: RequestHistoryConte
                         style={{ width: '200px', minWidth: '200px' }}
                         align="center"
                     />
+                    {activeTabIndex === 3 && (
+                        <Column
+                            header="ວັນທີແກ້ໄຂ"
+                            body={(rowData: RequestHistoryRow) => formatRequestDateTime(rowData.updatedAt)}
+                            style={{ width: '200px', minWidth: '200px' }}
+                            align="center"
+                        />
+                    )}
                     <Column
                         header="ຜູ້ຮັບຜິດຊອບ"
                         body={(rowData: RequestHistoryRow) => {
@@ -391,7 +446,7 @@ export function RequestHistoryContent({ showTitle = false }: RequestHistoryConte
                                     else if (statusInfo.severity === 'success') textColor = 'text-green-500';
                                     else if (statusInfo.severity === 'warning') textColor = 'text-orange-500';
                                 }
-                                const statusLabel = rowData.status || statusInfo.label;
+                                const statusLabel = rowData.status || '—';
                                 let displayNameShort = user.name;
                                 if (displayNameShort) {
                                     const cleanName = displayNameShort.trim();
@@ -461,7 +516,7 @@ export function RequestHistoryContent({ showTitle = false }: RequestHistoryConte
                                     />
                                 </div>
                             ) : (
-                                <TicketActionMenu ticket={rowData} variant="user" />
+                                <TicketActionMenu ticket={rowData} variant="user" hideDropdown />
                             )
                         }
                         style={{ width: '150px' }}

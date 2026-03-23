@@ -13,6 +13,8 @@ export interface Assignee {
 export interface TicketRow extends Ticket {
     rowId: string;
     rowAssignee?: Assignee;
+    /** Original ticket statusId (before overwrite with assignment statusId for Role 3) */
+    ticketStatusId?: number;
 }
 
 export interface Ticket {

@@ -12,7 +12,7 @@ type TicketApiPayload = { categoryId?: number; title: string; description: strin
 export function useIssues(triggerFetch: unknown, shouldFetch: boolean = true) {
     const endpoint = 'tickets';
 
-    const { toast, items: rawItems, loading, saveData: coreSaveData, deleteData, fetchData } = useCoreApi<
+    const { toast, items: rawItems, loading, saving, saveData: coreSaveData, deleteData, fetchData } = useCoreApi<
         TicketRawItem,
         TicketApiPayload
     >(endpoint, {}, triggerFetch, shouldFetch);
@@ -25,23 +25,28 @@ export function useIssues(triggerFetch: unknown, shouldFetch: boolean = true) {
         })) as IssueData[];
     }, [rawItems]);
 
-    /** ແປງ parentId ກັບເປັນ categoryId ກ່ອນສົ່ງ API (POST/PUT) */
+    /** ແປງ parentId ກັບເປັນ categoryId ກ່ອນສົ່ງ API (POST/PUT) — PUT ຕ້ອງມີ categoryId ສະເໝີ */
     const saveData = useCallback(
         async (payload: CreateIssuePayload, id?: number) => {
+            if (id != null && payload.parentId == null) {
+                toast.current?.show({ severity: 'error', summary: 'Error', detail: 'ກະລຸນາເລືອກໝວດໝູ່', life: 4000 });
+                return false;
+            }
             const apiPayload: TicketApiPayload = {
                 title: payload.title,
                 description: payload.description,
-                categoryId: payload.parentId,
+                ...(payload.parentId != null ? { categoryId: payload.parentId } : {}),
             };
             return coreSaveData(apiPayload, id);
         },
-        [coreSaveData]
+        [coreSaveData, toast]
     );
 
     return {
         toast,
         items,
         loading,
+        saving,
         saveData,
         deleteData: (item: IssueData) => deleteData(item.id),
         fetchData,

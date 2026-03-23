@@ -6,7 +6,7 @@ import { Ticket, Assignee } from "./types";
 import { AssigneeAvatarGroup } from "./AssigneeAvatarGroup";
 import { ASSIGNEE_STATUS_MAP, STATUS_MAP } from "./constants";
 
-export const TitleBody = (rowData: Ticket) => (
+export const TitleBody = React.memo(({ rowData }: { rowData: Ticket }) => (
     <Link
         href={`/uikit/ticket-detail/${encryptId(rowData.id)}`}
         className="no-underline"
@@ -21,10 +21,11 @@ export const TitleBody = (rowData: Ticket) => (
             {rowData.title}
         </span>
     </Link>
-);
+));
+TitleBody.displayName = 'TitleBody';
 
 /** Requester: แสดงแค่ชื่อในเซลล์, tooltip แสดงชื่อ + นามสกุล */
-export const RequesterBody = (rowData: Ticket) => {
+export const RequesterBody = React.memo(({ rowData }: { rowData: Ticket }) => {
     const fullName =
         rowData.requester ||
         [rowData.firstname_req, rowData.lastname_req].filter(Boolean).join(" ").trim() ||
@@ -35,23 +36,38 @@ export const RequesterBody = (rowData: Ticket) => {
             {displayName}
         </span>
     );
-};
+});
+RequesterBody.displayName = 'RequesterBody';
 
 /** Employee Code: createdBy.employee.emp_code */
-export const EmpCodeBody = (rowData: Ticket) => (
+export const EmpCodeBody = React.memo(({ rowData }: { rowData: Ticket }) => (
     <span className="text-700" style={{ whiteSpace: "nowrap" }}>
         {rowData.emp_code ?? "—"}
     </span>
-);
+));
+EmpCodeBody.displayName = 'EmpCodeBody';
 
 /** Contact: telephone */
-export const ContactBody = (rowData: Ticket) => (
+export const ContactBody = React.memo(({ rowData }: { rowData: Ticket }) => (
     <span className="text-700" style={{ whiteSpace: "nowrap" }}>
         {rowData.contactPhone ?? "—"}
     </span>
-);
+));
+ContactBody.displayName = 'ContactBody';
 
-export const AssigneeBody = (rowData: Ticket, action: (data: Assignee[]) => void, statusList?: { id: number; name: string }[]) => {
+/**
+ * Build statusById map once per statusList (not per row).
+ * Call this in the parent and pass the map to AssigneeBody to avoid N×Map allocations.
+ */
+export function buildStatusByIdMap(statusList?: { id: number; name: string }[]): Map<number, { id: number; name: string }> {
+    return new Map((statusList || []).map((s) => [s.id, s]));
+}
+
+export const AssigneeBody = (
+    rowData: Ticket,
+    action: (data: Assignee[]) => void,
+    statusByIdMap: Map<number, { id: number; name: string }>
+) => {
     let displayData = rowData.assignees || [];
     
     if (displayData.length === 0 && rowData.assignTo) {
@@ -63,19 +79,21 @@ export const AssigneeBody = (rowData: Ticket, action: (data: Assignee[]) => void
     if (displayData.length === 1) {
         const user = displayData[0];
         /** ໃຊ້ statusId ຈາກ API ເປັນຫຼັກ (ສະຖານະຂອງ assignment ແຕ່ລະຄົນ) */
-        const statusById = new Map((statusList || []).map((s) => [s.id, s]));
-        const statusFromApi = user.statusId != null ? statusById.get(user.statusId) : undefined;
+        const statusFromApi = user.statusId != null ? statusByIdMap.get(user.statusId) : undefined;
         const displayLabel = statusFromApi 
             ? statusFromApi.name 
             : (ASSIGNEE_STATUS_MAP[user.status] || ASSIGNEE_STATUS_MAP['default']).label;
         
-        // ใช้สีตาม helpdesk status (จาก updatehelpdeskstatus) ให้ตรงกับคอลัมน์ ສະຖານະ
-        const helpdeskSeverity = rowData.status ? (STATUS_MAP[rowData.status] ?? null) : null;
+        // ใช้สีตาม assignment status ของคนนั้น (ไม่ใช่ ticket status)
+        const assigneeStatusName = statusFromApi?.name ?? null;
+        const assigneeSeverity = assigneeStatusName
+            ? (STATUS_MAP[assigneeStatusName] ?? null)
+            : null;
         let textColor = "text-700";
-        if (helpdeskSeverity === "info") textColor = "text-blue-500";
-        else if (helpdeskSeverity === "success") textColor = "text-green-500";
-        else if (helpdeskSeverity === "warning") textColor = "text-orange-500";
-        else if (helpdeskSeverity === "danger") textColor = "text-red-500";
+        if (assigneeSeverity === "info") textColor = "text-blue-500";
+        else if (assigneeSeverity === "success") textColor = "text-green-500";
+        else if (assigneeSeverity === "warning") textColor = "text-orange-500";
+        else if (assigneeSeverity === "danger") textColor = "text-red-500";
         else {
             const statusInfo = ASSIGNEE_STATUS_MAP[user.status] || ASSIGNEE_STATUS_MAP['default'];
             if (statusInfo.severity === "info") textColor = "text-blue-500";
@@ -107,5 +125,6 @@ export const AssigneeBody = (rowData: Ticket, action: (data: Assignee[]) => void
             </div>
         );
     }
-    return <AssigneeAvatarGroup assignees={displayData} ticketStatus={rowData.status} statusList={statusList} onClick={() => action(displayData)} />;
+    const statusListArr = Array.from(statusByIdMap.values());
+    return <AssigneeAvatarGroup assignees={displayData} ticketStatus={rowData.status} statusList={statusListArr} onClick={() => action(displayData)} />;
 };

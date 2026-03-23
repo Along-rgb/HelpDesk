@@ -38,10 +38,10 @@ export const ReportHeaderControls = ({ dateRange, setDateRange, onExportClick }:
                     )}
                 </div>
                 
-                {/* ✅ ປຸ່ມນີ້ຈະໄປເປີດ Dialog ໃຫ້ເລືອກກ່ອນ */}
+                {/* ປຸ່ມນີ້ຈະໄປເປີດ Dialog ໃຫ້ເລືອກກ່ອນ */}
                 <Button 
-                    label="ສົ່ງອອກ / ພິມ" 
-                    icon="pi pi-download" 
+                    label="ດາວໂຫຼດ File " 
+                    icon="pi pi-file-excel" 
                     severity="success" 
                     size="small" 
                     onClick={onExportClick} 

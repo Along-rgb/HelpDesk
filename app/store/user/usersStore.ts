@@ -56,7 +56,7 @@ export const useUsersStore = create<UsersStore, []>((set, get) => ({
         const payload = env.loginUsePascalCase
             ? { userName: u, password: p }
             : { username: u, password: p };
-        const response = await axiosClientsHelpDesk.post<LoginApiResponse>(loginPath, payload);
+        const response = await axiosClientsHelpDesk.post<LoginApiResponse>(loginPath, payload, { __skipForbiddenToast: true } as Record<string, unknown>);
         return response;
     },
     getUsersData: async () => {

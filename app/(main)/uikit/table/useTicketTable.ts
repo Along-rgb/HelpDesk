@@ -1,20 +1,28 @@
 // table/useTicketTable.ts
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { RefObject } from "react";
 import type { Toast } from "primereact/toast";
 import axiosClientsHelpDesk from "@/config/axiosClientsHelpDesk";
 import { HELPDESK_ENDPOINTS } from "@/config/endpoints";
 import { useHelpdeskStatusOptions } from "@/app/hooks/useHelpdeskStatusOptions";
 import { normalizeDataList, normalizeIdNameList } from "@/utils/apiNormalizers";
-import { getApiErrorMessage } from "@/utils/errorMessage";
-import { Ticket, Assignee, StatusOption, AssigneeOption } from "./types";
-import type { HelpdeskRequestRow, AdminAssignUserRow, HeadCategorySelectRow } from "./types";
+import { formatDateTime } from "@/utils/dateUtils";
+import { Ticket, Assignee } from "./types";
+import { useUserProfileSelectors } from "@/app/store/user/userProfileStore";
+import {
+  type StatusFilterOption,
+  extractStatusFilterVal,
+  matchesGlobalFilter,
+  buildStatusOptions,
+} from "../shared/ticketFilterUtils";
+import type { HelpdeskRequestRow, AdminAssignUserRow, HeadCategorySelectRow, AssigneeOption } from "./types";
 import { normalizeHelpdeskRow } from "./normalizeHelpdeskRow";
 import { useUserRoleAndId } from "@/app/store/user/userProfileStore";
+import { getApiErrorMessage } from "@/utils/errorMessage";
 
 const STAFF_ROLE_ID = 3;
-/** Role 2 (Admin) + Role 3 (Staff) — ເກັບທັງຄູ່ໃນ assignOptions ເພື່ອ lookup emp_code */
-const ROLE_IDS_FOR_ASSIGN_OPTIONS = [2, 3] as const;
+/** Role 3 (Staff) — ເກັບສະເພາະ Staff ໃນ assignOptions */
+const ROLE_IDS_FOR_ASSIGN_OPTIONS = [3] as const;
 const STAFF_HEAD_CATEGORY_TAB_INDEX = 1;
 /** ສະຖານະຫຼັງມອບໝາຍວຽກ — ກຳລັງດຳເນີນການ (auto ເມື່ອມອບໝາຍວຽກແລ້ວ) */
 const HELPDESK_STATUS_IN_PROGRESS = 2;
@@ -31,7 +39,6 @@ const FALLBACK_PRIORITY_OPTIONS: { id: number; name: string }[] = [
   { id: 4, name: "ຕ່ຳ" },
 ];
 
-const ALL_STATUS_OPTION: StatusOption = { label: "ທັງໝົດ", value: "Allin" };
 
 /** สร้าง map id → label (ชื่อ) จาก assignOptions; ใส่ทั้ง user id และ employeeId เพื่อ lookup ได้ไม่ว่า ticket จะส่ง id แบบไหน */
 function buildStaffLabelMap(options: AssigneeOption[]): Map<number, string> {
@@ -96,8 +103,8 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [globalFilter, setGlobalFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState<{ value: string } | null>(null);
-  const [assignFilter, setAssignFilter] = useState<any[] | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilterOption | null>(null);
+  const [assignFilter, setAssignFilter] = useState<AssigneeOption[] | null>(null);
   const [selectedTickets, setSelectedTickets] = useState<Ticket[]>([]);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [currentAssignees, setCurrentAssignees] = useState<Assignee[]>([]);
@@ -105,73 +112,41 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
   const [assignOptions, setAssignOptions] = useState<AssigneeOption[]>([]);
   const [assignmentSectionTitle, setAssignmentSectionTitle] = useState<string>("ມອບໝາຍໃຫ້");
   const [priorityOptions, setPriorityOptions] = useState<{ id: number; name: string }[]>([]);
+  const [initDone, setInitDone] = useState(false);
 
-  /** โหลดรายการสถานะจาก helpdeskstatus/admin สำหรับ dropdown ລາຍລະອຽດ (ปุ่มในแต่ละแถว) */
+  /**
+   * Parallel init: fire metadata + ticket fetch simultaneously.
+   * Both streams run in parallel — no waterfall.
+   */
   useEffect(() => {
-    axiosClientsHelpDesk
-      .get(HELPDESK_ENDPOINTS.STATUS_ADMIN)
-      .then((response) => {
-        const list = normalizeIdNameList(response?.data ?? []);
-        setStatusList(list);
-      })
-      .catch(() => setStatusList([]));
-  }, []);
+    let cancelled = false;
 
-  /** โหลดรายการสถานะจาก helpdeskstatus/selecthelpdeskstatus สำหรับ AssigneeDialog (Modal ສະຖານະຊ່າງ) */
-  useEffect(() => {
-    axiosClientsHelpDesk
-      .get(HELPDESK_ENDPOINTS.STATUS_SELECT)
-      .then((response) => {
-        const list = normalizeIdNameList(response?.data ?? []);
-        setStatusListForModal(list);
-      })
-      .catch(() => setStatusListForModal([]));
-  }, []);
+    const doInit = async () => {
+      const [statusAdminRes, statusSelectRes, assignRes, priorityRes] = await Promise.allSettled([
+        axiosClientsHelpDesk.get(HELPDESK_ENDPOINTS.STATUS_ADMIN),
+        axiosClientsHelpDesk.get(HELPDESK_ENDPOINTS.STATUS_SELECT),
+        axiosClientsHelpDesk.get(HELPDESK_ENDPOINTS.USERS_ADMINASSIGN),
+        roleId !== ROLE_ID_NO_PRIORITY_LIST
+          ? axiosClientsHelpDesk.get(HELPDESK_ENDPOINTS.PRIORITY)
+          : Promise.resolve({ data: FALLBACK_PRIORITY_OPTIONS }),
+      ]);
+      if (cancelled) return;
 
-  /** ตัวเลือกสำหรับ dropdown ເລືອກສະຖານະ (filter) — จาก selecthelpdeskstatus */
-  const statusOptions: StatusOption[] = useMemo(
-    () => [
-      ALL_STATUS_OPTION,
-      ...statusListForFilter.map((item) => {
-        const name = typeof item.name === "string" ? item.name.trim() : String(item.name ?? "").trim();
-        return { label: name, value: name };
-      }),
-    ],
-    [statusListForFilter]
-  );
-
-  const filterTickets = useCallback((data: Ticket[], filterValue: string, statusVal: string | null) => {
-    let out = data;
-    if (filterValue) {
-      const lower = filterValue.toLowerCase();
-      out = out.filter(
-        (t) =>
-          String(t.id).toLowerCase().includes(lower) ||
-          (t.title && t.title.toLowerCase().includes(lower)) ||
-          (t.firstname_req && t.firstname_req.toLowerCase().includes(lower)) ||
-          (t.requester && t.requester.toLowerCase().includes(lower)) ||
-          (t.emp_code && t.emp_code.toLowerCase().includes(lower))
-      );
-    }
-    if (statusVal && statusVal !== "Allin") {
-      out = out.filter((t) => t.status === statusVal);
-    }
-    return out;
-  }, []);
-
-  /** ດຶງຂໍ້ມູນຈາກ users/admin (ຫຼື adminassign fallback) — ເກັບ Role 2 + 3 ເພື່ອ lookup emp_code, image, phone */
-  useEffect(() => {
-    axiosClientsHelpDesk
-      .get(HELPDESK_ENDPOINTS.USERS_ADMIN)
-      .then((response) => {
-        const raw = response?.data;
+      if (statusAdminRes.status === 'fulfilled') {
+        setStatusList(normalizeIdNameList(statusAdminRes.value?.data ?? []));
+      }
+      if (statusSelectRes.status === 'fulfilled') {
+        setStatusListForModal(normalizeIdNameList(statusSelectRes.value?.data ?? []));
+      }
+      if (assignRes.status === 'fulfilled') {
+        const raw = assignRes.value?.data;
         const list: AdminAssignUserRow[] = Array.isArray(raw)
           ? (raw as AdminAssignUserRow[])
           : normalizeDataList<AdminAssignUserRow>(raw);
         const filtered = list.filter(
-          (u) => u.roleId == null || ROLE_IDS_FOR_ASSIGN_OPTIONS.includes(Number(u.roleId) as 2 | 3)
+          (u) => u.roleId == null || ROLE_IDS_FOR_ASSIGN_OPTIONS.includes(Number(u.roleId) as 3)
         );
-        const options: AssigneeOption[] = filtered.map((u) => {
+        setAssignOptions(filtered.map((u) => {
           const first = u.employee?.first_name ?? "";
           const last = u.employee?.last_name ?? "";
           const label = [first, last].filter(Boolean).join(" ").trim() || String(u.id);
@@ -181,37 +156,46 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
           const image = u.employee?.empimg != null && String(u.employee.empimg).trim() !== "" ? String(u.employee.empimg).trim() : undefined;
           const phone = u.employee?.tel != null && String(u.employee.tel).trim() !== "" ? String(u.employee.tel).trim() : undefined;
           return { id: u.id, label, emp_code, employeeId, image, phone };
-        });
-        setAssignOptions(options);
-      })
-      .catch(() => setAssignOptions([]));
-  }, []);
+        }));
+      }
+      if (priorityRes.status === 'fulfilled') {
+        const data = priorityRes.value?.data;
+        if (Array.isArray(data) && data.length > 0 && data[0]?.id != null) {
+          setPriorityOptions(data as { id: number; name: string }[]);
+        } else {
+          const list = normalizeIdNameList(data);
+          setPriorityOptions(list.length > 0 ? list : FALLBACK_PRIORITY_OPTIONS);
+        }
+      } else {
+        setPriorityOptions(FALLBACK_PRIORITY_OPTIONS);
+      }
+      setInitDone(true);
+    };
 
-  useEffect(() => {
-    axiosClientsHelpDesk
-      .get(HELPDESK_ENDPOINTS.HEADCATEGORY_SELECT)
-      .then((response) => {
-        const list = normalizeDataList<HeadCategorySelectRow>(response.data);
-        const item = list[STAFF_HEAD_CATEGORY_TAB_INDEX] ?? list[0];
-        const name = typeof item?.name === "string" ? item.name.trim() : "";
-        if (name) setAssignmentSectionTitle(name);
-      })
-      .catch(() => {});
-  }, []);
+    /** Fire both streams simultaneously — tickets don't wait for metadata */
+    doInit();
+    fetchDataRef.current();
 
-  useEffect(() => {
-    if (roleId === ROLE_ID_NO_PRIORITY_LIST) {
-      setPriorityOptions(FALLBACK_PRIORITY_OPTIONS);
-      return;
-    }
-    axiosClientsHelpDesk
-      .get(HELPDESK_ENDPOINTS.PRIORITY)
-      .then((response) => {
-        const list = normalizeIdNameList(response.data);
-        setPriorityOptions(list);
-      })
-      .catch(() => setPriorityOptions(FALLBACK_PRIORITY_OPTIONS));
+    return () => { cancelled = true; };
   }, [roleId]);
+
+  /** ตัวเลือกสำหรับ dropdown ເລືອກສະຖານະ (filter) — value = String(id) ເພື່ອ filter ດ້ວຍ ID */
+  const statusOptions: StatusFilterOption[] = useMemo(
+    () => buildStatusOptions([statusListForFilter, statusList], tickets),
+    [statusListForFilter, statusList, tickets]
+  );
+
+  const filterTickets = useCallback((data: Ticket[], filterValue: string, statusVal: string | null) => {
+    let out = data;
+    if (filterValue) {
+      out = out.filter((t) => matchesGlobalFilter(t, filterValue));
+    }
+    if (statusVal && statusVal !== "Allin") {
+      const sid = Number(statusVal);
+      out = out.filter((t) => Number(t.statusId) === sid);
+    }
+    return out;
+  }, []);
 
   /** Memoize staff lookup Maps — rebuilt only when assignOptions changes */
   const staffMaps = useMemo(() => ({
@@ -221,7 +205,7 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
     phoneMap: buildStaffPhoneMap(assignOptions),
   }), [assignOptions]);
 
-  /** Enrich ticket assignees with staff lookup data (memoized) */
+  /** Enrich ticket assignees with staff lookup data */
   const enrichTickets = useCallback((list: Ticket[]): Ticket[] => {
     return list.map((t) => ({
       ...t,
@@ -239,6 +223,13 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
     }));
   }, [staffMaps]);
 
+  /**
+   * Use a ref so fetchData is stable and does NOT change when assignOptions loads.
+   * This prevents the double-fetch bug where tickets were fetched twice on mount.
+   */
+  const enrichTicketsRef = useRef(enrichTickets);
+  enrichTicketsRef.current = enrichTickets;
+
   const fetchData = useCallback(() => {
     setLoading(true);
     setError(null);
@@ -247,7 +238,7 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
       .then((response) => {
         const rawList = normalizeDataList<HelpdeskRequestRow>(response.data);
         const list = rawList.map(normalizeHelpdeskRow).sort((a, b) => Number(b.id) - Number(a.id));
-        const enriched = enrichTickets(list);
+        const enriched = enrichTicketsRef.current(list);
         setTickets(enriched);
       })
       .catch((err: unknown) => {
@@ -255,27 +246,34 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
         setTickets([]);
       })
       .finally(() => setLoading(false));
+  }, []);
+
+  /** Stable ref so the init effect can call fetchData without a dep cycle */
+  const fetchDataRef = useRef(fetchData);
+  fetchDataRef.current = fetchData;
+
+  /** Re-enrich existing tickets in-place when staffMaps changes (no refetch) */
+  useEffect(() => {
+    setTickets((prev) => prev.length > 0 ? enrichTickets(prev) : prev);
   }, [enrichTickets]);
 
-  /** ເອີ້ນ fetchData ເມື່ອ enrichTickets ປ່ຽນ (รวมເວລາ assignOptions โหลดແລ້ວ) เพื่อให้ enrich emp_code ໄດ້ */
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  /** ດຶງຄ່າ filter — ຮອງຮັບທັງ PrimeReact string value ແລະ object { value } */
+  const statusFilterVal = extractStatusFilterVal(statusFilter);
 
   /** Derived filtered tickets — no separate state or effect needed */
   const filteredTickets = useMemo(
-    () => filterTickets(tickets, globalFilter, statusFilter?.value ?? null),
-    [tickets, globalFilter, statusFilter?.value, filterTickets]
+    () => filterTickets(tickets, globalFilter, statusFilterVal),
+    [tickets, globalFilter, statusFilterVal, filterTickets]
   );
 
-  const onCheckboxChange = (e: { checked?: boolean }, rowData: Ticket) => {
+  const onCheckboxChange = useCallback((e: { checked?: boolean }, rowData: Ticket) => {
     if (e.checked) setSelectedTickets((prev) => [...prev, rowData]);
     else setSelectedTickets((prev) => prev.filter((t) => t.id !== rowData.id));
-  };
+  }, []);
 
-  const onGlobalFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onGlobalFilterChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setGlobalFilter(e.target.value);
-  };
+  }, []);
 
   const onPriorityChange = async (
     id: string | number,
@@ -366,18 +364,42 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
         assignedToId: [currentUserId],
       });
       
-      /** ດຶງ assignment IDs ຈາກ response (ຖ້າ API ສົ່ງກັບມາ) */
+      /** ດຶງ assignment IDs ຈາກ response — ຮອງຮັບຫຼາຍ format (array, single object, nested data) */
       const assignmentIds: number[] = [];
       if (createResponse?.data) {
-        const responseData = Array.isArray(createResponse.data) 
-          ? createResponse.data 
-          : createResponse.data.data;
-        if (Array.isArray(responseData)) {
-          responseData.forEach((item: any) => {
-            if (item?.id != null && Number.isFinite(Number(item.id))) {
-              assignmentIds.push(Number(item.id));
+        const raw = createResponse.data;
+        const candidates: any[] = Array.isArray(raw)
+          ? raw
+          : Array.isArray(raw.data)
+            ? raw.data
+            : raw.data?.id != null
+              ? [raw.data]
+              : raw.id != null
+                ? [raw]
+                : [];
+        candidates.forEach((item: any) => {
+          if (item?.id != null && Number.isFinite(Number(item.id))) {
+            assignmentIds.push(Number(item.id));
+          }
+        });
+      }
+      
+      /** Fallback: ຖ້າບໍ່ໄດ້ ID ຈາກ response ໃຫ້ດຶງ ticket ໃໝ່ແລ້ວຊອກ assignment ທີ່ເປັນ current user */
+      if (assignmentIds.length === 0) {
+        const fetches = helpdeskRequestIds.map((hId) =>
+          axiosClientsHelpDesk.get(HELPDESK_ENDPOINTS.requestById(String(hId))).catch(() => null)
+        );
+        const results = await Promise.all(fetches);
+        for (const res of results) {
+          if (!res?.data) continue;
+          const ticketData = res.data?.data ?? res.data;
+          const assignments: any[] = ticketData?.assignments ?? [];
+          for (const a of assignments) {
+            const aUserId = a.assignedToId ?? a.assignedTo?.id;
+            if (aUserId != null && String(aUserId) === String(currentUserId) && a.id != null && Number.isFinite(Number(a.id))) {
+              assignmentIds.push(Number(a.id));
             }
-          });
+          }
         }
       }
       
@@ -387,7 +409,7 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
           id: assignmentIds,
         });
       } else {
-        /** Fallback: ຖ້າບໍ່ມີ assignment IDs ໃຫ້ອັບເດດສະຖານະຂອງ helpdesk request ແທນ (ວິທີເດີມ) */
+        /** Fallback ສຸດທ້າຍ: ອັບເດດສະຖານະ helpdesk request ໂດຍກົງ */
         await Promise.all(
           helpdeskRequestIds.map((id) =>
             axiosClientsHelpDesk.put(HELPDESK_ENDPOINTS.updateHelpdeskStatus(id), { helpdeskStatusId: HELPDESK_STATUS_IN_PROGRESS })
@@ -414,11 +436,13 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
     }
   }, [roleId, currentUserId, selectedTickets, fetchData, toastRef]);
 
-  const openAssigneeDialog = (assignees: Assignee[], ticketStatus?: string) => {
+  const openAssigneeDialog = useCallback((assignees: Assignee[], ticketStatus?: string) => {
     setCurrentAssignees(assignees);
     setCurrentTicketStatus(ticketStatus ?? null);
     setDialogVisible(true);
-  };
+  }, []);
+
+  const closeDialogCb = useCallback(() => setDialogVisible(false), []);
 
   /**
    * ປ່ຽນສະຖານະຈາກ dropdown ລາຍລະອຽດ.
@@ -480,7 +504,7 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
     currentAssignees,
     currentTicketStatus,
     openAssigneeDialog,
-    closeDialog: () => setDialogVisible(false),
+    closeDialog: closeDialogCb,
     refetch: fetchData,
     isRole2,
     onReceiveTaskSelf,

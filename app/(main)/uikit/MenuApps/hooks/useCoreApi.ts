@@ -25,6 +25,7 @@ export function useCoreApi<T, P>(
 
     const [items, setItems] = useState<T[]>([]);
     const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
 
     const fetchData = useCallback(async (signal?: AbortSignal) => {
         if (!endpoint || !shouldFetch) return;
@@ -77,8 +78,14 @@ export function useCoreApi<T, P>(
 
     // 2. Save Data (Create / Update)
     const saveData = async (payload: P, id?: number, options?: { noQueryParams?: boolean }) => {
+        if (saving) return false;
+        if (id != null && (typeof id !== 'number' || !Number.isFinite(id))) {
+            toast.current?.show({ severity: 'error', summary: 'Error', detail: 'ID ບໍ່ຖືກຕ້ອງ ກະລຸນາລອງໃໝ່', life: 4000 });
+            return false;
+        }
+        setSaving(true);
         try {
-            if (id) {
+            if (id != null) {
                 await axiosClientsHelpDesk.put(`${endpoint}/${id}`, { ...payload });
                 toast.current?.show({ severity: 'success', summary: 'Success', detail: 'ແກ້ໄຂຂໍ້ມູນສຳເລັດ' });
             } else {
@@ -96,6 +103,8 @@ export function useCoreApi<T, P>(
             const detail = msg && typeof msg === 'string' ? msg : 'ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກ';
             toast.current?.show({ severity: 'error', summary: 'Error', detail, life: 4000 });
             return false;
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -114,5 +123,5 @@ export function useCoreApi<T, P>(
         }
     };
 
-    return { toast, items, loading, saveData, deleteData, fetchData };
+    return { toast, items, loading, saving, saveData, deleteData, fetchData };
 }
