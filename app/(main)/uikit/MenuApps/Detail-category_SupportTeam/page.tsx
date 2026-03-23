@@ -6,7 +6,8 @@ import { TabMenu } from 'primereact/tabmenu';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
-import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
+import { ConfirmDialog } from 'primereact/confirmdialog';
+import { showConfirmDelete } from '@/utils/confirmDeleteDialog';
 import SupportTeamCreateDialog from './SupportTeamCreateDialog';
 import SupportTeamTable from './SupportTeamTable';
 import HeadCategoryCreateDialog from './HeadCategoryCreateDialog';
@@ -392,12 +393,9 @@ export default function SupportTeamPage() {
             const username = (item as { username?: string }).username;
             displayName = full || (username ?? '') || `#${(item as { id: number }).id}`;
         } else if ('id' in item) displayName = `#${item.id}`;
-        confirmDialog({
-            message: `ທ່ານຕ້ອງການລົບຂໍ້ມູນ "${displayName}" ແທ້ບໍ່?`,
-            header: 'ຢືນຢັນການລົບ',
-            icon: 'pi pi-exclamation-triangle',
-            acceptLabel: 'ຕົກລົງ', rejectLabel: 'ຍົກເລີກ', acceptClassName: 'p-button-danger',
-            accept: async () => {
+        showConfirmDelete({
+            displayName,
+            onAccept: async () => {
                 if (activeIndex === SupportTeamTabs.ROLE_MANAGEMENT) {
                     deleteUserRole(item as UserRoleData);
                     return;
@@ -420,7 +418,7 @@ export default function SupportTeamPage() {
                     return;
                 }
                 deleteSupport(item as SupportTeamData);
-            }
+            },
         });
     };
 

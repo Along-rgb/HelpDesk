@@ -11,11 +11,11 @@ export function useUsers(triggerFetch: unknown = null, enabled: boolean = true) 
     const [items, setItems] = useState<AdminAssignUser[]>([]);
     const [loading, setLoading] = useState(false);
 
-    const fetchData = useCallback(async () => {
+    const fetchData = useCallback(async (signal?: AbortSignal) => {
         if (!enabled) return;
         setLoading(true);
         try {
-            const response = await axiosClientsHelpDesk.get(ENDPOINT);
+            const response = await axiosClientsHelpDesk.get(ENDPOINT, { signal });
             const data = response.data;
             if (Array.isArray(data)) {
                 setItems(data);
@@ -24,16 +24,19 @@ export function useUsers(triggerFetch: unknown = null, enabled: boolean = true) 
             } else {
                 setItems([]);
             }
-        } catch {
+        } catch (err: unknown) {
+            if ((err as { name?: string })?.name === 'CanceledError') return;
             setItems([]);
         } finally {
-            setLoading(false);
+            if (!signal?.aborted) setLoading(false);
         }
     }, [enabled]);
 
     useEffect(() => {
-        if (enabled) fetchData();
-        else setItems([]);
+        if (!enabled) { setItems([]); return; }
+        const controller = new AbortController();
+        fetchData(controller.signal);
+        return () => controller.abort();
     }, [fetchData, triggerFetch, enabled]);
 
     return { items, loading, fetchData };

@@ -100,11 +100,32 @@ function normalizeImages(raw: unknown): string[] {
         .filter((url) => url.length > 0);
 }
 
-function mapApiToItem(raw: Record<string, any>): RepairHistoryItem {
-    const req: Record<string, any> = raw.helpdeskRequest ?? raw;
+interface RawRepairApiItem {
+    helpdeskRequest?: RawRepairRequest;
+    helpdeskStatusId?: number;
+    comment?: string;
+    commentImg?: unknown;
+    [key: string]: unknown;
+}
+
+interface RawRepairRequest {
+    id?: number | string;
+    numberSKT?: string;
+    telephone?: string | number;
+    buildingId?: number;
+    floorId?: number;
+    room?: string;
+    createdAt?: string;
+    ticket?: { title?: string };
+    createdBy?: { employee?: { first_name?: string; last_name?: string; tel?: string; department?: { department_name?: string }; division?: { division_name?: string } } };
+    [key: string]: unknown;
+}
+
+function mapApiToItem(raw: RawRepairApiItem): RepairHistoryItem {
+    const req: RawRepairRequest = raw.helpdeskRequest ?? raw;
     const employee = req.createdBy?.employee;
-    const firstName: string = employee?.first_name ?? '';
-    const lastName: string = employee?.last_name ?? '';
+    const firstName = employee?.first_name ?? '';
+    const lastName = employee?.last_name ?? '';
 
     return {
         id: req.id ?? '',

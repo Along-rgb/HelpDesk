@@ -1,10 +1,4 @@
-'use client';
-
-import ClientHydration from './components/ClientHydration';
-import AuthSessionHandler from './components/AuthSessionHandler';
-import ForbiddenToastHandler from './components/ForbiddenToastHandler';
-import { LayoutProvider } from '@/layout/context/layoutcontext';
-import { PrimeReactProvider } from 'primereact/api';
+import Providers from './components/Providers';
 import 'primereact/resources/primereact.css';
 import 'primeflex/primeflex.css';
 import 'primeicons/primeicons.css';
@@ -22,15 +16,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <link id="theme-css" href="/themes/lara-light-blue/theme.css" rel="stylesheet" />
       </head>
       <body>
-        <ClientHydration>
-          <PrimeReactProvider>
-            <LayoutProvider>
-              <AuthSessionHandler />
-              <ForbiddenToastHandler />
-              {children}
-            </LayoutProvider>
-          </PrimeReactProvider>
-        </ClientHydration>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

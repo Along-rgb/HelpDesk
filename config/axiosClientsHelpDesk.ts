@@ -115,17 +115,17 @@ axiosClientsHelpDesk.interceptors.request.use(
     attachAuthToRequest(config);
     return config;
   },
-  (err) => Promise.reject(err)
+  (err: unknown) => Promise.reject(err)
 );
 
 // --- Response: 401 → clearAppSession + redirect; 403 → ແສງ Toast ເທົ່ານັ້ນ (ບໍ່ logout) ---
 axiosClientsHelpDesk.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (is401(error)) {
+  (error: unknown) => {
+    if (is401(error as { response?: { status?: number; data?: { code?: number; error?: string } } })) {
       return handle401();
     }
-    if (is403(error)) {
+    if (is403(error as { response?: { status?: number } })) {
       const skipToast = (error as { config?: Record<string, unknown> }).config?.__skipForbiddenToast === true;
       if (typeof window !== 'undefined' && !skipToast) {
         window.dispatchEvent(new CustomEvent(AUTH_FORBIDDEN_TOAST_EVENT, { detail: { message: AUTH_FORBIDDEN_MSG } }));

@@ -10,11 +10,11 @@ export function useAdminAssignUsers(triggerFetch: unknown = null, enabled: boole
     const [items, setItems] = useState<AdminAssignUser[]>([]);
     const [loading, setLoading] = useState(false);
 
-    const fetchData = useCallback(async () => {
+    const fetchData = useCallback(async (signal?: AbortSignal) => {
         if (!enabled) return;
         setLoading(true);
         try {
-            const response = await axiosClientsHelpDesk.get(ENDPOINT);
+            const response = await axiosClientsHelpDesk.get(ENDPOINT, { signal });
             const data = response.data;
             if (Array.isArray(data)) {
                 setItems(data);
@@ -23,18 +23,20 @@ export function useAdminAssignUsers(triggerFetch: unknown = null, enabled: boole
             } else {
                 setItems([]);
             }
-        } catch {
+        } catch (err: unknown) {
+            if ((err as { name?: string })?.name === 'CanceledError') return;
             setItems([]);
         } finally {
-            setLoading(false);
+            if (!signal?.aborted) setLoading(false);
         }
     }, [enabled]);
 
     useEffect(() => {
-        if (enabled) {
-            setLoading(true); // ບໍ່ໃຫ້ແສງ empty ຕອນເປີດໜ້າ/refresh
-            fetchData();
-        }
+        if (!enabled) return;
+        const controller = new AbortController();
+        setLoading(true);
+        fetchData(controller.signal);
+        return () => controller.abort();
         // ບໍ່ລ້າງ items ເມື່ອ disabled — ເກັບ cache ເພື່ອບໍ່ໃຫ້ແສງ "ບໍ່ພົບຂໍ້ມູນ" ຕອນສະຫຼັບ tab
     }, [fetchData, triggerFetch, enabled]);
 

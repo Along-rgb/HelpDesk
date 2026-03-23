@@ -11,7 +11,7 @@ export const viewport = {
     initialScale: 1,
 };
 
-const baseUrl = env.appUrl || 'http://localhost:3500';
+const baseUrl = env.appUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://helpdesk.edl.com.la';
 const ogImage = env.ogImageUrl || '/layout/images/faifarlao.png';
 
 export const metadata: Metadata = {

@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { ReportService } from '@/app/(main)/uikit/reportHD/service';
 import { ReportItem } from '@/app/(main)/uikit/reportHD/types';
 
-export function useReportData(activeIndex: number, dateRange: Date[] | any) {
+export function useReportData(activeIndex: number, dateRange: Date[] | null) {
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<ReportItem[]>([]);
     const [error, setError] = useState<string | null>(null);

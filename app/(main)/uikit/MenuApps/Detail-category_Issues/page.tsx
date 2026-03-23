@@ -6,7 +6,8 @@ import { TabMenu } from 'primereact/tabmenu';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
-import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
+import { ConfirmDialog } from 'primereact/confirmdialog';
+import { showConfirmDelete } from '@/utils/confirmDeleteDialog';
 import IssuesTable from './IssuesTable';
 import IssuesCreateDialog from './IssuesCreateDialog';
 import IssuesIconTable from './IssuesIconTable';
@@ -206,14 +207,11 @@ export default function IssuesPage() {
 
     const confirmDelete = (item: IssueData | CategoryData) => {
         const name = 'title' in item ? item.title : '';
-        confirmDialog({
+        showConfirmDelete({
+            displayName: name,
             message: `ທ່ານຕ້ອງການລຶບ "${name}" ແທ້ບໍ່?`,
             header: 'ຢືນຢັນການລຶບ',
-            icon: 'pi pi-exclamation-triangle',
-            acceptLabel: 'ຕົກລົງ',
-            rejectLabel: 'ຍົກເລີກ',
-            acceptClassName: 'p-button-danger',
-            accept: () => {
+            onAccept: () => {
                 if (activeIndex === 0) deleteCategory(item as CategoryData);
                 else deleteIssue(item as IssueData);
             },
@@ -221,14 +219,11 @@ export default function IssuesPage() {
     };
 
     const confirmIconDelete = (item: IconItemData) => {
-        confirmDialog({
+        showConfirmDelete({
+            displayName: 'ຮູບໄອຄອນນີ້',
             message: 'ທ່ານຕ້ອງການລຶບຮູບໄອຄອນນີ້ ແທ້ບໍ່?',
             header: 'ຢືນຢັນການລຶບ',
-            icon: 'pi pi-exclamation-triangle',
-            acceptLabel: 'ຕົກລົງ',
-            rejectLabel: 'ຍົກເລີກ',
-            acceptClassName: 'p-button-danger',
-            accept: () => deleteIconData(item),
+            onAccept: () => deleteIconData(item),
         });
     };
 

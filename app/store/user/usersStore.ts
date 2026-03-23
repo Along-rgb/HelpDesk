@@ -42,8 +42,13 @@ type UsersStore = {
 // create the store
 export const useUsersStore = create<UsersStore, []>((set, get) => ({
     ...initialState,
+    totalCount: 0,
+    page: 1,
+    pageSize: 10,
+    totalPages: 0,
     dataUser: [],
     loading: false,
+    userLogin: {} as Users.UserLogin,
     loginUser: async (userLogin) => {
         if (!isConfigured('helpdeskApiUrl')) {
             throw new Error(

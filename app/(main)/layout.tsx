@@ -11,7 +11,7 @@ export const viewport = {
     initialScale: 1,
 };
 
-const appUrl = env.appUrl || 'http://localhost:3500';
+const appUrl = env.appUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://helpdesk.edl.com.la';
 
 export const metadata: Metadata = {
     metadataBase: new URL(appUrl),
