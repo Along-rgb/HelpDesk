@@ -15,7 +15,7 @@ import {
   matchesGlobalFilter,
   buildStatusOptions,
 } from "../shared/ticketFilterUtils";
-import type { HelpdeskRequestRow, AdminAssignUserRow, HeadCategorySelectRow, AssigneeOption } from "./types";
+import type { HelpdeskRequestRow, AdminAssignUserRow, HeadCategorySelectRow, AssigneeOption, StatusOption } from "./types";
 import { normalizeHelpdeskRow } from "./normalizeHelpdeskRow";
 import { useUserRoleAndId } from "@/app/store/user/userProfileStore";
 import { getApiErrorMessage } from "@/utils/errorMessage";
@@ -180,7 +180,7 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
   }, [roleId]);
 
   /** ตัวเลือกสำหรับ dropdown ເລືອກສະຖານະ (filter) — value = String(id) ເພື່ອ filter ດ້ວຍ ID */
-  const statusOptions: StatusFilterOption[] = useMemo(
+  const statusOptions: StatusOption[] = useMemo(
     () => buildStatusOptions([statusListForFilter, statusList], tickets),
     [statusListForFilter, statusList, tickets]
   );
@@ -368,7 +368,7 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
       const assignmentIds: number[] = [];
       if (createResponse?.data) {
         const raw = createResponse.data;
-        const candidates: any[] = Array.isArray(raw)
+        const candidates: Record<string, unknown>[] = Array.isArray(raw)
           ? raw
           : Array.isArray(raw.data)
             ? raw.data
@@ -377,7 +377,7 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
               : raw.id != null
                 ? [raw]
                 : [];
-        candidates.forEach((item: any) => {
+        candidates.forEach((item: Record<string, unknown>) => {
           if (item?.id != null && Number.isFinite(Number(item.id))) {
             assignmentIds.push(Number(item.id));
           }
@@ -393,7 +393,7 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
         for (const res of results) {
           if (!res?.data) continue;
           const ticketData = res.data?.data ?? res.data;
-          const assignments: any[] = ticketData?.assignments ?? [];
+          const assignments: Array<{ id?: number; assignedToId?: number; assignedTo?: { id?: number } }> = ticketData?.assignments ?? [];
           for (const a of assignments) {
             const aUserId = a.assignedToId ?? a.assignedTo?.id;
             if (aUserId != null && String(aUserId) === String(currentUserId) && a.id != null && Number.isFinite(Number(a.id))) {
