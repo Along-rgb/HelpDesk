@@ -273,7 +273,7 @@ export default function TableDemo() {
                                 const totalAssigneesAction = rowData.assignees?.length ?? 0;
                                 const hideForClosedMultiAssign = totalAssigneesAction > 1 && ticketDone;
                                 const ticketPausedOrExternal = rowData.statusId === STATUS_PAUSE_ID || rowData.statusId === STATUS_EXTERNAL_ID;
-                                const showBadge = !ticketDone && (
+                                const showBadge = !ticketDone && !isCancelledAction && (
                                     ticketPausedOrExternal
                                         ? (hasAssigneeFixed(rowData) || hasAssigneeCancelled(rowData))
                                         : (hasAssigneeFixed(rowData) || hasAssigneePaused(rowData) || hasAssigneeExternal(rowData) || hasAssigneeCancelled(rowData))
