@@ -3,11 +3,6 @@ const imageHost = process.env.NEXT_PUBLIC_IMAGE_REMOTE_HOSTNAME || '';
 const helpdeskApi = process.env.NEXT_PUBLIC_HELPDESK_API_BASE_URL || '';
 
 const nextConfig = {
-  basePath:"/helpdeskweb",
-  assetPrefix:"/helpdeskweb/",
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   images: {
     remotePatterns: imageHost
       ? [
