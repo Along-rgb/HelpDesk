@@ -38,6 +38,11 @@ function hasAssigneePaused(ticket: Ticket): boolean {
     return (ticket.assignees ?? []).some((a) => a.statusId === STATUS_PAUSE_ID);
 }
 
+/** ກວດສອບວ່າມີຊ່າງຢ່າງໜ້ອຍ 1 ຄົນ ທີ່ statusId === 8 (ຍົກເລີກ) */
+function hasAssigneeCancelled(ticket: Ticket): boolean {
+    return (ticket.assignees ?? []).some((a) => a.statusId === STATUS_CANCEL_ID);
+}
+
 export default function TableDemo() {
     const toastRef = useRef<Toast>(null);
     const { tickets, loading, error, selectedTickets, globalFilter, onGlobalFilterChange, statusFilter, setStatusFilter, statusOptions, assignOptions, assignFilter, setAssignFilter, assignmentSectionTitle, priorityOptions, onCheckboxChange, onPriorityChange, dialogVisible, currentAssignees, currentTicketStatus, statusList, statusListForModal, openAssigneeDialog, closeDialog, onBulkAssign, isRole2, onReceiveTaskSelf, receiveSelfDisabled, canReceiveSelf, onStatusChange } = useTicketTable(toastRef);
@@ -99,11 +104,21 @@ export default function TableDemo() {
                             command: () => onStatusChange(rowData.id, s.id),
                         }));
                 }
+                if (hasAssigneeCancelled(rowData)) {
+                    return statusList
+                        .filter((s) => s.id === STATUS_CANCEL_ID)
+                        .map((s) => ({
+                            label: s.name,
+                            icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
+                            command: () => onStatusChange(rowData.id, s.id),
+                        }));
+                }
                 return [];
             }
 
             const hasDone = hasAssigneeFixed(rowData);
             const hasPausedOrExternal = hasAssigneePaused(rowData) || hasAssigneeExternal(rowData);
+            const hasCancelled = hasAssigneeCancelled(rowData);
             return statusList
                 .map((s) => {
                     if (s.id === STATUS_DONE_ID) {
@@ -126,6 +141,14 @@ export default function TableDemo() {
                         if (!hasPausedOrExternal) return null;
                         return {
                             label: s.name,
+                            icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
+                            command: () => onStatusChange(rowData.id, s.id),
+                        };
+                    }
+                    if (s.id === STATUS_CANCEL_ID) {
+                        if (!hasCancelled) return null;
+                        return {
+                            label: 'ຍົກເລີກ',
                             icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
                             command: () => onStatusChange(rowData.id, s.id),
                         };
@@ -191,7 +214,8 @@ export default function TableDemo() {
                             body={(rowData: Ticket) => {
                                 const totalAssignees = rowData.assignees?.length ?? 0;
                                 const isClosedMultiAssign = totalAssignees > 1 && (rowData.statusId === STATUS_DONE_ID || rowData.statusId === STATUS_CLOSED_ID);
-                                const showCheckbox = isClosedMultiAssign ? false : (isRole2 ? canReceiveSelf(rowData) : true);
+                                const isCancelled = rowData.statusId === STATUS_CANCEL_ID;
+                                const showCheckbox = isCancelled ? false : (isClosedMultiAssign ? false : (isRole2 ? canReceiveSelf(rowData) : true));
                                 return (
                                     <div className="flex justify-content-center">
                                         {showCheckbox ? (
@@ -244,14 +268,15 @@ export default function TableDemo() {
                             body={(rowData: Ticket) => {
                                 const menuItems = buildMenuItems(rowData);
                                 const isClosed = rowData.statusId === STATUS_CLOSED_ID;
+                                const isCancelledAction = rowData.statusId === STATUS_CANCEL_ID;
                                 const ticketDone = rowData.statusId === STATUS_DONE_ID || isClosed;
                                 const totalAssigneesAction = rowData.assignees?.length ?? 0;
                                 const hideForClosedMultiAssign = totalAssigneesAction > 1 && ticketDone;
                                 const ticketPausedOrExternal = rowData.statusId === STATUS_PAUSE_ID || rowData.statusId === STATUS_EXTERNAL_ID;
                                 const showBadge = !ticketDone && (
                                     ticketPausedOrExternal
-                                        ? hasAssigneeFixed(rowData)
-                                        : (hasAssigneeFixed(rowData) || hasAssigneePaused(rowData) || hasAssigneeExternal(rowData))
+                                        ? (hasAssigneeFixed(rowData) || hasAssigneeCancelled(rowData))
+                                        : (hasAssigneeFixed(rowData) || hasAssigneePaused(rowData) || hasAssigneeExternal(rowData) || hasAssigneeCancelled(rowData))
                                 );
                                 return (
                                     <div style={{ position: "relative", display: "inline-block" }}>
@@ -264,7 +289,7 @@ export default function TableDemo() {
                                                 ticket={rowData}
                                                 variant="techn"
                                                 menuItems={menuItems.length > 0 ? menuItems : undefined}
-                                                hideDropdown={isClosed || (ticketPausedOrExternal && !hasAssigneeFixed(rowData) && !(rowData.statusId === STATUS_PAUSE_ID && hasAssigneeExternal(rowData)) && !(rowData.statusId === STATUS_EXTERNAL_ID && hasAssigneePaused(rowData))) || (hideForClosedMultiAssign && !(isRole2 && rowData.statusId === STATUS_DONE_ID))}
+                                                hideDropdown={isCancelledAction || isClosed || (ticketPausedOrExternal && !hasAssigneeFixed(rowData) && !hasAssigneeCancelled(rowData) && !(rowData.statusId === STATUS_PAUSE_ID && hasAssigneeExternal(rowData)) && !(rowData.statusId === STATUS_EXTERNAL_ID && hasAssigneePaused(rowData))) || (hideForClosedMultiAssign && !(isRole2 && rowData.statusId === STATUS_DONE_ID))}
                                             />
                                         </div>
                                         {showBadge && (

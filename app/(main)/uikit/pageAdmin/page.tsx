@@ -31,6 +31,8 @@ const CANCEL_ALLOWED_STATUS_NAME = "ລໍຖ້າຮັບວຽກ";
 const CANCEL_STATUS_ID = 8;
 const STATUS_DONE_NAME = "ແກ້ໄຂແລ້ວ";
 const STATUS_CLOSED_NAME = "ປິດວຽກແລ້ວ";
+/** ລໍຖ້າຮັບວຽກ — ຍັງບໍ່ກົດ ຮັບວຽກເອງ → ເຊື່ອງ dropdown ລາຍລະອຽດ */
+const STATUS_WAITING_ACCEPT_ID = 2;
 const STATUS_DONE_ID = 4;
 const STATUS_EXTERNAL_ID = 5;
 const STATUS_PAUSE_ID = 6;
@@ -41,12 +43,14 @@ const MODAL_STATUS_IDS: Record<number, 'full' | 'comment'> = {
     [STATUS_DONE_ID]: 'full',
     [STATUS_EXTERNAL_ID]: 'full',
     [STATUS_PAUSE_ID]: 'comment',
+    [CANCEL_STATUS_ID]: 'comment',
 };
 
 const MODAL_HEADER_LABELS: Record<number, string> = {
     [STATUS_DONE_ID]: 'ລາຍງານວຽກ',
     [STATUS_EXTERNAL_ID]: 'ສົ່ງອອກແປງນອກ',
     [STATUS_PAUSE_ID]: 'ພັກໃວ້',
+    [CANCEL_STATUS_ID]: 'ຍົກເລີກ',
 };
 
 function buildDetailMenuItems(
@@ -227,7 +231,7 @@ export default function PageAdminDemo() {
                             style={{ maxWidth: "3rem" }}
                             {...centerProps}
                             body={(rowData: TicketRow) => {
-                                const show = showCheckbox(rowData);
+                                const show = showCheckbox(rowData) && rowData.statusId !== CANCEL_STATUS_ID;
                                 return (
                                     <div className="flex justify-content-center">
                                         {show ? (
@@ -342,11 +346,13 @@ export default function PageAdminDemo() {
                                                         : getTicketFromRow(rowData).status
                                                 ).trim();
                                                 const statusId = rowData.statusId;
+                                                const hideWaitingAccept = statusId === STATUS_WAITING_ACCEPT_ID;
+                                                const hideCancelled = statusId === CANCEL_STATUS_ID;
                                                 const hideById =
                                                     statusId === STATUS_DONE_ID || statusId === STATUS_CLOSED_ID;
                                                 const hideByName =
                                                     statusName === STATUS_DONE_NAME || statusName === STATUS_CLOSED_NAME;
-                                                return hideById || hideByName;
+                                                return hideWaitingAccept || hideCancelled || hideById || hideByName;
                                             })()
                                         }
                                         menuItems={buildDetailMenuItems(
