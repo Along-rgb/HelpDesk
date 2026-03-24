@@ -20,6 +20,7 @@ const STATUS_DONE_ID = 4;
 const STATUS_EXTERNAL_ID = 5;
 const STATUS_PAUSE_ID = 6;
 const STATUS_CLOSED_ID = 7;
+const STATUS_CANCEL_ID = 8;
 const CENTER_PROPS = { align: 'center' as const, alignHeader: 'center' as const };
 
 /** ກວດສອບວ່າມີຊ່າງຢ່າງໜ້ອຍ 1 ຄົນ ທີ່ statusId === 4 (ແກ້ໄຂແລ້ວ) */
@@ -71,14 +72,34 @@ export default function TableDemo() {
 
             if (tStatusId === STATUS_PAUSE_ID || tStatusId === STATUS_EXTERNAL_ID) {
                 const hasDone = hasAssigneeFixed(rowData);
-                if (!hasDone) return [];
-                return statusList
-                    .filter((s) => s.id === STATUS_DONE_ID || s.id === STATUS_CLOSED_ID)
-                    .map((s) => ({
-                        label: s.name,
-                        icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
-                        command: () => onStatusChange(rowData.id, s.id),
-                    }));
+                if (hasDone) {
+                    return statusList
+                        .filter((s) => s.id === STATUS_DONE_ID || s.id === STATUS_CLOSED_ID)
+                        .map((s) => ({
+                            label: s.name,
+                            icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
+                            command: () => onStatusChange(rowData.id, s.id),
+                        }));
+                }
+                if (tStatusId === STATUS_PAUSE_ID && hasAssigneeExternal(rowData)) {
+                    return statusList
+                        .filter((s) => s.id === STATUS_EXTERNAL_ID || s.id === STATUS_CANCEL_ID)
+                        .map((s) => ({
+                            label: s.name,
+                            icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
+                            command: () => onStatusChange(rowData.id, s.id),
+                        }));
+                }
+                if (tStatusId === STATUS_EXTERNAL_ID && hasAssigneePaused(rowData)) {
+                    return statusList
+                        .filter((s) => s.id === STATUS_PAUSE_ID)
+                        .map((s) => ({
+                            label: s.name,
+                            icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
+                            command: () => onStatusChange(rowData.id, s.id),
+                        }));
+                }
+                return [];
             }
 
             const hasDone = hasAssigneeFixed(rowData);
@@ -243,7 +264,7 @@ export default function TableDemo() {
                                                 ticket={rowData}
                                                 variant="techn"
                                                 menuItems={menuItems.length > 0 ? menuItems : undefined}
-                                                hideDropdown={isClosed || (ticketPausedOrExternal && !hasAssigneeFixed(rowData)) || (hideForClosedMultiAssign && !(isRole2 && rowData.statusId === STATUS_DONE_ID))}
+                                                hideDropdown={isClosed || (ticketPausedOrExternal && !hasAssigneeFixed(rowData) && !(rowData.statusId === STATUS_PAUSE_ID && hasAssigneeExternal(rowData)) && !(rowData.statusId === STATUS_EXTERNAL_ID && hasAssigneePaused(rowData))) || (hideForClosedMultiAssign && !(isRole2 && rowData.statusId === STATUS_DONE_ID))}
                                             />
                                         </div>
                                         {showBadge && (
