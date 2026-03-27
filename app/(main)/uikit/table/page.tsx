@@ -1,9 +1,9 @@
 "use client";
+import "./table.scss";
 import React, { useState, useRef, useCallback, useMemo } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Tag } from "primereact/tag";
-import { Checkbox } from "primereact/checkbox";
 import { Toast } from "primereact/toast";
 import { useTicketTable } from "./useTicketTable";
 import { Ticket } from "./types";
@@ -15,6 +15,7 @@ import { TicketHeader } from "./TicketHeader";
 import { AssigneeDialog } from "./AssigneeDialog";
 import { TableTooltip } from "./TableTooltip";
 import { TitleBody, RequesterBody, ContactBody, AssigneeBody, buildStatusByIdMap } from "./TicketColumnTemplates";
+import { SolutionViewDialog } from "./SolutionViewDialog";
 
 const STATUS_DONE_ID = 4;
 const STATUS_EXTERNAL_ID = 5;
@@ -45,10 +46,15 @@ function hasAssigneeCancelled(ticket: Ticket): boolean {
 
 export default function TableDemo() {
     const toastRef = useRef<Toast>(null);
-    const { tickets, loading, error, selectedTickets, globalFilter, onGlobalFilterChange, statusFilter, setStatusFilter, statusOptions, assignOptions, assignFilter, setAssignFilter, assignmentSectionTitle, priorityOptions, onCheckboxChange, onPriorityChange, dialogVisible, currentAssignees, currentTicketStatus, statusList, statusListForModal, openAssigneeDialog, closeDialog, onBulkAssign, isRole2, onReceiveTaskSelf, receiveSelfDisabled, canReceiveSelf, onStatusChange } = useTicketTable(toastRef);
+    const { tickets, loading, error, selectedTickets, globalFilter, onGlobalFilterChange, statusFilter, setStatusFilter, statusOptions, assignOptions, assignFilter, setAssignFilter, assignmentSectionTitle, priorityOptions, onCheckboxChange, onPriorityChange, dialogVisible, currentAssignees, currentTicketStatus, statusList, statusListForModal, openAssigneeDialog, closeDialog, onBulkAssign, isRole2, isAdmin, onReceiveTaskSelf, receiveSelfDisabled, canReceiveSelf, solutionDialogVisible, solutionDialogData, handleStatusAction, onSolutionDialogConfirm, onSolutionDialogHide } = useTicketTable(toastRef);
 
     const [first, setFirst] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(15);
+
+    const tableData = useMemo(() => {
+        const selIds = new Set(selectedTickets.map((t) => String(t.id)));
+        return tickets.map((r) => ({ ...r, _sel: selIds.has(String(r.id)) }));
+    }, [tickets, selectedTickets]);
 
     /** Memoize statusByIdMap so AssigneeBody doesn't rebuild Map per row */
     const statusByIdMap = useMemo(() => buildStatusByIdMap(statusListForModal), [statusListForModal]);
@@ -71,7 +77,7 @@ export default function TableDemo() {
                     .map((s) => ({
                         label: s.name,
                         icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
-                        command: () => onStatusChange(rowData.id, s.id),
+                        command: () => handleStatusAction(rowData, s.id),
                     }));
             }
 
@@ -83,7 +89,7 @@ export default function TableDemo() {
                         .map((s) => ({
                             label: s.name,
                             icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
-                            command: () => onStatusChange(rowData.id, s.id),
+                            command: () => handleStatusAction(rowData, s.id),
                         }));
                 }
                 if (tStatusId === STATUS_PAUSE_ID && hasAssigneeExternal(rowData)) {
@@ -92,7 +98,7 @@ export default function TableDemo() {
                         .map((s) => ({
                             label: s.name,
                             icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
-                            command: () => onStatusChange(rowData.id, s.id),
+                            command: () => handleStatusAction(rowData, s.id),
                         }));
                 }
                 if (tStatusId === STATUS_EXTERNAL_ID && hasAssigneePaused(rowData)) {
@@ -101,7 +107,7 @@ export default function TableDemo() {
                         .map((s) => ({
                             label: s.name,
                             icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
-                            command: () => onStatusChange(rowData.id, s.id),
+                            command: () => handleStatusAction(rowData, s.id),
                         }));
                 }
                 if (hasAssigneeCancelled(rowData)) {
@@ -110,7 +116,7 @@ export default function TableDemo() {
                         .map((s) => ({
                             label: s.name,
                             icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
-                            command: () => onStatusChange(rowData.id, s.id),
+                            command: () => handleStatusAction(rowData, s.id),
                         }));
                 }
                 return [];
@@ -126,7 +132,7 @@ export default function TableDemo() {
                         return {
                             label: s.name,
                             icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
-                            command: () => onStatusChange(rowData.id, s.id),
+                            command: () => handleStatusAction(rowData, s.id),
                         };
                     }
                     if (s.id === STATUS_CLOSED_ID) {
@@ -134,7 +140,7 @@ export default function TableDemo() {
                         return {
                             label: s.name,
                             icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
-                            command: () => onStatusChange(rowData.id, s.id),
+                            command: () => handleStatusAction(rowData, s.id),
                         };
                     }
                     if (s.id === STATUS_PAUSE_ID || s.id === STATUS_EXTERNAL_ID) {
@@ -142,7 +148,7 @@ export default function TableDemo() {
                         return {
                             label: s.name,
                             icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
-                            command: () => onStatusChange(rowData.id, s.id),
+                            command: () => handleStatusAction(rowData, s.id),
                         };
                     }
                     if (s.id === STATUS_CANCEL_ID) {
@@ -150,18 +156,18 @@ export default function TableDemo() {
                         return {
                             label: 'ຍົກເລີກ',
                             icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
-                            command: () => onStatusChange(rowData.id, s.id),
+                            command: () => handleStatusAction(rowData, s.id),
                         };
                     }
                     return {
                         label: s.name,
                         icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
-                        command: () => onStatusChange(rowData.id, s.id),
+                        command: () => handleStatusAction(rowData, s.id),
                     };
                 })
                 .filter((item): item is NonNullable<typeof item> => item != null);
         },
-        [statusList, onStatusChange]
+        [statusList, handleStatusAction]
     );
 
     return (
@@ -172,7 +178,16 @@ export default function TableDemo() {
             <div className="col-12">
                 <div className="card">
                     <TableTooltip target=".js-tooltip-target" dependencies={[tickets, first]} />
-                    <AssigneeDialog visible={dialogVisible} onHide={closeDialog} assignees={currentAssignees} statusList={statusListForModal} ticketStatus={currentTicketStatus} sectionTitle={assignmentSectionTitle} />           
+                    <AssigneeDialog visible={dialogVisible} onHide={closeDialog} assignees={currentAssignees} statusList={statusListForModal} ticketStatus={currentTicketStatus} sectionTitle={assignmentSectionTitle} />
+                    <SolutionViewDialog
+                        visible={solutionDialogVisible}
+                        onHide={onSolutionDialogHide}
+                        onConfirm={onSolutionDialogConfirm}
+                        ticketId={solutionDialogData?.ticketId}
+                        ticketTitle={solutionDialogData?.ticketTitle}
+                        targetStatusName={solutionDialogData?.targetStatusName ?? ''}
+                        assignees={solutionDialogData?.assignees ?? []}
+                    />           
                     <TicketHeader
                         statusFilter={statusFilter} setStatusFilter={setStatusFilter}
                         statusOptions={statusOptions}
@@ -182,7 +197,7 @@ export default function TableDemo() {
                         globalFilter={globalFilter} onGlobalFilterChange={onGlobalFilterChange}
                         isSelectionEmpty={selectedTickets.length === 0}
                         onBulkAssign={onBulkAssign}
-                        showReceiveSelfButton={isRole2}
+                        showReceiveSelfButton={isRole2 || isAdmin}
                         receiveSelfDisabled={receiveSelfDisabled}
                         onReceiveTaskSelf={onReceiveTaskSelf}
                     />
@@ -193,7 +208,7 @@ export default function TableDemo() {
                         </div>
                     )}
                     <DataTable
-                        value={tickets}
+                        value={tableData}
                         paginator
                         rows={rowsPerPage}
                         rowsPerPageOptions={[15, 25, 50]}
@@ -211,17 +226,43 @@ export default function TableDemo() {
                     >
                         <Column 
                             headerStyle={{ width: '3rem' }} style={{ maxWidth: '3rem' }} {...CENTER_PROPS} 
-                            body={(rowData: Ticket) => {
+                            body={(rowData: Ticket & { _sel?: boolean }) => {
                                 const totalAssignees = rowData.assignees?.length ?? 0;
                                 const isClosedMultiAssign = totalAssignees > 1 && (rowData.statusId === STATUS_DONE_ID || rowData.statusId === STATUS_CLOSED_ID);
                                 const isCancelled = rowData.statusId === STATUS_CANCEL_ID;
-                                const showCheckbox = isCancelled ? false : (isClosedMultiAssign ? false : (isRole2 ? canReceiveSelf(rowData) : true));
+                                const show = isCancelled ? false : (isClosedMultiAssign ? false : (isRole2 ? canReceiveSelf(rowData) : true));
+                                const checked = !!rowData._sel;
                                 return (
-                                    <div className="flex justify-content-center">
-                                        {showCheckbox ? (
-                                            <Checkbox checked={selectedTickets.some((t) => t.id === rowData.id)} onChange={(e) => onCheckboxChange(e, rowData)} />
+                                    <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+                                        {show ? (
+                                            <div
+                                                onClick={(e) => { e.stopPropagation(); e.preventDefault(); onCheckboxChange({ checked: !checked }, rowData); }}
+                                                onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); onCheckboxChange({ checked: !checked }, rowData); } }}
+                                                role="checkbox"
+                                                aria-checked={checked}
+                                                tabIndex={0}
+                                                style={{
+                                                    width: 20,
+                                                    height: 20,
+                                                    border: `2px solid ${checked ? "#3B82F6" : "#d1d5db"}`,
+                                                    borderRadius: 4,
+                                                    background: checked ? "#3B82F6" : "#fff",
+                                                    cursor: "pointer",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    transition: "all 0.15s",
+                                                    flexShrink: 0,
+                                                }}
+                                            >
+                                                {checked && (
+                                                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                                                        <path d="M1 7.5L5 11.5L13 2.5" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                                    </svg>
+                                                )}
+                                            </div>
                                         ) : (
-                                            <span className="text-400">—</span>
+                                            <span style={{ color: "#9ca3af" }}>—</span>
                                         )}
                                     </div>
                                 );

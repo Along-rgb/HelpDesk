@@ -75,6 +75,8 @@ export const TicketHeader = ({
                     panelHeaderTemplate={assignmentSectionTitle ? () => <div className="font-semibold p-2 text-center text-primary">{assignmentSectionTitle}</div> : undefined}
                     panelFooterTemplate={panelFooterTemplate} display="chip"
                     disabled={isSelectionEmpty}
+                    appendTo={typeof window !== "undefined" ? document.body : undefined}
+                    pt={{ panel: { style: { zIndex: 9999 } } }}
                     itemTemplate={(option: AssigneeOption) => <div className="text-sm flex align-items-center gap-2">{option.label}</div>}
                 />
                 {showReceiveSelfButton && (

@@ -61,7 +61,10 @@ export function normalizeHelpdeskRow(row: HelpdeskRequestRow | HelpdeskRowInput)
         : (a.helpdeskStatusId != null && Number.isFinite(Number(a.helpdeskStatusId)))
           ? Number(a.helpdeskStatusId)
           : undefined;
-    
+    const helpdeskStatusName =
+      a.helpdeskStatus?.name != null && String(a.helpdeskStatus.name).trim() !== ""
+        ? String(a.helpdeskStatus.name).trim()
+        : undefined;
     return {
       id,
       name: name || "—",
@@ -71,6 +74,9 @@ export function normalizeHelpdeskRow(row: HelpdeskRequestRow | HelpdeskRowInput)
       assignmentId: a.id != null && Number.isFinite(Number(a.id)) ? Number(a.id) : undefined,
       image: (e as { empimg?: string })?.empimg ?? undefined,
       phone,
+      helpdeskStatusName,
+      comment: a.comment ?? null,
+      commentImg: a.commentImg ?? null,
     };
   });
   const detailRow = row as HelpdeskRowInput;

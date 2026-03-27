@@ -31,8 +31,6 @@ const CANCEL_ALLOWED_STATUS_NAME = "ລໍຖ້າຮັບວຽກ";
 const CANCEL_STATUS_ID = 8;
 const STATUS_DONE_NAME = "ແກ້ໄຂແລ້ວ";
 const STATUS_CLOSED_NAME = "ປິດວຽກແລ້ວ";
-/** ລໍຖ້າຮັບວຽກ — ຍັງບໍ່ກົດ ຮັບວຽກເອງ → ເຊື່ອງ dropdown ລາຍລະອຽດ */
-const STATUS_WAITING_ACCEPT_ID = 2;
 const STATUS_DONE_ID = 4;
 const STATUS_EXTERNAL_ID = 5;
 const STATUS_PAUSE_ID = 6;
@@ -58,13 +56,32 @@ function buildDetailMenuItems(
     currentStatusName: string,
     staffStatusList: { id: number; name: string }[],
     updateTicketStatus: (ticketId: string | number, helpdeskStatusId: number) => Promise<void>,
-    openReportWork: (ticket: Ticket, statusId: number, mode: 'full' | 'comment') => void
+    openReportWork: (ticket: Ticket, statusId: number, mode: 'full' | 'comment') => void,
+    onAcceptSingle: (ticket: Ticket) => void
 ): TicketActionMenuItem[] {
     const current = (currentStatusName ?? "").trim();
-    const canCancel = current === CANCEL_ALLOWED_STATUS_NAME;
+    const isWaitingAccept = current === CANCEL_ALLOWED_STATUS_NAME;
+
+    if (isWaitingAccept) {
+        const cancelStatus = staffStatusList.find((s) => s.id === CANCEL_STATUS_ID);
+        const items: TicketActionMenuItem[] = [
+            {
+                label: "ປະຕິດບັດ",
+                icon: "pi pi-play",
+                command: () => onAcceptSingle(ticket),
+            },
+        ];
+        if (cancelStatus) {
+            items.push({
+                label: cancelStatus.name,
+                icon: STAFF_STATUS_ICONS[cancelStatus.id] ?? "pi pi-circle",
+                command: () => openReportWork(ticket, cancelStatus.id, 'comment'),
+            });
+        }
+        return items;
+    }
+
     return staffStatusList
-        .filter((s) => s.id !== STATUS_CLOSED_ID)
-        .filter((s) => (s.id === CANCEL_STATUS_ID ? canCancel : true))
         .filter((s) => (s.name ?? "").trim() !== current)
         .map((s) => ({
             label: s.name,
@@ -102,9 +119,10 @@ export default function PageAdminDemo() {
         statusList,
         staffStatusList,
         updateTicketStatus,
-        onAcceptSelf,
-        showReceiveSelfButton,
-        receiveSelfDisabled,
+        onAcceptSelf: _onAcceptSelf,
+        onAcceptSingleTicket,
+        showReceiveSelfButton: _showReceiveSelfButton,
+        receiveSelfDisabled: _receiveSelfDisabled,
         refetch,
     } = useTicketTableAdmin(toastRef);
 
@@ -137,13 +155,17 @@ export default function PageAdminDemo() {
     const onSaveReportWork = useCallback(
         async (data: ReportWorkSaveData) => {
             if (!reportWorkTicket) return;
-            const myAssign = reportWorkTicket.myAssignments?.find(
+            const myAssignments = reportWorkTicket.myAssignments || [];
+            let myAssign = myAssignments.find(
                 (m) =>
-                    Number(m.assignee.id) === Number(currentUserId) ||
-                    (employeeId != null && Number(m.assignee.id) === Number(employeeId))
+                    String(m.assignee.id) === String(currentUserId) ||
+                    String(m.assignee.id) === String(employeeId)
             );
+            if (!myAssign && myAssignments.length > 0) {
+                myAssign = myAssignments[0];
+            }
             const assignmentId = myAssign?.assignmentId;
-            if (assignmentId == null) {
+            if (assignmentId == null || !Number.isFinite(assignmentId)) {
                 toastRef.current?.show({
                     severity: "error",
                     summary: "ຜິດພາດ",
@@ -202,9 +224,6 @@ export default function PageAdminDemo() {
                         statusOptions={statusOptions}
                         globalFilter={globalFilter}
                         onGlobalFilterChange={onGlobalFilterChange}
-                        showReceiveSelfButton={showReceiveSelfButton}
-                        receiveSelfDisabled={receiveSelfDisabled}
-                        onReceiveTaskSelf={onAcceptSelf}
                     />
                     <DataTable
                         value={displayRows}
@@ -346,13 +365,16 @@ export default function PageAdminDemo() {
                                                         : getTicketFromRow(rowData).status
                                                 ).trim();
                                                 const statusId = rowData.statusId;
-                                                const hideWaitingAccept = statusId === STATUS_WAITING_ACCEPT_ID;
-                                                const hideCancelled = statusId === CANCEL_STATUS_ID;
+                                                const tStatusId = rowData.ticketStatusId ?? rowData.statusId;
+                                                const hideCancelled =
+                                                    statusId === CANCEL_STATUS_ID || tStatusId === CANCEL_STATUS_ID;
                                                 const hideById =
                                                     statusId === STATUS_DONE_ID || statusId === STATUS_CLOSED_ID;
                                                 const hideByName =
                                                     statusName === STATUS_DONE_NAME || statusName === STATUS_CLOSED_NAME;
-                                                return hideWaitingAccept || hideCancelled || hideById || hideByName;
+                                                const hideByTicketStatus =
+                                                    tStatusId === STATUS_DONE_ID || tStatusId === STATUS_CLOSED_ID;
+                                                return hideCancelled || hideById || hideByName || hideByTicketStatus;
                                             })()
                                         }
                                         menuItems={buildDetailMenuItems(
@@ -362,7 +384,8 @@ export default function PageAdminDemo() {
                                                 : getTicketFromRow(rowData).status,
                                             staffStatusList,
                                             updateTicketStatus,
-                                            openReportWork
+                                            openReportWork,
+                                            onAcceptSingleTicket
                                         )}
                                     />
                                 ) : null

@@ -44,6 +44,9 @@ export interface Ticket {
     email?: string;
     /** ລາຍການ assignment ຂອງ current user (ຈາກ helpdeskDetailToTicket) — ໃຊ້ໃນ role 3 */
     myAssignments?: { assignmentId: number; assignee: Assignee; statusName?: string; statusId?: number }[];
+    /** ສະຖານະ assignment ຂອງ Techn ຈາກ GET /api/assignments (authoritative) — ບໍ່ແມ່ນສະຖານະ ticket */
+    myStatusId?: number;
+    myStatusName?: string;
 }
 
 /** ฟอร์มລາຍງານວຽກ (Report Work modal) */

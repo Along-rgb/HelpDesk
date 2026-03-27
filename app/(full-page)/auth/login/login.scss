@@ -77,9 +77,32 @@ bg_Login
     margin-top: -5px;
       text-align: center;
 }
+
+
 .gradient-text {
     background: linear-gradient(90deg, #1d2125, #7F60FF, #FF4D8E);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+}
+
+/* Hide browser native password reveal button to prevent double eye icon */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear,
+input[type="password"]::-webkit-credentials-auto-fill-button {
+    display: none !important;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* Login button styles */
+.login-btn-helpdesk {
+    background: linear-gradient(180deg, #7eb8da 0%, #4a90b5 100%) !important;
+    border: none !important;
+    color: #fff !important;
+    transition: background 0.2s ease, filter 0.2s ease;
+}
+.login-btn-helpdesk:hover:not(:disabled) {
+    background: linear-gradient(135deg, #b8dcee 0%, #8ec5e0 50%, #5aa3c9 100%) !important;
+    filter: brightness(1.05);
 }

@@ -4,11 +4,12 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "primereact/button";
 import { Panel } from "primereact/panel";
 import { Dropdown } from "primereact/dropdown";
-import { TabView, TabPanel } from "primereact/tabview";
 import { Toast } from "primereact/toast";
 import { Dialog } from "primereact/dialog";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Avatar } from "primereact/avatar";
+import { Tag } from "primereact/tag";
+import { Image } from "primereact/image";
 import { Ticket, AssigneeOption, type AdminAssignUserRow } from "@/app/(main)/uikit/table/types";
 import { STATUS_MAP, STATUS_ICON_MAP, STATUS_ICON_FALLBACK } from "@/app/(main)/uikit/table/constants";
 import { normalizeHelpdeskRow, unwrapHelpdeskResponse } from "@/app/(main)/uikit/table/normalizeHelpdeskRow";
@@ -24,6 +25,16 @@ import { fetchTurningsForSelect } from "@/app/services/ticketService";
 import { getHelpdeskFileUrl, getHelpdeskFileUrlAbsolute } from "@/utils/helpdeskFileUrl";
 import { getDownloadApiUrl } from "@/utils/downloadFile";
 import { authenStore } from "@/app/store/user/loginAuthStore";
+
+/** ແປ statusId ຂອງ assignment ເປັນ PrimeReact Tag severity */
+function getAssigneeStatusSeverity(statusId?: number): "success" | "info" | "warning" | "secondary" | "danger" | null {
+    if (statusId == null) return null;
+    if (statusId === 1) return "warning";   // ລໍຖ້າຮັບວຽກ
+    if (statusId === 2) return "info";      // ກຳລັງດຳເນີນການ
+    if (statusId === 3) return "success";   // ແກ້ໄຂແລ້ວ
+    if (statusId >= 7) return "secondary";  // ປິດວຽກ / ຍົກເລີກ
+    return null;
+}
 
 /** Role 2 = Admin — ticket-detail ໃຊ້ GET helpdeskrequests/admin ແລ້ວຄົ້ນຫາໂດຍ id */
 const ROLE_ID_ADMIN = 2;
@@ -409,10 +420,8 @@ export default function TicketDetailPage() {
                             </span>
                         </div>
 
-                        {/* TABS */}
-                        <TabView className="p-0 custom-tabview text-lg">
-                            <TabPanel header="ລາຍລະອຽດ" leftIcon="pi pi-list mr-2">
-                                <div className="flex flex-column gap-3 mt-3 -mx-3 md:-mx-4">
+                        {/* CONTENT */}
+                        <div className="flex flex-column gap-3 mt-3 -mx-3 md:-mx-4">
 
                                     <Panel header="ລາຍລະອຽດ" toggleable className="border-top-1 border-yellow-500 shadow-none border-1 surface-border border-round-none">
                                         <div className="m-0 text-700 line-height-3 text-base px-3 md:px-4">
@@ -522,7 +531,7 @@ export default function TicketDetailPage() {
                                                         href={getDownloadApiUrl(getHelpdeskFileUrlAbsolute("hdFile", ticket.hdFile) || getHelpdeskFileUrl("hdFile", ticket.hdFile), ticket.hdFile)}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="flex align-items-center gap-2 text-primary hover:underline"
+                                                        className="flex align-items-center gap-2 text-primary no-underline hover:underline"
                                                     >
                                                         <i className="pi pi-file-pdf" />
                                                         {ticket.hdFile}
@@ -574,9 +583,73 @@ export default function TicketDetailPage() {
                                         </div>
                                     </Panel>
 
-                                </div>
-                            </TabPanel>
-                        </TabView>
+                                    {/* Panel: Internal Repair */}
+                                    <Panel
+                                        header="ຫນ່ວຍງານສ້ອມແປງພາຍໃນ"
+                                        toggleable
+                                        className="border-top-1 border-yellow-500 shadow-none border-1 surface-border border-round-none"
+                                    >
+                                        <div className="m-0 px-3 md:px-4 py-2">
+                                            <div className="text-700 font-bold mb-3 text-base">ວິຊາການກວດກາ:</div>
+                                            <ul className="list-none p-0 m-0">
+                                                {ticket.assignees && ticket.assignees.length > 0 ? (
+                                                    ticket.assignees.map((assignee: any, index: number) => (
+                                                        <li key={assignee.id ?? index} className="py-2 border-bottom-1 surface-border last:border-none">
+                                                            <div className="flex align-items-center justify-content-between gap-2 mb-1">
+                                                                <span className="text-700 text-base font-medium">
+                                                                    <i className="pi pi-user text-400 mr-2"></i>
+                                                                    {assignee.name}{assignee.phone ? ` | ${assignee.phone}` : ''}
+                                                                </span>
+                                                                {assignee.helpdeskStatusName && (
+                                                                    <Tag
+                                                                        value={assignee.helpdeskStatusName}
+                                                                        severity={getAssigneeStatusSeverity(assignee.statusId)}
+                                                                        className="text-xs white-space-nowrap flex-shrink-0"
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                            {(assignee.comment || assignee.commentImg) && (
+                                                                <div className="mt-2 pl-3 border-left-2 border-300">
+                                                                    {assignee.comment && (
+                                                                        <p className="m-0 text-500 text-sm">
+                                                                            <span className="font-medium text-600">ລາຍລະອຽດການກວດກາ ແລະ ສ້ອມແປງ:</span> {assignee.comment}
+                                                                        </p>
+                                                                    )}
+                                                                    {assignee.commentImg && (() => {
+                                                                        const name = (assignee.commentImg ?? '').trim().replace(/^\//, '');
+                                                                        if (!name) return null;
+                                                                        const base = (env.helpdeskUploadRequestBaseUrl ?? '').trim();
+                                                                        const src = base
+                                                                            ? `${base}/commentimg/${encodeURIComponent(name)}`
+                                                                            : env.useHelpdeskProxy
+                                                                                ? `/api/proxy-helpdesk/upload/commentimg/${encodeURIComponent(name)}`
+                                                                                : '';
+                                                                        if (!src) return null;
+                                                                        return (
+                                                                            <Image
+                                                                                src={src}
+                                                                                alt="repair-img"
+                                                                                preview
+                                                                                className="mt-2"
+                                                                                style={{ display: 'inline-block', maxWidth: '100%' }}
+                                                                                imageClassName="border-round border-1 surface-border"
+                                                                                imageStyle={{ maxHeight: '180px', objectFit: 'contain', display: 'block' }}
+                                                                            />
+                                                                        );
+                                                                    })()}
+                                                                </div>
+                                                            )}
+                                                        </li>
+                                                    ))
+                                                ) : (
+                                                    <div className="text-500 italic text-base">ຍັງບໍ່ມີຜູ້ຮັບຜິດຊອບ</div>
+                                                )}
+                                            </ul>
+                                        </div>
+                                    </Panel>
+
+
+                        </div>
                     </div>
 
                     {/* --- RIGHT COLUMN: Sidebar --- */}
@@ -658,52 +731,19 @@ export default function TicketDetailPage() {
                                 </ul>
                             </div>
 
-                            {/* Card 2: Repair Units */}
+                            {/* Card 2: External Repair */}
                             <div className="mt-4 -mx-4">
-
-                                {/* Panel 1: Internal */}
-                                <Panel
-                                    header="ໜ່ວຍງານສ້ອມແປງພາຍໃນ"
-                                    toggleable
-                                    className="shadow-none border-y-1 border-x-none border-noround surface-border"
-                                >
-                                    <div className="m-0">
-                                        <div className="text-700 font-bold mb-3 text-base">ວິຊາການກວດກາ:</div>
-                                        <ul className="list-none p-0 m-0">
-                                            {ticket.assignees && ticket.assignees.length > 0 ? (
-                                                ticket.assignees.map((assignee: any, index: number) => (
-                                                    <li key={index} className="flex align-items-center py-1 gap-2 mb-1">
-                                                        <i className="pi pi-chevron-right text-sm text-500"></i>
-                                                        <div className="flex flex-column">
-                                                            <span className="text-700 text-base">
-                                                                {assignee.name} {assignee.phone ? ` | ${assignee.phone}` : ''}
-                                                            </span>
-                                                        </div>
-                                                    </li>
-                                                ))
-                                            ) : (
-                                                <div className="text-500 italic text-base">ຍັງບໍ່ມີຜູ້ຮັບຜິດຊອບ</div>
-                                            )}
-                                        </ul>
-
-                                        <div className="text-700 font-bold mt-4 mb-2 text-base">ລາຍລະອຽດການກວດກາ ແລະ ສ້ອມແປງ:</div>
-                                        <div className="text-500 text-base pl-3 border-left-2 border-300">
-                                        </div>
-                                    </div>
-                                </Panel>
-
-                                {/* Panel 2: External */}
                                 <Panel
                                     header="ຮ້ານແປງນອກ"
                                     toggleable
-                                    className="shadow-none border-bottom-1 border-top-none border-x-none border-noround surface-border"
+                                    className="shadow-none border-y-1 border-x-none border-noround surface-border"
                                 >
                                     <ul className="list-none p-0 m-0 text-base">
                                         <li className="flex align-items-center justify-content-between py-2">
                                             <span className="text-700 font-bold">ຮ້ານທີ່ສັ່ງແປງ:</span>
                                         </li>
                                         <li className="flex align-items-center justify-content-between py-2">
-                                            <span className="text-700 font-bold">ເລກທີໃບນຳສົ່ງ:</span>
+                                            <span className="text-700 font-bold">ເລກທີໃບນຳສ່ງ:</span>
                                         </li>
                                         <li className="flex align-items-center justify-content-between py-2">
                                             <span className="text-700 font-bold">ວັນທີສັ່ງ:</span>
@@ -714,6 +754,7 @@ export default function TicketDetailPage() {
                                     </ul>
                                 </Panel>
                             </div>
+
                         </div>
                     )}
                 </div>

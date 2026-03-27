@@ -29,6 +29,7 @@ const STATUS_ID_SHOW_CHECKBOX_AND_ACCEPT_SELF = 2;
 /** ແກ້ໄຂແລ້ວ / ປິດວຽກແລ້ວ — ໃຊ້ເຊື່ອງ checkbox+dropdown ເມື່ອ ticket ມີ >1 assignee */
 const TICKET_STATUS_DONE_ID = 4;
 const TICKET_STATUS_CLOSED_ID = 7;
+const TICKET_STATUS_CANCELLED_ID = 8;
 
 /** Raw assignment (จาก GET helpdeskrequests/[id] หรือจาก assignments API) */
 interface RawAssignment {
@@ -72,10 +73,15 @@ interface HelpdeskRequestDetail {
   assignments?: RawAssignment[] | null;
 }
 
-/** Item จาก GET /api/assignments */
+/** Item จาก GET /api/assignments — เก็บ helpdeskStatusId ของช่าง (ບໍ່ແມ່ນຂອງ ticket) */
 interface AssignmentListItem {
+  id?: number;
   helpdeskRequestId?: number;
   assignedToId?: number;
+  /** สถานะ assignment ของช่าง (เช่น 4 = ແກ້ໄຂແລ້ວ) — ใช้เป็น primary source */
+  helpdeskStatusId?: number;
+  helpdeskStatus?: { id?: number; name?: string };
+  assignedAt?: string;
 }
 
 /** แปลง response GET helpdeskrequests/[id] เป็น Ticket (เฉพาะ field ที่ pageTechn ใช้) */
@@ -104,7 +110,7 @@ function helpdeskDetailToTicket(detail: HelpdeskRequestDetail): Ticket {
     };
   });
   const myAssignments = (detail.assignments ?? []).flatMap((a: RawAssignment) => {
-    const assignmentId = a.id;
+    const assignmentId = a.id != null ? Number(a.id) : undefined;
     if (assignmentId == null || !Number.isFinite(assignmentId)) return [];
     const e = a.assignedTo?.employee ?? a.employee;
     const name = e ? [e.first_name, e.last_name].filter(Boolean).join(" ").trim() : "";
@@ -227,6 +233,12 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
 
   const { list: statusList } = useHelpdeskStatusOptions();
   const { list: staffStatusList } = useHelpdeskStatusStaff();
+  
+  const resolveStaffStatusName = useCallback((statusId: number | undefined) => {
+    if (!statusId) return "ລໍຖ້າຮັບວຽກ";
+    const found = staffStatusList.find(s => s.id === statusId);
+    return found ? found.name : "ລໍຖ້າຮັບວຽກ";
+  }, [staffStatusList]);
 
   const { roleId: _roleId, currentUserId: _currentUserId, profileData } = useUserProfileSelectors();
   const roleId = _roleId ?? 0;
@@ -241,10 +253,13 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
 
   const statusOptions = useMemo(
     () => {
-      const sourceList = roleId === 3 ? [...statusList, ...staffStatusList] : statusList;
-      return buildStatusOptions([sourceList], tickets);
+      // Role 3: ใช้ statusList (จาก /api/helpdeskstatus/selecthelpdeskstatus) สำหรับ dropdown filter
+      if (roleId === 3) {
+        return buildStatusOptions([statusList], []);
+      }
+      return buildStatusOptions([statusList], tickets);
     },
-    [statusList, staffStatusList, roleId, tickets]
+    [statusList, roleId, tickets]
   );
 
   /** Role 2: /api/tickets. Role 3: helpdeskrequests/admin แล้วกรองเฉพาะที่มอบหมายให้ current user */
@@ -253,6 +268,8 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
 
   /** AbortController ref for cancelling in-flight requests on unmount */
   const abortRef = useRef<AbortController | null>(null);
+  /** Map: helpdeskRequestId → assignmentId (ຈາກ GET /api/assignments — source of truth ສຳລັບ ຮັບວຽກເອງ) */
+  const assignmentIdMapRef = useRef<Map<number, number>>(new Map());
 
   /** Role 3: ດຶງລາຍການຈາກ assignments ແລະ helpdeskrequests/[id] — ແຕ່ລະ user ເບິ່ງແຕ່ຂໍ້ມູນທີ່ມອບໝາຍໃຫ້ assignedToId = currentUser.id ເທົ່ານັ້ນ */
   const fetchRole3Tickets = useCallback(async () => {
@@ -272,7 +289,29 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
       if (list.length === 0 && raw != null && typeof raw === "object" && !Array.isArray(raw) && "helpdeskRequestId" in raw) {
         list = [raw as AssignmentListItem];
       }
-      const mine = list.filter((a) => Number(a.assignedToId) === Number(currentUserId));
+      const mine = list;
+
+      /** Map: helpdeskRequestId → Techn's own assignment status (authoritative from assignments list)
+       * Safe to key by helpdeskRequestId since this list is already filtered by assignedToId=currentUserId
+       * — at most one assignment per ticket for the current user */
+      const techStatusMap = new Map<number, { statusId?: number; statusName?: string; assignedAt?: string }>();
+      assignmentIdMapRef.current = new Map<number, number>();
+      for (const a of mine) {
+        if (a.helpdeskRequestId != null) {
+          const sId = a.helpdeskStatus?.id ?? a.helpdeskStatusId;
+          techStatusMap.set(a.helpdeskRequestId, {
+            statusId: sId != null && Number.isFinite(Number(sId)) ? Number(sId) : undefined,
+            statusName: a.helpdeskStatus?.name,
+            assignedAt: a.assignedAt,
+          });
+          const aId = a.id != null ? Number(a.id) : NaN;
+          const rId = Number(a.helpdeskRequestId);
+          if (Number.isFinite(aId) && Number.isFinite(rId)) {
+            assignmentIdMapRef.current.set(rId, aId);
+          }
+        }
+      }
+
       const myIds = mine
         .map((a) => a.helpdeskRequestId)
         .filter((id): id is number => typeof id === "number" && Number.isFinite(id));
@@ -283,7 +322,7 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
       }
       /** Parallel batching: fetch in groups of 10 to avoid overwhelming the server */
       const BATCH_SIZE = 10;
-      const allDetails: HelpdeskRequestDetail[] = [];
+      const allDetails: { detail: HelpdeskRequestDetail; helpdeskRequestId: number }[] = [];
       for (let i = 0; i < uniqueIds.length; i += BATCH_SIZE) {
         if (signal.aborted) return;
         const batch = uniqueIds.slice(i, i + BATCH_SIZE);
@@ -291,16 +330,26 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
           batch.map((helpdeskRequestId) =>
             axiosClientsHelpDesk
               .get<HelpdeskRequestDetail>(HELPDESK_ENDPOINTS.requestById(helpdeskRequestId), { signal })
-              .then((res) => res.data)
+              .then((res) => ({ detail: res.data, helpdeskRequestId }))
               .catch(() => null)
           )
         );
-        for (const d of batchResults) {
-          if (d != null) allDetails.push(d);
+        for (const r of batchResults) {
+          if (r != null) allDetails.push(r);
         }
       }
       if (signal.aborted) return;
-      const sorted = allDetails.map(helpdeskDetailToTicket).sort((a, b) => Number(b.id) - Number(a.id));
+      const sorted = allDetails.map(({ detail: d, helpdeskRequestId }) => {
+        const ticket = helpdeskDetailToTicket(d);
+        /** Use helpdeskRequestId (the exact key stored in techStatusMap) — never rely on d.id which may differ */
+        const techStatus = techStatusMap.get(helpdeskRequestId);
+        if (techStatus) {
+          if (techStatus.statusId != null) ticket.myStatusId = techStatus.statusId;
+          if (techStatus.statusName) ticket.myStatusName = techStatus.statusName;
+          if (techStatus.assignedAt) ticket.assignDate = formatDateTime(techStatus.assignedAt);
+        }
+        return ticket;
+      }).sort((a, b) => Number(b.id) - Number(a.id));
       setTickets(sorted);
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") return;
@@ -350,18 +399,21 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
   }, [shouldFetchTicketsRole3, currentUserId, fetchRole3Tickets, roleId]);
 
   const onAcceptSelf = useCallback(async () => {
-    const employeeId = profileData?.employeeId != null ? Number(profileData.employeeId) : null;
     const assignmentIds = selectedTickets.flatMap((t) => {
-      const list = t.myAssignments ?? [];
-      const mine = list.filter(
-        (m) =>
-          Number(m.assignee.id) === Number(currentUserId) ||
-          (employeeId != null && Number(m.assignee.id) === employeeId)
-      );
-      return mine.map((m) => m.assignmentId).filter((id) => Number.isFinite(id));
+      const rId = Number(t.id);
+      const aId = assignmentIdMapRef.current.get(rId);
+      return aId != null ? [aId] : [];
     });
     const uniqueIds = Array.from(new Set(assignmentIds));
-    if (uniqueIds.length === 0) return;
+    if (uniqueIds.length === 0) {
+      toastRef?.current?.show({
+        severity: "warn",
+        summary: "ບໍ່ພົບຂໍ້ມູນ",
+        detail: "ບໍ່ພົບ assignment ທີ່ຮັບວຽກໄດ້ — ກະລຸນາລອງໃໝ່",
+        life: 4000,
+      });
+      return;
+    }
     try {
       setLoading(true);
       await axiosClientsHelpDesk.put(HELPDESK_ENDPOINTS.ASSIGNMENTS_ACCEPT, { id: uniqueIds });
@@ -382,7 +434,7 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
         life: 4000,
       });
     }
-  }, [selectedTickets, currentUserId, profileData?.employeeId, fetchRole3Tickets, toastRef]);
+  }, [selectedTickets, fetchRole3Tickets, toastRef]);
 
   /** ດຶງຄ່າ filter — ຮອງຮັບທັງ PrimeReact string value ແລະ object { value } */
   const statusFilterVal = extractStatusFilterVal(statusFilter);
@@ -401,81 +453,44 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
   const employeeId = profileData?.employeeId != null ? profileData.employeeId : null;
 
   const displayRows = useMemo((): TicketRow[] => {
-    const isRole12 = roleId === 1 || roleId === 2;
-    if (isRole12) {
-      let result = filteredTickets.map((t) => ({ ...t, rowId: String(t.id) }));
-      if (statusFilterVal && statusFilterVal !== "Allin") {
-        const filterStatusId = Number(statusFilterVal);
-        result = result.filter(row => Number(row.statusId) === filterStatusId);
-      }
-      return result;
+    if (roleId !== 3) {
+      const rows = filteredTickets.map((t) => ({ ...t, rowId: String(t.id) }));
+      return filterRowsByStatusId(rows, statusFilterVal);
     }
-    /** Role 3: ເບິ່ງແຕ່ແຖວທີ່ມອບໝາຍໃຫ້ current user (ໃຊ້ assignedToId/assignee.id ເປີດບັນທັດ) — ແຍກແຕ່ລະຄົນ ບໍ່ລວມ user ອື່ນ */
+
     const rows: TicketRow[] = [];
     for (const t of filteredTickets) {
-      let assignees: Assignee[] = t.assignees ?? [];
-      if (assignees.length === 0 && t.assignTo) {
-        assignees = assignToToAssignees(t.assignTo, t.id);
-      }
-      if (assignees.length === 0) {
-        rows.push({ ...t, ticketStatusId: t.statusId, rowId: String(t.id) });
-      } else {
-        const mineOnly = assignees.filter(
-          (a) =>
-            isCurrentUserByAssigneeId(a.id, currentUserId, employeeId) ||
-            isCurrentUserAssignee(a.name, currentUserDisplayName)
-        );
-        if (mineOnly.length === 0) {
-          rows.push({ ...t, ticketStatusId: t.statusId, rowId: String(t.id) });
-        } else {
-          mineOnly.forEach((a, i) => {
-            const myAssignment = (t.myAssignments ?? []).find(
-              (m) => isCurrentUserByAssigneeId(m.assignee.id, currentUserId, employeeId) || m.assignee.id === a.id
-            );
-            const rowStatusId = myAssignment?.statusId ?? t.statusId;
-            rows.push({
-              ...t,
-              statusId: rowStatusId,
-              ticketStatusId: t.statusId,
-              rowId: `${t.id}-${a.id}-${i}`,
-              rowAssignee: a,
-            });
-          });
-        }
-      }
+      // Role 3: 1 row per ticket, statusId = Techn's own status (myStatusId) from assignments list
+      rows.push({
+        ...t,
+        statusId: t.myStatusId,
+        ticketStatusId: t.statusId,
+        rowId: String(t.id),
+      });
     }
     /** Role 3: ກັ່ນຕອງຕາມສະຖານະຂອງ assignment ຂອງຕົນເອງ */
     return filterRowsByStatusId(rows, statusFilterVal);
-  }, [filteredTickets, roleId, currentUserDisplayName, currentUserId, employeeId, statusFilterVal]);
+  }, [filteredTickets, roleId, statusFilterVal]);
 
-  /** ສຳລັບ role 3: ໃຫ້ເບິ່ງ checkbox ແລະປຸ່ມ ຮັບວຽກເອງ ເມື່ອ ສະຖານະຂອງ assignment ນັ້ນ (row.statusId) ເປັນ id 2 */
+  /** ສຳລັບ role 3: ໃຫ້ເບິ່ງ checkbox ແລະປຸ່ມ ຮັບວຽກເອງ ເມື່ອ:
+   * - ສະຖານະ assignment (row.statusId) ເປັນ ລໍຖ້າຮັບວຽກ (id 2) ແລະ
+   * - ສະຖານະ ticket (row.ticketStatusId) ບໍ່ໃຊ່ ປິດວຽກແລ້ວ
+   */
   const showCheckbox = useCallback(
     (row: TicketRow): boolean => {
       if (roleId === 1 || roleId === 2) return true;
-      if (!row.rowAssignee) return false;
-      const totalAssignees = row.assignees?.length ?? 0;
       const tStatusId = row.ticketStatusId ?? row.statusId;
-      if (totalAssignees > 1 && (tStatusId === TICKET_STATUS_DONE_ID || tStatusId === TICKET_STATUS_CLOSED_ID)) return false;
-      const isMine =
-        isCurrentUserByAssigneeId(row.rowAssignee.id, currentUserId, employeeId) ||
-        isCurrentUserAssignee(row.rowAssignee.name, currentUserDisplayName);
-      if (!isMine) return false;
-      const sid = row.statusId;
-      return sid === STATUS_ID_SHOW_CHECKBOX_AND_ACCEPT_SELF;
+      if (tStatusId === TICKET_STATUS_CLOSED_ID || tStatusId === TICKET_STATUS_CANCELLED_ID) return false;
+      return row.statusId === STATUS_ID_SHOW_CHECKBOX_AND_ACCEPT_SELF;
     },
-    [roleId, currentUserDisplayName, currentUserId, employeeId]
+    [roleId]
   );
 
   const showAction = useCallback(
-    (row: TicketRow): boolean => {
-      if (roleId === 1 || roleId === 2) return true;
-      if (!row.rowAssignee) return false;
-      return (
-        isCurrentUserByAssigneeId(row.rowAssignee.id, currentUserId, employeeId) ||
-        isCurrentUserAssignee(row.rowAssignee.name, currentUserDisplayName)
-      );
+    (_row: TicketRow): boolean => {
+      return true;
     },
-    [roleId, currentUserDisplayName, currentUserId, employeeId]
+    []
   );
 
   const getTicketFromRow = useCallback((row: TicketRow): Ticket => {
@@ -484,14 +499,14 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
   }, []);
 
   const onCheckboxChange = useCallback(
-    (e: { checked?: boolean }, rowData: TicketRow) => {
+    (_e: unknown, rowData: TicketRow) => {
       const ticket = getTicketFromRow(rowData);
       setSelectedTickets((prev) => {
-        if (e.checked) {
-          if (prev.some((t) => String(t.id) === String(ticket.id))) return prev;
-          return [...prev, ticket];
+        const isSelected = prev.some((t) => String(t.id) === String(ticket.id));
+        if (isSelected) {
+          return prev.filter((t) => String(t.id) !== String(ticket.id));
         }
-        return prev.filter((t) => String(t.id) !== String(ticket.id));
+        return [...prev, ticket];
       });
     },
     [getTicketFromRow]
@@ -522,7 +537,25 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
       if (!Number.isFinite(id)) return;
       try {
         setLoading(true);
-        await axiosClientsHelpDesk.put(HELPDESK_ENDPOINTS.updateHelpdeskStatus(id), { helpdeskStatusId });
+
+        // Role 3: update assignment status (technician's own status), not ticket status
+        if (roleId === 3) {
+          const assignmentId = assignmentIdMapRef.current.get(id);
+          if (!assignmentId) {
+            throw new Error("ບໍ່ພົບ assignmentId ຂອງຜູ້ໃຊ້");
+          }
+          // PUT /api/assignments/:id ด้วย helpdeskStatusId ใน FormData
+          const formData = new FormData();
+          formData.append("helpdeskStatusId", String(helpdeskStatusId));
+          await axiosClientsHelpDesk.put(
+            `${HELPDESK_ENDPOINTS.ASSIGNMENTS}/${assignmentId}`,
+            formData
+          );
+        } else {
+          // Role 1/2: update ticket status as before
+          await axiosClientsHelpDesk.put(HELPDESK_ENDPOINTS.updateHelpdeskStatus(id), { helpdeskStatusId });
+        }
+
         if (roleId === 2) await fetchRole2Tickets();
         else if (roleId === 3) await fetchRole3Tickets();
         toastRef?.current?.show({
@@ -545,6 +578,11 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
   );
 
   const receiveSelfDisabled = roleId === 3 ? selectedTickets.length === 0 : true;
+
+  const getAssignmentIdForTicket = useCallback(
+    (ticketId: string | number): number | undefined => assignmentIdMapRef.current.get(Number(ticketId)),
+    []
+  );
 
   return {
     displayRows,
@@ -572,5 +610,6 @@ export const useTicketTableTechn = (toastRef?: RefObject<Toast | null>) => {
     showReceiveSelfButton: roleId === 3,
     receiveSelfDisabled,
     staffStatusList,
+    getAssignmentIdForTicket,
   };
 };

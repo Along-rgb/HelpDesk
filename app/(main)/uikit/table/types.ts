@@ -85,6 +85,8 @@ export interface AssignmentItem {
   helpdeskStatusId?: number;
   /** ສະຖານະຕໍ່ assignment — ໃຊ້ id ເປີດບັນທັດ name ຈາກ selecthelpdeskstatus */
   helpdeskStatus?: { id?: number; name?: string };
+  comment?: string | null;
+  commentImg?: string | null;
 }
 
 /** Raw item from GET /api/helpdeskrequests/admin */
@@ -112,6 +114,10 @@ export interface Assignee {
   statusId?: number;
   /** Assignment row ID (from assignments[].id) — ໃຊ້ສຳລັບ PUT /api/assignments/{id} */
   assignmentId?: number;
+  /** ຊື່ສະຖານະຂອງ assignment ນີ້ຈາກ helpdeskStatus.name (ເຊັ່ນ "ລໍຖ້າຮັບວຽກ", "ແກ້ໄຂແລ້ວ") */
+  helpdeskStatusName?: string;
+  comment?: string | null;
+  commentImg?: string | null;
 }
 
 /**

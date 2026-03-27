@@ -1,0 +1,72 @@
+/* ==========================================================
+   table – PrimeReact v10 Checkbox fix for lara-light-blue v9 theme
+   v10 ໃຊ້ native <input class="p-checkbox-input"> ເປັນ click target
+   v9 theme ບໍ່ມີ styles ສຳລັບ .p-checkbox-input ແລະ checked state
+   ========================================================== */
+
+/* ---- Container: relative เพื่อ contain native input ---- */
+.p-checkbox {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center;
+  vertical-align: middle;
+}
+
+/* ---- Native input: invisible แต่ยังรับ click (z-index:1) ---- */
+.p-checkbox .p-checkbox-input {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  opacity: 0 !important;
+  z-index: 1;
+  cursor: pointer;
+  outline: 0 none !important;
+  border: 1px solid transparent !important;
+  border-radius: 6px;
+  background: transparent !important;
+}
+
+/* ---- Checked state (blue background) ---- */
+.p-checkbox .p-checkbox-input:checked + .p-checkbox-box,
+.p-checkbox .p-checkbox-input:checked ~ .p-checkbox-box,
+.p-checkbox[data-p-highlight="true"] > .p-checkbox-box,
+.p-checkbox .p-checkbox-box.p-highlight {
+  border-color: #3b82f6 !important;
+  background: #3b82f6 !important;
+}
+
+/* ---- Checked + hover ---- */
+.p-checkbox .p-checkbox-input:checked + .p-checkbox-box:hover,
+.p-checkbox .p-checkbox-input:checked ~ .p-checkbox-box:hover,
+.p-checkbox[data-p-highlight="true"]:hover > .p-checkbox-box,
+.p-checkbox:not(.p-checkbox-disabled) .p-checkbox-box.p-highlight:hover {
+  border-color: #1d4ed8 !important;
+  background: #1d4ed8 !important;
+}
+
+/* ---- Checkmark icon: white on blue ---- */
+.p-checkbox .p-checkbox-input:checked + .p-checkbox-box .p-checkbox-icon,
+.p-checkbox .p-checkbox-input:checked ~ .p-checkbox-box .p-checkbox-icon,
+.p-checkbox[data-p-highlight="true"] .p-checkbox-icon,
+.p-checkbox .p-checkbox-box.p-highlight .p-checkbox-icon {
+  color: #ffffff !important;
+}
+
+/* ---- Focus ring ---- */
+.p-checkbox .p-checkbox-input:focus + .p-checkbox-box,
+.p-checkbox .p-checkbox-input:focus ~ .p-checkbox-box {
+  box-shadow: 0 0 0 0.2rem #bfdbfe;
+  border-color: #3b82f6;
+}
+
+/* ---- Cell overflow ---- */
+.p-datatable .p-datatable-tbody > tr > td {
+  overflow: hidden;
+}

@@ -1,21 +1,19 @@
 'use client';
 
 import * as React from 'react';
-import { useForm, SubmitHandler, Controller } from 'react-hook-form';
+import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { LoginInput, LoginSchema } from '@/global/validators/login.schema';
 import { InputText } from 'primereact/inputtext';
-import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
-import { Checkbox } from 'primereact/checkbox';
 import { Toast } from 'primereact/toast';
 import { classNames } from 'primereact/utils';
 import { useRouter } from 'next/navigation';
-
 import { authenStore } from '@/app/store/user/loginAuthStore';
 import { useUserProfileStore } from '@/app/store/user/userProfileStore';
 import { clearAppSession } from '@/utils/authHelper';
 import { useAuthLogin } from './hooks/useAuthLogin';
+import './login.scss';
 
 /**
  * หน้า Login: พื้นหลัง backgroundhelpdesk.png, แบ่งซ้าย (รูป helpdesk) ขวา (ฟอร์ม logologin)
@@ -23,7 +21,7 @@ import { useAuthLogin } from './hooks/useAuthLogin';
  */
 export default function LoginForm() {
   const router = useRouter();
-  const [remember, setRemember] = React.useState(false);
+  const [showPassword, setShowPassword] = React.useState(false);
   const toast = React.useRef<Toast>(null);
 
   const showMessage: (severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail: string) => void =
@@ -58,18 +56,6 @@ export default function LoginForm() {
         backgroundPosition: 'center',
       }}
     >
-      <style>{`
-        .login-btn-helpdesk {
-          background: linear-gradient(180deg, #7eb8da 0%, #4a90b5 100%) !important;
-          border: none !important;
-          color: #fff !important;
-          transition: background 0.2s ease, filter 0.2s ease;
-        }
-        .login-btn-helpdesk:hover:not(:disabled) {
-          background: linear-gradient(135deg, #b8dcee 0%, #8ec5e0 50%, #5aa3c9 100%) !important;
-          filter: brightness(1.05);
-        }
-      `}</style>
       <Toast ref={toast} />
 
       <div
@@ -136,47 +122,33 @@ export default function LoginForm() {
             {errors.password?.message && (
               <small className="p-error block mb-1">{errors.password.message}</small>
             )}
-            <Controller
-              name="password"
-              control={control}
-              render={({ field }) => (
-                <span className="p-input-icon-left w-full block mb-3">
-                  <i className="pi pi-lock" />
-                  <Password
-                    inputId="password"
-                    {...field}
-                    value={field.value || ''}
-                    placeholder="Password"
-                    autoComplete="current-password"
-                    toggleMask
-                    feedback
-                    weakLabel="ງ່າຍ"
-                    mediumLabel="ປານກາງ"
-                    strongLabel="ປອດໄພ"
-                    className={classNames('w-full', { 'p-invalid': errors.password })}
-                    inputStyle={{
-                      paddingLeft: '2.5rem',
-                      borderRadius: '10px',
-                      height: '2.75rem',
-                      width: '100%',
-                    }}
-                    inputClassName="w-full"
-                  />
-                </span>
-              )}
-            />
+            <span className="p-input-icon-left w-full block mb-3" style={{ position: 'relative' }}>
+              <i className="pi pi-lock" />
+              <InputText
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                {...register('password')}
+                placeholder="ລະຫັດຜ່ານ"
+                autoComplete="current-password"
+                className={classNames('w-full', { 'p-invalid': errors.password })}
+                style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem', borderRadius: '10px', height: '2.75rem' }}
+              />
+              <i
+                className={classNames('pi', showPassword ? 'pi-eye-slash' : 'pi-eye')}
+                onClick={() => setShowPassword((v) => !v)}
+                style={{
+                  position: 'absolute',
+                  right: '0.75rem',
+                  top: '70%',
+                  transform: 'translateY(-50%)',
+                  cursor: 'pointer',
+                  color: '#6c757d',
+                  zIndex: 10
+                }}
+              />
+            </span>
 
-            <div className="flex justify-content-between align-items-center mb-4 mt-2">
-              <div className="flex align-items-center gap-2">
-                <Checkbox
-                  inputId="remember"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.checked ?? false)}
-                />
-                <label htmlFor="remember" className="cursor-pointer text-color">
-                  ຈື່ຂ້ອຍໄວ້
-                </label>
-              </div>
+            <div className="flex justify-content-end align-items-center mb-4 mt-2">
               <a
                 className="cursor-pointer text-primary text-sm"
                 onClick={() => router.push('#')}
@@ -198,3 +170,4 @@ export default function LoginForm() {
     </div>
   );
 }
+

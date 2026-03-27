@@ -62,6 +62,7 @@ interface HelpdeskRequestDetail {
 
 /** Item จาก GET /api/assignments */
 interface AssignmentListItem {
+  id?: number;
   helpdeskRequestId?: number;
   assignedToId?: number;
 }
@@ -91,14 +92,14 @@ function helpdeskDetailToTicket(detail: HelpdeskRequestDetail): Ticket {
     };
   });
   const myAssignments = (detail.assignments ?? []).flatMap((a: RawAssignment) => {
-    const assignmentId = a.id;
-    if (assignmentId == null || !Number.isFinite(assignmentId)) return [];
+    const assignmentId = Number(a.id ?? NaN);
+    if (!Number.isFinite(assignmentId) || assignmentId === 0) return [];
     const e = a.assignedTo?.employee ?? a.employee;
     const name = e ? [e.first_name, e.last_name].filter(Boolean).join(" ").trim() : "";
     const statusName = a.helpdeskStatus?.name;
     const statusId = a.helpdeskStatus?.id != null && Number.isFinite(Number(a.helpdeskStatus.id)) ? Number(a.helpdeskStatus.id) : undefined;
     const assignee: Assignee = {
-      id: e?.id ?? a.assignedToId ?? a.assignedTo?.id ?? assignmentId,
+      id: a.assignedToId ?? a.assignedTo?.id ?? e?.id ?? assignmentId,
       name: name || "—",
       status: (a.status === "doing" || a.status === "done" || a.status === "waiting" ? a.status : "waiting") as Assignee["status"],
       image: e?.empimg ?? undefined,
@@ -139,6 +140,8 @@ function helpdeskDetailToTicket(detail: HelpdeskRequestDetail): Ticket {
 
 /** ສະຖານະ id 2 — ລໍຖ້າຮັບວຽກ (ໃຊ້ສະແດງ checkbox ແລະປຸ່ມ ຮັບວຽກເອງ) */
 const STATUS_ID_SHOW_CHECKBOX_AND_ACCEPT_SELF = 2;
+/** IDs ທີ່ສະແດງໃນ dropdown ລາຍລະອຽດ (ຈາກ /api/helpdeskstatus/admin) */
+const DETAIL_STATUS_IDS = new Set([4, 5, 6, 8]);
 
 export const useTicketTableAdmin = (toastRef?: RefObject<Toast | null>) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -155,7 +158,7 @@ export const useTicketTableAdmin = (toastRef?: RefObject<Toast | null>) => {
   useEffect(() => {
     let cancelled = false;
     axiosClientsHelpDesk.get(HELPDESK_ENDPOINTS.STATUS_ADMIN).then((res) => {
-      if (!cancelled) setAdminStatusList(normalizeIdNameList(res.data));
+      if (!cancelled) setAdminStatusList(normalizeIdNameList(res.data).filter((s) => DETAIL_STATUS_IDS.has(s.id)));
     }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
@@ -199,6 +202,15 @@ export const useTicketTableAdmin = (toastRef?: RefObject<Toast | null>) => {
         list = [raw as AssignmentListItem];
       }
       const mine = list.filter((a) => Number(a.assignedToId) === Number(currentUserId));
+      /** Map: helpdeskRequestId → assignmentId (source-of-truth ຈາກ GET /api/assignments ເພາະ GET helpdeskrequests/{id} ບໍ່ສົ່ງ assignments[].id) */
+      const assignmentIdByRequestId = new Map<number, number>();
+      mine.forEach((a) => {
+        const reqId = Number(a.helpdeskRequestId);
+        const asgId = Number(a.id);
+        if (Number.isFinite(reqId) && reqId > 0 && Number.isFinite(asgId) && asgId > 0) {
+          assignmentIdByRequestId.set(reqId, asgId);
+        }
+      });
       const myIds = mine
         .map((a) => a.helpdeskRequestId)
         .filter((id): id is number => typeof id === "number" && Number.isFinite(id));
@@ -225,7 +237,20 @@ export const useTicketTableAdmin = (toastRef?: RefObject<Toast | null>) => {
         }
       }
       if (signal.aborted) return;
-      const sorted = allDetails.map(helpdeskDetailToTicket).sort((a, b) => Number(b.id) - Number(a.id));
+      const sorted = allDetails.map((d) => {
+        const ticket = helpdeskDetailToTicket(d);
+        const knownAsgId = assignmentIdByRequestId.get(Number(d.id));
+        if (knownAsgId != null && Number.isFinite(knownAsgId)) {
+          const alreadyHas = (ticket.myAssignments ?? []).some((m) => m.assignmentId === knownAsgId);
+          if (!alreadyHas) {
+            ticket.myAssignments = [
+              { assignmentId: knownAsgId, assignee: { id: currentUserId, name: "", status: "doing" } },
+              ...(ticket.myAssignments ?? []),
+            ];
+          }
+        }
+        return ticket;
+      }).sort((a, b) => Number(b.id) - Number(a.id));
       setTickets(sorted);
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") return;
@@ -341,6 +366,49 @@ export const useTicketTableAdmin = (toastRef?: RefObject<Toast | null>) => {
     setGlobalFilter(e.target.value);
   }, []);
 
+  /** ປະຕິດບັດ (single ticket): PUT /api/assignments/accept */
+  const onAcceptSingleTicket = useCallback(async (ticket: Ticket) => {
+    const empId = profileData?.employeeId != null ? Number(profileData.employeeId) : null;
+    const list = ticket.myAssignments ?? [];
+    const mine = list.filter(
+      (m) =>
+        Number(m.assignee.id) === Number(currentUserId) ||
+        (empId != null && Number(m.assignee.id) === empId)
+    );
+    const assignmentIds = mine
+      .map((m) => m.assignmentId)
+      .filter((id): id is number => id != null && Number.isFinite(id) && id > 0);
+    const uniqueIds = Array.from(new Set(assignmentIds));
+    if (uniqueIds.length === 0) {
+      toastRef?.current?.show({
+        severity: "warn",
+        summary: "ບໍ່ພົບ assignment",
+        detail: "ບໍ່ພົບ assignment ທີ່ຮັບວຽກໄດ້",
+        life: 4000,
+      });
+      return;
+    }
+    try {
+      setLoading(true);
+      await axiosClientsHelpDesk.put(HELPDESK_ENDPOINTS.ASSIGNMENTS_ACCEPT, { id: uniqueIds });
+      await fetchAdminAssignments();
+      toastRef?.current?.show({
+        severity: "success",
+        summary: "ສຳເລັດ",
+        detail: "ປະຕິດບັດສຳເລັດ ສະຖານະເປັນກຳລັງດຳເນີນການ",
+        life: 3000,
+      });
+    } catch {
+      setLoading(false);
+      toastRef?.current?.show({
+        severity: "error",
+        summary: "ຜິດພາດ",
+        detail: "ປະຕິດບັດບໍ່ສຳເລັດ",
+        life: 4000,
+      });
+    }
+  }, [currentUserId, profileData?.employeeId, fetchAdminAssignments, toastRef]);
+
   /** ຮັບວຽກເອງ: PUT /api/assignments/accept */
   const onAcceptSelf = useCallback(async () => {
     const empId = profileData?.employeeId != null ? Number(profileData.employeeId) : null;
@@ -414,15 +482,11 @@ export const useTicketTableAdmin = (toastRef?: RefObject<Toast | null>) => {
     [fetchAdminAssignments, toastRef]
   );
 
-  const receiveSelfDisabled = selectedTickets.length === 0;
-  const showReceiveSelfButton = selectedTickets.some((t) => {
-    const myAssign = (t.myAssignments ?? []).find(
-      (m) =>
-        isCurrentUserByAssigneeId(m.assignee.id, currentUserId, employeeId) ||
-        isCurrentUserAssignee(m.assignee.name, currentUserDisplayName)
-    );
-    return myAssign?.statusId === STATUS_ID_SHOW_CHECKBOX_AND_ACCEPT_SELF;
-  });
+  /** ສະແດງປຸ່ມເມື່ອ ticket ທີ່ເລືອກມີ statusId ລໍຖ້າຮັບວຽກ (ຄືກັນກັບ pageTechn) */
+  const showReceiveSelfButton = selectedTickets.some(
+    (t) => t.statusId === STATUS_ID_SHOW_CHECKBOX_AND_ACCEPT_SELF
+  );
+  const receiveSelfDisabled = !showReceiveSelfButton;
 
   return {
     displayRows,
@@ -443,6 +507,7 @@ export const useTicketTableAdmin = (toastRef?: RefObject<Toast | null>) => {
     getTicketFromRow,
     refetch: fetchAdminAssignments,
     onAcceptSelf,
+    onAcceptSingleTicket,
     statusList,
     updateTicketStatus,
     showReceiveSelfButton,

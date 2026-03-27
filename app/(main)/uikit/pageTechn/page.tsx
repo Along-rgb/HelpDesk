@@ -1,8 +1,8 @@
 "use client";
+import "./pageTechn.scss";
 import React, { useState, useRef, useMemo, useCallback } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import { Checkbox } from "primereact/checkbox";
 import { Tag } from "primereact/tag";
 import { Toast } from "primereact/toast";
 import { useTicketTableTechn } from "./useTicketTableTechn";
@@ -117,6 +117,7 @@ export default function PageTechnDemo() {
         showReceiveSelfButton,
         receiveSelfDisabled,
         refetch,
+        getAssignmentIdForTicket,
     } = useTicketTableTechn(toastRef);
 
     const { currentUserId } = useUserRoleAndId();
@@ -131,8 +132,14 @@ export default function PageTechnDemo() {
 
     const centerProps = { align: "center" as const, alignHeader: "center" as const };
 
-    /** ໃຊ້ເປີດບັນທັດ name ຈາກ statusId (ສະຖານະຂອງ role 3 / assignment) */
+    /** ໃຊ້ statusList (full list) ເພື່ອ resolve ທຸກ statusId ລວມທັງ id 2 (ລໍຖ້າຮັບວຽກ) */
     const statusById = useMemo(() => new Map(statusList.map((s) => [s.id, s])), [statusList]);
+
+    /** ฝัง _sel flag ลงใน row data เพื่อ force DataTable re-render เมื่อ selection เปลี่ยน */
+    const tableData = useMemo(() => {
+        const selIds = new Set(selectedTickets.map((t) => String(t.id)));
+        return displayRows.map((r) => ({ ...r, _sel: selIds.has(String(r.id)) }));
+    }, [displayRows, selectedTickets]);
 
     const openReportWork = useCallback((ticket: Ticket, statusId: number = STATUS_DONE_ID, mode: 'full' | 'comment' = 'full') => {
         setReportWorkTicket(ticket);
@@ -149,13 +156,8 @@ export default function PageTechnDemo() {
     const onSaveReportWork = useCallback(
         async (data: ReportWorkSaveData) => {
             if (!reportWorkTicket) return;
-            // ใช้ Assignment ID (64) เท่านั้น — ห้ามใช้ Ticket ID (74) เพื่อหลีกเลี่ยง 404
-            const myAssign = reportWorkTicket.myAssignments?.find(
-                (m) =>
-                    Number(m.assignee.id) === Number(currentUserId) ||
-                    (employeeId != null && Number(m.assignee.id) === Number(employeeId))
-            );
-            const assignmentId = myAssign?.assignmentId;
+            // ใช้ Assignment ID จาก assignmentIdMapRef (source of truth จาก GET /api/assignments)
+            const assignmentId = getAssignmentIdForTicket(reportWorkTicket.id);
             if (assignmentId == null) {
                 toastRef.current?.show({
                     severity: "error",
@@ -184,7 +186,7 @@ export default function PageTechnDemo() {
                 life: 3000,
             });
         },
-        [reportWorkTicket, currentUserId, employeeId, refetch, reportWorkStatusId]
+        [reportWorkTicket, getAssignmentIdForTicket, refetch, reportWorkStatusId]
     );
 
     return (
@@ -221,7 +223,7 @@ export default function PageTechnDemo() {
                         onReceiveTaskSelf={onAcceptSelf}
                     />
                     <DataTable
-                        value={displayRows}
+                        value={tableData}
                         paginator
                         rows={rowsPerPage}
                         rowsPerPageOptions={[15, 25, 50]}
@@ -244,17 +246,44 @@ export default function PageTechnDemo() {
                             headerStyle={{ width: "3rem" }}
                             style={{ maxWidth: "3rem" }}
                             {...centerProps}
-                            body={(rowData: TicketRow) => {
+                            body={(rowData: TicketRow & { _sel?: boolean }) => {
                                 const show = showCheckbox(rowData) && rowData.statusId !== CANCEL_STATUS_ID;
+                                const checked = !!rowData._sel;
                                 return (
-                                    <div className="flex justify-content-center">
+                                    <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
                                         {show ? (
-                                            <Checkbox
-                                                checked={selectedTickets.some((t) => t.id === rowData.id)}
-                                                onChange={(e) => onCheckboxChange(e, rowData)}
-                                            />
+                                            <div
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    e.preventDefault();
+                                                    onCheckboxChange(null, rowData);
+                                                }}
+                                                onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); onCheckboxChange(null, rowData); } }}
+                                                role="checkbox"
+                                                aria-checked={checked}
+                                                tabIndex={0}
+                                                style={{
+                                                    width: 20,
+                                                    height: 20,
+                                                    border: `2px solid ${checked ? "#3B82F6" : "#d1d5db"}`,
+                                                    borderRadius: 4,
+                                                    background: checked ? "#3B82F6" : "#fff",
+                                                    cursor: "pointer",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    transition: "all 0.15s",
+                                                    flexShrink: 0,
+                                                }}
+                                            >
+                                                {checked && (
+                                                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                                                        <path d="M1 7.5L5 11.5L13 2.5" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                                    </svg>
+                                                )}
+                                            </div>
                                         ) : (
-                                            <span className="text-400">—</span>
+                                            <span style={{ color: "#9ca3af" }}>—</span>
                                         )}
                                     </div>
                                 );
@@ -360,16 +389,16 @@ export default function PageTechnDemo() {
                                                         : getTicketFromRow(rowData).status
                                                 ).trim();
                                                 const statusId = rowData.statusId;
-                                                const hideCancelled = statusId === CANCEL_STATUS_ID;
+                                                const tStatusId = rowData.ticketStatusId ?? rowData.statusId;
+                                                const hideCancelled =
+                                                    statusId === CANCEL_STATUS_ID || tStatusId === CANCEL_STATUS_ID;
                                                 const hideById =
                                                     statusId === STATUS_DONE_ID || statusId === STATUS_CLOSED_ID;
                                                 const hideByName =
                                                     statusName === STATUS_DONE_NAME || statusName === STATUS_CLOSED_NAME;
-                                                const totalAssignees = rowData.assignees?.length ?? 0;
-                                                const tStatusId = rowData.ticketStatusId ?? rowData.statusId;
-                                                const hideForClosedMultiAssign =
-                                                    totalAssignees > 1 && (tStatusId === STATUS_DONE_ID || tStatusId === STATUS_CLOSED_ID);
-                                                return hideCancelled || hideById || hideByName || hideForClosedMultiAssign;
+                                                const hideByTicketStatus =
+                                                    tStatusId === STATUS_DONE_ID || tStatusId === STATUS_CLOSED_ID;
+                                                return hideCancelled || hideById || hideByName || hideByTicketStatus;
                                             })()
                                         }
                                         menuItems={buildDetailMenuItems(

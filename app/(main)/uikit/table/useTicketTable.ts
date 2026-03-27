@@ -29,6 +29,9 @@ const HELPDESK_STATUS_IN_PROGRESS = 2;
 /** ສະຖານະ id 1 — ໃຫ້ແຖບ checkbox ເມື່ອສະຖານະເປັນ id ນີ້ (logic เดิม) */
 const STATUS_ID_SHOW_CHECKBOX = 1;
 const TECHNICIAN_ROLE_ID = 2;
+const ADMIN_ROLE_ID = 1;
+/** ສະຖານະທີ່ຕ້ອງສະແດງ SolutionViewDialog ກ່ອນຢືນຢັນ (4=ແກ້ໄຂ, 5=ສົ່ງນອກ, 6=ພັກ, 8=ຍົກເລີກ) */
+const SOLUTION_VIEW_STATUS_IDS = new Set<number>([4, 5, 6, 8]);
 /** Role 2 ไม่มีสิทธิ์ GET prioritys — ใช้รายการ fallback เพื่อให้เลือกได้ */
 const ROLE_ID_NO_PRIORITY_LIST = 2;
 const FALLBACK_PRIORITY_OPTIONS: { id: number; name: string }[] = [
@@ -113,6 +116,14 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
   const [assignmentSectionTitle, setAssignmentSectionTitle] = useState<string>("ມອບໝາຍໃຫ້");
   const [priorityOptions, setPriorityOptions] = useState<{ id: number; name: string }[]>([]);
   const [initDone, setInitDone] = useState(false);
+  const [solutionDialogVisible, setSolutionDialogVisible] = useState(false);
+  const [solutionDialogData, setSolutionDialogData] = useState<{
+    ticketId: number | string;
+    ticketTitle: string;
+    targetStatusId: number;
+    targetStatusName: string;
+    assignees: Assignee[];
+  } | null>(null);
 
   /**
    * Parallel init: fire metadata + ticket fetch simultaneously.
@@ -342,9 +353,9 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
     }
   };
 
-  /** ຮັບວຽກເອງ (role 2): ເງື່ອນໄຂ ສະຖານະ ລໍຖ້າຮັບວຽກ ແລະ ຍັງບໍ່ມີຄົນມອບໝາຍ */
+  /** ຮັບວຽກເອງ (Admin): PUT /api/helpdeskrequests/updatehelpdeskstatus/{id} — helpdeskStatusId 3 */
   const onReceiveTaskSelf = useCallback(async () => {
-    if (roleId !== TECHNICIAN_ROLE_ID || currentUserId == null) return;
+    if ((roleId !== TECHNICIAN_ROLE_ID && roleId !== ADMIN_ROLE_ID) || currentUserId == null) return;
     const eligible = selectedTickets.filter(canReceiveSelf);
     const helpdeskRequestIds = eligible.map((t) => Number(t.id)).filter((id): id is number => Number.isFinite(id));
     if (helpdeskRequestIds.length === 0) {
@@ -358,65 +369,28 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
     }
     try {
       setLoading(true);
-      /** ສ້າງ assignment ກ່ອນ (POST) ແລ້ວຮັບ response ທີ່ມີ assignment IDs */
-      const createResponse = await axiosClientsHelpDesk.post(HELPDESK_ENDPOINTS.ASSIGNMENTS, {
+      /** POST ສ້າງ assignment ກ່ອນ (Admin ຮັບວຽກເອງ) — response ມີ id (assignmentId) ທີ່ PUT accept ຕ້ອງການ */
+      const createRes = await axiosClientsHelpDesk.post(HELPDESK_ENDPOINTS.ASSIGNMENTS, {
         helpdeskRequestId: helpdeskRequestIds,
         assignedToId: [currentUserId],
       });
-      
-      /** ດຶງ assignment IDs ຈາກ response — ຮອງຮັບຫຼາຍ format (array, single object, nested data) */
-      const assignmentIds: number[] = [];
-      if (createResponse?.data) {
-        const raw = createResponse.data;
-        const candidates: Record<string, unknown>[] = Array.isArray(raw)
-          ? raw
-          : Array.isArray(raw.data)
-            ? raw.data
-            : raw.data?.id != null
-              ? [raw.data]
-              : raw.id != null
-                ? [raw]
-                : [];
-        candidates.forEach((item: Record<string, unknown>) => {
-          if (item?.id != null && Number.isFinite(Number(item.id))) {
-            assignmentIds.push(Number(item.id));
-          }
-        });
-      }
-      
-      /** Fallback: ຖ້າບໍ່ໄດ້ ID ຈາກ response ໃຫ້ດຶງ ticket ໃໝ່ແລ້ວຊອກ assignment ທີ່ເປັນ current user */
-      if (assignmentIds.length === 0) {
-        const fetches = helpdeskRequestIds.map((hId) =>
-          axiosClientsHelpDesk.get(HELPDESK_ENDPOINTS.requestById(String(hId))).catch(() => null)
-        );
-        const results = await Promise.all(fetches);
-        for (const res of results) {
-          if (!res?.data) continue;
-          const ticketData = res.data?.data ?? res.data;
-          const assignments: Array<{ id?: number; assignedToId?: number; assignedTo?: { id?: number } }> = ticketData?.assignments ?? [];
-          for (const a of assignments) {
-            const aUserId = a.assignedToId ?? a.assignedTo?.id;
-            if (aUserId != null && String(aUserId) === String(currentUserId) && a.id != null && Number.isFinite(Number(a.id))) {
-              assignmentIds.push(Number(a.id));
-            }
-          }
-        }
-      }
-      
-      /** ຖ້າມີ assignment IDs ໃຫ້ເອີ້ນ PUT /api/assignments/accept ເພື່ອຮັບວຽກ (ປ່ຽນສະຖານະເປັນກຳລັງດຳເນີນການ) */
+      /** ດຶງ assignmentId ຈາກ response ຮອງຮັບທຸກຮູບແບບ: array / { data: [] } / single object */
+      const rawCreate = createRes?.data;
+      const rawList: unknown[] = Array.isArray(rawCreate)
+        ? rawCreate
+        : Array.isArray(rawCreate?.data)
+          ? rawCreate.data
+          : rawCreate?.id != null
+            ? [rawCreate]
+            : rawCreate?.data?.id != null
+              ? [rawCreate.data]
+              : [];
+      const assignmentIds = rawList
+        .map((item) => Number((item as Record<string, unknown>)?.id))
+        .filter((id) => Number.isFinite(id) && id > 0);
       if (assignmentIds.length > 0) {
-        await axiosClientsHelpDesk.put(HELPDESK_ENDPOINTS.ASSIGNMENTS_ACCEPT, {
-          id: assignmentIds,
-        });
-      } else {
-        /** Fallback ສຸດທ້າຍ: ອັບເດດສະຖານະ helpdesk request ໂດຍກົງ */
-        await Promise.all(
-          helpdeskRequestIds.map((id) =>
-            axiosClientsHelpDesk.put(HELPDESK_ENDPOINTS.updateHelpdeskStatus(id), { helpdeskStatusId: HELPDESK_STATUS_IN_PROGRESS })
-          )
-        );
+        await axiosClientsHelpDesk.put(HELPDESK_ENDPOINTS.ASSIGNMENTS_ACCEPT, { id: assignmentIds });
       }
-      
       await fetchData();
       setSelectedTickets([]);
       toastRef?.current?.show({
@@ -478,9 +452,45 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
     [fetchData, toastRef]
   );
 
+  const handleStatusAction = useCallback(
+    (ticket: Ticket, targetStatusId: number) => {
+      if (SOLUTION_VIEW_STATUS_IDS.has(targetStatusId)) {
+        const relevant = (ticket.assignees ?? []).filter((a) => a.statusId === targetStatusId);
+        if (relevant.length > 0) {
+          const statusName = statusList.find((s) => s.id === targetStatusId)?.name ?? '';
+          setSolutionDialogData({
+            ticketId: ticket.id,
+            ticketTitle: ticket.title,
+            targetStatusId,
+            targetStatusName: statusName,
+            assignees: relevant,
+          });
+          setSolutionDialogVisible(true);
+          return;
+        }
+      }
+      onStatusChange(ticket.id, targetStatusId);
+    },
+    [statusList, onStatusChange]
+  );
+
+  const onSolutionDialogConfirm = useCallback(() => {
+    if (!solutionDialogData) return;
+    const { ticketId, targetStatusId } = solutionDialogData;
+    setSolutionDialogVisible(false);
+    setSolutionDialogData(null);
+    onStatusChange(ticketId, targetStatusId);
+  }, [solutionDialogData, onStatusChange]);
+
+  const onSolutionDialogHide = useCallback(() => {
+    setSolutionDialogVisible(false);
+    setSolutionDialogData(null);
+  }, []);
+
   const isRole2 = roleId === TECHNICIAN_ROLE_ID;
+  const isAdmin = roleId === ADMIN_ROLE_ID;
   const selectedEligibleForReceiveSelf = useMemo(() => selectedTickets.filter(canReceiveSelf), [selectedTickets]);
-  const receiveSelfDisabled = !isRole2 || selectedEligibleForReceiveSelf.length === 0;
+  const receiveSelfDisabled = (!isRole2 && !isAdmin) || selectedEligibleForReceiveSelf.length === 0;
 
   return {
     tickets: filteredTickets,
@@ -507,11 +517,17 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
     closeDialog: closeDialogCb,
     refetch: fetchData,
     isRole2,
+    isAdmin,
     onReceiveTaskSelf,
     receiveSelfDisabled,
     canReceiveSelf,
     statusList,
     statusListForModal,
     onStatusChange,
+    solutionDialogVisible,
+    solutionDialogData,
+    handleStatusAction,
+    onSolutionDialogConfirm,
+    onSolutionDialogHide,
   };
 };
