@@ -1,5 +1,6 @@
 // src/uikit/MenuApps/Detail-category_Issues/IssuesIconTable.tsx
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -32,14 +33,15 @@ function IconCell({ src, alt = '' }: { src: string; alt?: string }) {
         );
     return (
         <span className="inline-flex align-items-center justify-content-center">
-            <img
+            <Image
                 src={src}
                 alt={alt}
                 width={48}
                 height={48}
                 className="border-round"
-                style={{ width: '48px', height: '48px', objectFit: 'contain' }}
+                style={{ objectFit: 'contain' }}
                 onError={() => setError(true)}
+                unoptimized
             />
         </span>
     );

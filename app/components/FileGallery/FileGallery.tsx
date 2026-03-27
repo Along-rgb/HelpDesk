@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import type { FileGalleryItem, FileGalleryProps } from "./types";
 import styles from "./FileGallery.module.scss";
 import { getDownloadApiUrl } from "@/utils/downloadFile";
@@ -114,13 +115,16 @@ export function FileGallery({ apiUrl, files: filesProp }: FileGalleryProps) {
           <div key={String(item.id)} className={styles.card}>
             <div className={styles.thumb}>
               {item.type === "image" ? (
-                <img
+                <Image
                   src={getDownloadApiUrl(item.url, item.name, "inline")}
                   alt={item.name}
+                  width={300}
+                  height={200}
                   className={styles.thumbImg}
                   onError={(e) => {
                     e.currentTarget.style.display = "none";
                   }}
+                  unoptimized
                 />
               ) : (
                 <div className={styles.thumbPdf}>PDF</div>

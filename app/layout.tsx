@@ -1,4 +1,5 @@
 import Providers from './components/Providers';
+import ThemeLoader from './components/ThemeLoader';
 import 'primereact/resources/primereact.css';
 import 'primeflex/primeflex.css';
 import 'primeicons/primeicons.css';
@@ -12,10 +13,8 @@ interface RootLayoutProps {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link id="theme-css" href="/themes/lara-light-blue/theme.css" rel="stylesheet" />
-      </head>
       <body>
+        <ThemeLoader />
         <Providers>
           {children}
         </Providers>

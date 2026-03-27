@@ -79,7 +79,7 @@ export default function SupportTeamCreateDialog({
                 setForm(initialFormState);
             }
         }
-    }, [visible, editData]);
+    }, [visible, editData, initialFormState]);
 
     const handleSave = () => {
         setSubmitted(true);

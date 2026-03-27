@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -176,7 +177,7 @@ export default function IssuesCreateDialog({
                                         const opt = iconOptions.find((o) => o.value === val);
                                         return opt?.iconUrl ? (
                                             <span className="flex align-items-center gap-2">
-                                                <img src={opt.iconUrl} alt="" className="w-1rem h-1rem object-contain" />
+                                                <Image src={opt.iconUrl} alt="" width={16} height={16} className="object-contain" unoptimized />
                                                 ຮູບໄອຄອນ
                                             </span>
                                         ) : (
@@ -186,7 +187,7 @@ export default function IssuesCreateDialog({
                                     itemTemplate={(opt: { label: string; value: number; iconUrl?: string }) =>
                                         opt.iconUrl ? (
                                             <span className="flex align-items-center gap-2">
-                                                <img src={opt.iconUrl} alt="" className="w-2rem h-2rem object-contain" />
+                                                <Image src={opt.iconUrl} alt="" width={32} height={32} className="object-contain" unoptimized />
                                                 ຮູບໄອຄອນ
                                             </span>
                                         ) : (

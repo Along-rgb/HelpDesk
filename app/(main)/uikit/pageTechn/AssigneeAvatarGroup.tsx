@@ -68,6 +68,7 @@ export const AssigneeSingleAvatar = React.memo(({
     }
     return <div className="flex align-items-center p-1">{content}</div>;
 });
+AssigneeSingleAvatar.displayName = 'AssigneeSingleAvatar';
 
 interface Props {
     assignees: Assignee[];
@@ -131,3 +132,4 @@ export const AssigneeAvatarGroup = React.memo(({ assignees, ticketStatus, onClic
         </div>
     );
 });
+AssigneeAvatarGroup.displayName = 'AssigneeAvatarGroup';

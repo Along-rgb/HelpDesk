@@ -1,5 +1,6 @@
 // src/uikit/MenuApps/Detail-category_Issues/IssuesIconCreateDialog.tsx
 import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { IconItemData, CreateIconPayload } from '../types';
@@ -118,7 +119,7 @@ export default function IssuesIconCreateDialog({
                             onChange={handleFileChange}
                         />
                         {iconUrl ? (
-                            <img src={iconUrl} alt="ໄອຄອນ" className="max-w-full max-h-15rem border-round" />
+                            <Image src={iconUrl} alt="ໄອຄອນ" width={300} height={240} className="max-w-full border-round" style={{ maxHeight: '15rem', objectFit: 'contain', height: 'auto' }} unoptimized />
                         ) : (
                             <span className="text-500 text-sm">ຄິກທີ່ນີ້ເພື່ອເລືອກຮູບພາບ</span>
                         )}

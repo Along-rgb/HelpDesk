@@ -13,6 +13,7 @@ import { authenStore } from '@/app/store/user/loginAuthStore';
 import { useUserProfileStore } from '@/app/store/user/userProfileStore';
 import { clearAppSession } from '@/utils/authHelper';
 import { useAuthLogin } from './hooks/useAuthLogin';
+import Image from 'next/image';
 import './login.scss';
 
 /**
@@ -72,11 +73,13 @@ export default function LoginForm() {
           className="hidden md:flex flex-1 align-items-center justify-content-center p-4"
           style={{ minWidth: 0 }}
         >
-          <img
+          <Image
             src="/layout/images/helpdesk.png"
             alt="EDL HelpDesk"
-            className="w-full h-full object-contain"
-            style={{ maxHeight: '480px' }}
+            width={640}
+            height={480}
+            priority
+            style={{ width: '100%', height: 'auto', maxHeight: '480px', objectFit: 'contain' }}
           />
         </div>
 
@@ -90,11 +93,12 @@ export default function LoginForm() {
           }}
         >
           <div className="text-center mb-4">
-            <img
+            <Image
               src="/layout/images/logologin.png"
               alt="Logo"
-              height="72"
-              width="72"
+              width={72}
+              height={72}
+              priority
               className="mb-2"
             />
             <h2 className="m-0 text-2xl font-semibold text-color">EDL-HelpDesk</h2>

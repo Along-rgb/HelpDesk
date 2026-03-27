@@ -100,22 +100,21 @@ export default function ManagementTable({
     const filteredItems = useMemo(() => {
         if (useLevelGrouped) return safeItems; // ລະດັບຊັ້ນໃຊ້ matchesFilter ໃນ levelTableRows ແລ້ວ
         return safeItems.filter(matchesFilter);
-    }, [safeItems, safeGlobalFilter, useLevelGrouped, isLevelTab, buildingMap]);
+    }, [safeItems, safeGlobalFilter, useLevelGrouped, isLevelTab, buildingMap, matchesFilter]);
 
     type LevelTableRow = { type: 'section'; name: string; buildingId: number } | { type: 'data'; row: BuildingData };
-    const levelTableRows: LevelTableRow[] = useLevelGrouped
-        ? (() => {
-              const out: LevelTableRow[] = [];
-              buildingOptions.forEach((building) => {
-                  const floors = safeItems.filter((row) => row.parentId === building.id && matchesFilter(row));
-                  if (floors.length > 0 || !safeGlobalFilter.trim()) {
-                      out.push({ type: 'section', name: building.name, buildingId: building.id });
-                      floors.forEach((row) => out.push({ type: 'data', row }));
-                  }
-              });
-              return out;
-          })()
-        : [];
+    const levelTableRows = useMemo<LevelTableRow[]>(() => {
+        if (!useLevelGrouped) return [];
+        const out: LevelTableRow[] = [];
+        buildingOptions.forEach((building) => {
+            const floors = safeItems.filter((row) => row.parentId === building.id && matchesFilter(row));
+            if (floors.length > 0 || !safeGlobalFilter.trim()) {
+                out.push({ type: 'section', name: building.name, buildingId: building.id });
+                floors.forEach((row) => out.push({ type: 'data', row }));
+            }
+        });
+        return out;
+    }, [useLevelGrouped, buildingOptions, safeItems, matchesFilter, safeGlobalFilter]);
 
     const { levelTableDataCount, dataRowIndexByPosition } = useMemo(() => {
         let count = 0;

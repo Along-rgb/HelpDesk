@@ -21,18 +21,7 @@ export default function BuildingsPage() {
     const { roleId } = useUserProfile();
     const [activeIndex, setActiveIndex] = useState<number>(BuildingTabs.BUILDING);
 
-    useEffect(() => {
-        if (roleId === 2) router.replace('/uikit/MenuApps');
-    }, [roleId, router]);
-
     const { toast, items, buildingOptions, saveData, deleteData, deleteBuildingCascade } = useBuilding(activeIndex);
-
-    if (roleId === 2) return null;
-
-    // [Optimization] ສ້າງ Map ຂອງ Building ເພື່ອສົ່ງໃຫ້ Table lookup (O(1))
-    const buildingMap = useMemo(() => {
-        return createDataMap(Array.isArray(buildingOptions) ? buildingOptions : [], 'id', 'name');
-    }, [buildingOptions]);
 
     const [isDialogVisible, setDialogVisible] = useState(false);
     const [isSaving, setSaving] = useState(false);
@@ -47,6 +36,10 @@ export default function BuildingsPage() {
     const tabItems = [{ label: 'ຕຶກ/ອາຄານ' }, { label: 'ລະດັບຊັ້ນ' }];
 
     useEffect(() => {
+        if (roleId === 2) router.replace('/uikit/MenuApps');
+    }, [roleId, router]);
+
+    useEffect(() => {
         const tabParam = searchParams.get('tab');
         if (tabParam) {
             const index = Number(tabParam);
@@ -59,10 +52,17 @@ export default function BuildingsPage() {
         if (saveCooldownRef.current) clearTimeout(saveCooldownRef.current);
     }, []);
 
+    // [Optimization] ສ້າງ Map ຂອງ Building ເພື່ອສົ່ງໃຫ້ Table lookup (O(1))
+    const buildingMap = useMemo(() => {
+        return createDataMap(Array.isArray(buildingOptions) ? buildingOptions : [], 'id', 'name');
+    }, [buildingOptions]);
+
     const { tableHeaderTitle, columnNameHeader } = useMemo(() => {
         if (activeIndex === BuildingTabs.BUILDING) return { tableHeaderTitle: 'ຈັດການຕຶກ/ອາຄານ', columnNameHeader: 'ຊື່ຕຶກ/ອາຄານ' };
         return { tableHeaderTitle: 'ຈັດການລະດັບຊັ້ນ', columnNameHeader: 'ລະດັບຊັ້ນ' };
     }, [activeIndex]);
+
+    if (roleId === 2) return null;
 
     const openNew = () => {
         if (addButtonDisabled) return;

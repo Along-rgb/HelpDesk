@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputTextarea } from 'primereact/inputtextarea';
@@ -250,6 +251,7 @@ export function ReportWorkModal({ visible, onHide, onSave, ticketId, ticketTitle
     }
     resetCaptureState();
     if (mode !== 'comment') startCamera();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, mode]);
 
   useEffect(() => {
@@ -376,11 +378,14 @@ export function ReportWorkModal({ visible, onHide, onSave, ticketId, ticketTitle
           ) : (
             <div className="flex flex-column gap-2">
               {previewUrl ? (
-                <img
+                <Image
                   src={previewUrl}
                   alt="preview"
+                  width={600}
+                  height={360}
                   className="w-full border-round"
-                  style={{ maxHeight: 360, objectFit: 'contain' }}
+                  style={{ maxHeight: 360, objectFit: 'contain', height: 'auto' }}
+                  unoptimized
                 />
               ) : null}
               <div className="flex align-items-center gap-2 text-700">

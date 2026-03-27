@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 
 interface EmptyStateCardProps {
     title: string;
@@ -45,10 +46,12 @@ export const EmptyStateCard: React.FC<EmptyStateCardProps> = ({
                         {/* Image Section (SVG) */}
                         {imageSrc ? (
                             <div className="mb-3">
-                                <img 
+                                <Image 
                                     src={imageSrc} 
                                     alt={title} 
-                                    style={{ width: '100px', height: 'auto' }} // กำหนดขนาดรูปภาพตรงนี้
+                                    width={100}
+                                    height={100}
+                                    style={{ height: 'auto' }}
                                 />
                             </div>
                         ) : (

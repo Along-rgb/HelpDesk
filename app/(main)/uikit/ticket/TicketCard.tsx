@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 
 export interface TicketCardProps {
   /** ຊື່ລາຍການຫົວຂໍ້ (Item Title) */
@@ -55,15 +56,12 @@ export const TicketCard: React.FC<TicketCardProps> = ({
             className="flex align-items-center justify-content-center"
             style={{ width: '3.5rem', height: '3.5rem' }}
           >
-            <img
+            <Image
               src="/layout/images/tickets.png"
               alt=""
-              className="flex-shrink-0"
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-              }}
+              width={56}
+              height={56}
+              style={{ objectFit: 'contain', width: '100%', height: '100%' }}
             />
           </div>
         </div>

@@ -94,3 +94,4 @@ export const AssigneeAvatarGroup = React.memo(({ assignees, ticketStatus, status
         </div>
     );
 });
+AssigneeAvatarGroup.displayName = 'AssigneeAvatarGroup';

@@ -1,5 +1,6 @@
 // src/uikit/MenuApps/SettingsCard.tsx
 import React from 'react';
+import Image from 'next/image';
 import { MenuItem } from './types';
 import { SubMenuLink } from './SubMenuLink';
 
@@ -25,7 +26,7 @@ export const SettingsCard: React.FC<SettingsCardProps> = ({ item, activeButton, 
         >
             <div className="flex align-items-center justify-content-center border-round-md overflow-hidden" style={{ minWidth: '3.5rem', height: '3.5rem' }}>
                 {item.iconUrl ? (
-                    <img src={item.iconUrl} alt="" className="w-full h-full object-contain" />
+                    <Image src={item.iconUrl} alt="" width={56} height={56} style={{ objectFit: 'contain', width: '100%', height: '100%' }} unoptimized />
                 ) : (
                     <i className={`${item.icon} text-5xl text-blue-600`}></i>
                 )}

@@ -1,5 +1,6 @@
 // src/uikit/MenuApps/Detail-category_Issues/IssuesTable.tsx
 import React from 'react';
+import Image from 'next/image';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -52,7 +53,7 @@ export default function IssuesTable({
     const categoryIconTemplate = (row: RowData) => {
         if (!isCategoryRow(row)) return <span className="text-500">-</span>;
         const url = row.catIconId != null ? categoryIconMap.get(row.catIconId) : null;
-        if (url) return <img src={url} alt="" className="w-2rem h-2rem object-contain border-round" />;
+        if (url) return <Image src={url} alt="" width={32} height={32} className="object-contain border-round" unoptimized />;
         return <span className="text-500">-</span>;
     };
 

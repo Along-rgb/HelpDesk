@@ -10,6 +10,7 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Avatar } from "primereact/avatar";
 import { Tag } from "primereact/tag";
 import { Image } from "primereact/image";
+import NextImage from "next/image";
 import { Ticket, AssigneeOption, type AdminAssignUserRow } from "@/app/(main)/uikit/table/types";
 import { STATUS_MAP, STATUS_ICON_MAP, STATUS_ICON_FALLBACK } from "@/app/(main)/uikit/table/constants";
 import { normalizeHelpdeskRow, unwrapHelpdeskResponse } from "@/app/(main)/uikit/table/normalizeHelpdeskRow";
@@ -556,11 +557,14 @@ export default function TicketDetailPage() {
                                                                         className="block border-1 surface-border border-round overflow-hidden surface-50"
                                                                         style={{ maxWidth: 200 }}
                                                                     >
-                                                                        <img
+                                                                        <NextImage
                                                                             src={imgSrc}
                                                                             alt={img.hdImg}
-                                                                            className="w-full h-auto block"
-                                                                            style={{ maxHeight: 180, objectFit: "cover" }}
+                                                                            width={200}
+                                                                            height={180}
+                                                                            className="w-full block"
+                                                                            style={{ maxHeight: 180, objectFit: "cover", height: 'auto' }}
+                                                                            unoptimized
                                                                         />
                                                                         <a
                                                                             href={downloadUrl}
