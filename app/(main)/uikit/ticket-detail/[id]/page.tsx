@@ -133,7 +133,7 @@ export default function TicketDetailPage() {
     const HISTORY_ROWS = 5;
 
     const fetchHistory = useCallback((numberSKT: string) => {
-        if (!numberSKT) { setHistoryItems([]); return; }
+        if (!numberSKT) { setHistoryItems([]); setHistoryFetched(true); return; }
         setHistoryLoading(true);
         axiosClientsHelpDesk
             .get(HELPDESK_ENDPOINTS.REQUESTS_HISTORY)
@@ -261,10 +261,10 @@ export default function TicketDetailPage() {
     }, [params.id, fetchTicket]);
 
     useEffect(() => {
-        if (activeTabIndex === 1 && ticket?.numberSKT && !historyFetched) {
-            fetchHistory(ticket.numberSKT);
+        if (activeTabIndex === 1 && ticket != null && !historyFetched) {
+            fetchHistory(ticket.numberSKT ?? '');
         }
-    }, [activeTabIndex, ticket?.numberSKT, historyFetched, fetchHistory]);
+    }, [activeTabIndex, ticket, historyFetched, fetchHistory]);
 
     const handleAcceptWork = useCallback(() => {
         if (!ticket || ticket.status !== STATUS_WAITING_ACCEPT) return;
@@ -747,6 +747,8 @@ export default function TicketDetailPage() {
                         <div className="flex flex-column gap-3">
                             {historyLoading ? (
                                 <div className="text-center p-4 text-500 text-base"><i className="pi pi-spin pi-spinner mr-2" />ກໍາລັງໂຫຼດປະຫວັດ...</div>
+                            ) : !ticket?.numberSKT ? (
+                                <div className="text-center p-4 text-500 text-base italic">Ticket ນີ້ບໍ່ມີເລກ ຊຄທ ຈຶ່ງບໍ່ສາມາດດຶງປະຫວັດໄດ້</div>
                             ) : historyItems.length === 0 ? (
                                 <div className="text-center p-4 text-500 text-base italic">ບໍ່ພົບປະຫວັດການສ້ອມແປງ</div>
                             ) : (
@@ -766,8 +768,8 @@ export default function TicketDetailPage() {
                                         >
                                             <div className="m-0 px-3 md:px-4 py-2">
                                                 <div className="flex flex-wrap gap-3 mb-3 text-sm text-500">
-                                                    <span><i className="pi pi-calendar mr-1" />ວັນທີຮ້ອງຂໍ: {item.createdAt ? new Date(item.createdAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) : '—'}</span>
-                                                    <span><i className="pi pi-clock mr-1" />ອັບເດດ: {item.updatedAt ? new Date(item.updatedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) : '—'}</span>
+                                                    <span><i className="pi pi-calendar mr-1" />ວັນທີຮ້ອງຂໍ: {item.createdAt ? new Date(item.createdAt).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</span>
+                                                    <span><i className="pi pi-clock mr-1" />ອັບເດດ: {item.updatedAt ? new Date(item.updatedAt).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</span>
                                                 </div>
                                                 <div className="text-700 font-bold mb-3 text-base">ວິຊາການກວດກາ:</div>
                                                 <ul className="list-none p-0 m-0">
