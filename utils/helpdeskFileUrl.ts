@@ -30,12 +30,12 @@ export function getHelpdeskFileUrl(
   if (!name) return "";
   const encoded = encodeURIComponent(name);
   const pathSegment = field === "hdImgs" ? env.helpdeskImagesPath : env.helpdeskFilePath;
+  if (env.useHelpdeskProxy) {
+    return `/api/proxy-helpdesk/upload/${pathSegment}/${encoded}`;
+  }
   const apiBase = getUploadBaseFromEnv();
   if (apiBase) {
     return `${apiBase}/upload/${pathSegment}/${encoded}`;
-  }
-  if (env.useHelpdeskProxy) {
-    return `/api/proxy-helpdesk/upload/${pathSegment}/${encoded}`;
   }
   return "";
 }

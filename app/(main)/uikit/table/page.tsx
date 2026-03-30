@@ -69,6 +69,14 @@ export default function TableDemo() {
         (rowData: Ticket) => {
             const tStatusId = rowData.statusId;
 
+            const assigneeCountByStatus = new Map<number, number>();
+            for (const a of rowData.assignees ?? []) {
+                if (a.statusId != null) {
+                    assigneeCountByStatus.set(a.statusId, (assigneeCountByStatus.get(a.statusId) ?? 0) + 1);
+                }
+            }
+            const badge = (sId: number) => assigneeCountByStatus.get(sId) ?? 0;
+
             if (tStatusId === STATUS_CLOSED_ID) return [];
 
             if (tStatusId === STATUS_DONE_ID) {
@@ -78,6 +86,7 @@ export default function TableDemo() {
                         label: s.name,
                         icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
                         command: () => handleStatusAction(rowData, s.id),
+                        badge: badge(s.id),
                     }));
             }
 
@@ -90,6 +99,7 @@ export default function TableDemo() {
                             label: s.name,
                             icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
                             command: () => handleStatusAction(rowData, s.id),
+                            badge: badge(s.id),
                         }));
                 }
                 if (tStatusId === STATUS_PAUSE_ID && hasAssigneeExternal(rowData)) {
@@ -99,6 +109,7 @@ export default function TableDemo() {
                             label: s.name,
                             icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
                             command: () => handleStatusAction(rowData, s.id),
+                            badge: badge(s.id),
                         }));
                 }
                 if (tStatusId === STATUS_EXTERNAL_ID && hasAssigneePaused(rowData)) {
@@ -108,6 +119,7 @@ export default function TableDemo() {
                             label: s.name,
                             icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
                             command: () => handleStatusAction(rowData, s.id),
+                            badge: badge(s.id),
                         }));
                 }
                 if (hasAssigneeCancelled(rowData)) {
@@ -117,6 +129,7 @@ export default function TableDemo() {
                             label: s.name,
                             icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
                             command: () => handleStatusAction(rowData, s.id),
+                            badge: badge(s.id),
                         }));
                 }
                 return [];
@@ -133,6 +146,7 @@ export default function TableDemo() {
                             label: s.name,
                             icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
                             command: () => handleStatusAction(rowData, s.id),
+                            badge: badge(s.id),
                         };
                     }
                     if (s.id === STATUS_CLOSED_ID) {
@@ -141,6 +155,7 @@ export default function TableDemo() {
                             label: s.name,
                             icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
                             command: () => handleStatusAction(rowData, s.id),
+                            badge: badge(s.id),
                         };
                     }
                     if (s.id === STATUS_PAUSE_ID || s.id === STATUS_EXTERNAL_ID) {
@@ -149,6 +164,7 @@ export default function TableDemo() {
                             label: s.name,
                             icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
                             command: () => handleStatusAction(rowData, s.id),
+                            badge: badge(s.id),
                         };
                     }
                     if (s.id === STATUS_CANCEL_ID) {
@@ -157,12 +173,14 @@ export default function TableDemo() {
                             label: 'ຍົກເລີກ',
                             icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
                             command: () => handleStatusAction(rowData, s.id),
+                            badge: badge(s.id),
                         };
                     }
                     return {
                         label: s.name,
                         icon: STATUS_ICON_MAP[s.name] ?? STATUS_ICON_FALLBACK,
                         command: () => handleStatusAction(rowData, s.id),
+                        badge: badge(s.id),
                     };
                 })
                 .filter((item): item is NonNullable<typeof item> => item != null);
@@ -187,6 +205,7 @@ export default function TableDemo() {
                         ticketTitle={solutionDialogData?.ticketTitle}
                         targetStatusName={solutionDialogData?.targetStatusName ?? ''}
                         assignees={solutionDialogData?.assignees ?? []}
+                        hideConfirm={solutionDialogData?.hideConfirm ?? false}
                     />           
                     <TicketHeader
                         statusFilter={statusFilter} setStatusFilter={setStatusFilter}
@@ -278,6 +297,7 @@ export default function TableDemo() {
                         <Column field="date" header="ວັນທີ່ຮ້ອງຂໍ" style={{ minWidth: "140px" }} {...CENTER_PROPS} />
                         <Column header="ຜູ້ຮ້ອງຂໍ" body={(rowData: Ticket) => <RequesterBody rowData={rowData} />} style={{ minWidth: "110px" }} {...CENTER_PROPS} />
                         <Column header="ເບີຕິດຕໍ່" body={(rowData: Ticket) => <ContactBody rowData={rowData} />} style={{ minWidth: "100px" }} {...CENTER_PROPS} />
+                        <Column field="numberSKT" header="ເລກ ຊຄທ" body={(rowData: Ticket) => <span className="text-700" style={{ whiteSpace: "nowrap" }}>{rowData.numberSKT ?? "—"}</span>} style={{ minWidth: "110px" }} {...CENTER_PROPS} />
                         <Column header="ມອບໝາຍໃຫ້" body={(rowData: Ticket) => AssigneeBody(rowData, (assignees) => openAssigneeDialog(assignees, rowData.status), statusByIdMap)} style={{ minWidth: "120px" }} {...CENTER_PROPS} />
                         <Column
                             field="status"
@@ -314,10 +334,14 @@ export default function TableDemo() {
                                 const totalAssigneesAction = rowData.assignees?.length ?? 0;
                                 const hideForClosedMultiAssign = totalAssigneesAction > 1 && ticketDone;
                                 const ticketPausedOrExternal = rowData.statusId === STATUS_PAUSE_ID || rowData.statusId === STATUS_EXTERNAL_ID;
-                                const showBadge = !ticketDone && !isCancelledAction && (
+                                const reporterIds = new Set([STATUS_DONE_ID, STATUS_PAUSE_ID, STATUS_EXTERNAL_ID, STATUS_CANCEL_ID]);
+                                const badgeCount = (rowData.assignees ?? []).filter(
+                                    (a) => a.statusId != null && reporterIds.has(a.statusId)
+                                ).length;
+                                const showBadge = !ticketDone && !isCancelledAction && badgeCount > 0 && (
                                     ticketPausedOrExternal
                                         ? (hasAssigneeFixed(rowData) || hasAssigneeCancelled(rowData))
-                                        : (hasAssigneeFixed(rowData) || hasAssigneePaused(rowData) || hasAssigneeExternal(rowData) || hasAssigneeCancelled(rowData))
+                                        : true
                                 );
                                 return (
                                     <div style={{ position: "relative", display: "inline-block" }}>
@@ -355,7 +379,7 @@ export default function TableDemo() {
                                                     boxShadow: "0 1px 3px rgba(0,0,0,0.18)",
                                                 }}
                                             >
-                                                1
+                                                {badgeCount}
                                             </span>
                                         )}
                                     </div>

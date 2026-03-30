@@ -400,3 +400,38 @@ $topmenu-height: 3rem;
     .layout-topmenu { padding: 0 0.5rem; }
     .layout-topmenu-link { padding: 0.4rem 0.6rem; font-size: 0.85rem; }
 }
+
+// Phone Responsive: hamburger at absolute top-right corner
+@media screen and (max-width: 767px) {
+    .layout-topmenu {
+        top: 0;
+        height: $topbar-height;
+        border-bottom: none;
+        box-shadow: none;
+        background: transparent;
+        z-index: 998;
+        pointer-events: none;
+    }
+
+    .layout-topmenu-spacer {
+        display: none;
+    }
+
+    .layout-topmenu-burger {
+        pointer-events: auto;
+    }
+
+    .layout-topmenu-burger-btn {
+        color: #ffffff;
+
+        &:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+        }
+
+        &[aria-expanded="true"] {
+            background-color: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+        }
+    }
+}

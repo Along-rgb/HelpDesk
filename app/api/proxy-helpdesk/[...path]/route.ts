@@ -25,6 +25,7 @@ const ALLOWED_PATH_PREFIXES = [
   'headcategorys',
   'prioritys',
   'assignments',
+  'chats',
   'tickets',
   'reports',
   'upload/',
@@ -97,6 +98,20 @@ async function proxy(
     headers,
     body: body ?? undefined,
   });
+
+  const acceptHeader = request.headers.get('Accept') ?? '';
+  const isSSE = acceptHeader.includes('text/event-stream') || path.endsWith('/sse');
+  if (isSSE && res.body) {
+    return new NextResponse(res.body, {
+      status: res.status,
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+    });
+  }
 
   const resContentType = res.headers.get('Content-Type') || 'application/json';
   const data = await res.arrayBuffer();

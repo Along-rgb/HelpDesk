@@ -95,7 +95,7 @@ export const env = {
   get helpdeskFilePath() {
     return getEnv('NEXT_PUBLIC_HELPDESK_FILE_PATH', 'hdfile').trim() || 'hdfile';
   },
-  /** Path segment สำหรับโหลดรูป (hdImgs) บน Backend — default hdimage, ຖ້າ Backend ໃຊ້ hdImgs ໃຫ້ຕັ້ງທີ່ນີ້ */
+  /** Path segment สำหรับโหลดรูป (hdImgs) บน Backend — default hdimage ຕາມ upload/hdimage */
   get helpdeskImagesPath() {
     return getEnv('NEXT_PUBLIC_HELPDESK_IMAGES_PATH', 'hdimage').trim() || 'hdimage';
   },

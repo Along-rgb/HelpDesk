@@ -67,6 +67,7 @@ interface HelpdeskRequestDetail {
       division?: { id?: number; division_name?: string };
     };
   };
+  numberSKT?: string | null;
   building?: { id?: number; name?: string };
   floor?: { id?: number; name?: string };
   turning?: { id?: number; name?: string };
@@ -152,6 +153,7 @@ function helpdeskDetailToTicket(detail: HelpdeskRequestDetail): Ticket {
     room: detail.room != null ? String(detail.room) : undefined,
     division: emp?.division?.division_name ?? undefined,
     department: emp?.department?.department_name ?? undefined,
+    numberSKT: detail.numberSKT != null ? String(detail.numberSKT).trim() || undefined : undefined,
   };
 }
 

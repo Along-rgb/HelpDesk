@@ -12,6 +12,8 @@ export interface TicketActionMenuItem {
   className?: string;
   command: () => void;
   disabled?: boolean;
+  /** ຈຳນວນຊ່າງທີ່ລາຍງານສະຖານະນີ້ — ສະແດງເປັນ badge ສີແດງ */
+  badge?: number;
 }
 
 export interface TicketActionMenuProps {
@@ -45,13 +47,51 @@ export function TicketActionMenu({
 }: TicketActionMenuProps) {
   const router = useRouter();
   const items = menuItems ?? (variant === 'user' ? DEFAULT_ITEMS_USER : DEFAULT_ITEMS_TECHN);
-  const model = items.map((item) => ({
-    label: item.label,
-    icon: item.icon,
-    className: item.className,
-    command: item.command,
-    disabled: item.disabled,
-  }));
+  const model = items.map((item) => {
+    const base = {
+      label: item.label,
+      icon: item.icon,
+      className: item.className,
+      command: item.command,
+      disabled: item.disabled,
+    };
+    if ((item.badge ?? 0) > 0) {
+      return {
+        ...base,
+        template: (_menuItem: unknown, options: { onClick: React.MouseEventHandler; className: string }) => (
+          <a
+            className={options.className}
+            onClick={options.onClick}
+            role="menuitem"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') (options.onClick as unknown as (e: React.KeyboardEvent) => void)(e); }}
+          >
+            {item.icon && <span className={`p-menuitem-icon ${item.icon}`} />}
+            <span className="p-menuitem-text">{item.label}</span>
+            <span
+              style={{
+                background: '#ef4444',
+                color: '#fff',
+                borderRadius: '50%',
+                width: '18px',
+                height: '18px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '11px',
+                fontWeight: 700,
+                marginLeft: '8px',
+                flexShrink: 0,
+              }}
+            >
+              {item.badge}
+            </span>
+          </a>
+        ),
+      };
+    }
+    return base;
+  });
 
   const isUser = variant === 'user';
   const buttonStyle = isUser

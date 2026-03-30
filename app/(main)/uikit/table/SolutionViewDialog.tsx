@@ -30,6 +30,8 @@ export interface SolutionViewDialogProps {
   ticketTitle?: string | null;
   targetStatusName: string;
   assignees: Assignee[];
+  /** ເຊື່ອງປຸ່ມ ບັນທຶກ — ເມື່ອ ຍົກເລີກ ແລະ ຊ່າງຍັງລາຍງານບໍ່ຄົບທຸກຄົນ */
+  hideConfirm?: boolean;
 }
 
 export function SolutionViewDialog({
@@ -40,6 +42,7 @@ export function SolutionViewDialog({
   ticketTitle,
   targetStatusName,
   assignees,
+  hideConfirm = false,
 }: SolutionViewDialogProps) {
   const [pageIndex, setPageIndex] = useState(0);
 
@@ -57,11 +60,13 @@ export function SolutionViewDialog({
         className="p-button-outlined"
         onClick={onHide}
       />
-      <Button
-        label="ບັນທຶກ"
-        icon="pi pi-check"
-        onClick={onConfirm}
-      />
+      {!hideConfirm && (
+        <Button
+          label="ບັນທຶກ"
+          icon="pi pi-check"
+          onClick={onConfirm}
+        />
+      )}
     </div>
   );
 

@@ -7,6 +7,8 @@ export const HELPDESK_ENDPOINTS = {
   REQUESTS_ADMIN: 'helpdeskrequests/admin',
   /** GET — รายการคำขอของ user (ตาม createdById) */
   REQUESTS_USER: 'helpdeskrequests/user',
+  /** GET — ปะหวัดການສ້ອມແປງ (history by numberSKT) */
+  REQUESTS_HISTORY: 'helpdeskrequests/history',
   /** GET/PUT — ตาม id */
   requestById: (id: string | number) => `helpdeskrequests/${id}`,
   updateHelpdeskStatus: (id: number) => `helpdeskrequests/updatehelpdeskstatus/${id}`,

@@ -4,9 +4,10 @@
  * ຕັ້ງຄ່າລະຫັດຜ່ານ — เข้าได้ทุก Role (SuperAdmin, Admin, Staff, User).
  */
 import React, { useState, useRef } from 'react';
-import { Password } from 'primereact/password';
+import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
+import { classNames } from 'primereact/utils';
 import { changePasswordAPI, validateForm } from './api';
 import { useUserRoleAndId } from '@/app/store/user/userProfileStore';
 
@@ -17,6 +18,9 @@ const ChangePasswordPage = () => {
     confirmPassword: '',
   });
 
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const toast = useRef<Toast>(null);
   const isSubmittingRef = useRef(false);
@@ -80,55 +84,66 @@ const ChangePasswordPage = () => {
       <form onSubmit={handleSubmit} className="flex flex-column gap-3">
         
         <div className="field">
-          <label htmlFor="currentPassword" style={{ display: 'block', marginBottom: '0.5rem' }}>
-            ລະຫັດຜ່ານປະຈຸບັນ
-          </label>
-          <Password
-            inputId="currentPassword"
-            value={formData.currentPassword}
-            onChange={(e) => setFormData(prev => ({ ...prev, currentPassword: e.target.value }))}
-            feedback={false}
-            toggleMask
-            disabled={isLoading}
-            className="w-full"
-            inputStyle={{ width: '100%' }}
-            placeholder=""
-          />
+          <label htmlFor="currentPassword" className="block mb-2">ລະຫັດຜ່ານປະຈຸບັນ</label>
+          <span className="block w-full" style={{ position: 'relative' }}>
+            <InputText
+              id="currentPassword"
+              type={showCurrent ? 'text' : 'password'}
+              value={formData.currentPassword}
+              onChange={(e) => setFormData(prev => ({ ...prev, currentPassword: e.target.value }))}
+              disabled={isLoading}
+              autoComplete="current-password"
+              className="w-full"
+              style={{ height: '2.75rem', paddingRight: '2.5rem' }}
+            />
+            <i
+              className={classNames('pi cursor-pointer', showCurrent ? 'pi-eye-slash' : 'pi-eye')}
+              onClick={() => setShowCurrent(v => !v)}
+              style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#6c757d', zIndex: 10 }}
+            />
+          </span>
         </div>
 
         <div className="field">
-          <label htmlFor="newPassword" style={{ display: 'block', marginBottom: '0.5rem', marginTop: '1rem' }}>
-            ລະຫັດຜ່ານໃໝ່
-          </label>
-          <Password
-            inputId="newPassword"
-            value={formData.newPassword}
-            onChange={(e) => setFormData(prev => ({ ...prev, newPassword: e.target.value }))}
-            toggleMask
-            disabled={isLoading}
-            className="w-full"
-            inputStyle={{ width: '100%' }}
-            promptLabel="ກະລຸນາໃສ່ລະຫັດຜ່ານ"
-            weakLabel="ອ່ອນ (Weak)"
-            mediumLabel="ປານກາງ (Medium)"
-            strongLabel="ດີຫຼາຍ (Strong)"
-          />
+          <label htmlFor="newPassword" className="block mb-2">ລະຫັດຜ່ານໃໝ່</label>
+          <span className="block w-full" style={{ position: 'relative' }}>
+            <InputText
+              id="newPassword"
+              type={showNew ? 'text' : 'password'}
+              value={formData.newPassword}
+              onChange={(e) => setFormData(prev => ({ ...prev, newPassword: e.target.value }))}
+              disabled={isLoading}
+              autoComplete="new-password"
+              className="w-full"
+              style={{ height: '2.75rem', paddingRight: '2.5rem' }}
+            />
+            <i
+              className={classNames('pi cursor-pointer', showNew ? 'pi-eye-slash' : 'pi-eye')}
+              onClick={() => setShowNew(v => !v)}
+              style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#6c757d', zIndex: 10 }}
+            />
+          </span>
         </div>
 
         <div className="field">
-          <label htmlFor="confirmPassword" style={{ display: 'block', marginBottom: '0.5rem', marginTop: '1rem' }}>
-            ຢືນຢັນລະຫັດຜ່ານໃໝ່
-          </label>
-          <Password
-            inputId="confirmPassword"
-            value={formData.confirmPassword}
-            onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-            feedback={false}
-            toggleMask
-            disabled={isLoading}
-            className="w-full"
-            inputStyle={{ width: '100%' }}
-          />
+          <label htmlFor="confirmPassword" className="block mb-2">ຢືນຢັນລະຫັດຜ່ານໃໝ່</label>
+          <span className="block w-full" style={{ position: 'relative' }}>
+            <InputText
+              id="confirmPassword"
+              type={showConfirm ? 'text' : 'password'}
+              value={formData.confirmPassword}
+              onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+              disabled={isLoading}
+              autoComplete="new-password"
+              className="w-full"
+              style={{ height: '2.75rem', paddingRight: '2.5rem' }}
+            />
+            <i
+              className={classNames('pi cursor-pointer', showConfirm ? 'pi-eye-slash' : 'pi-eye')}
+              onClick={() => setShowConfirm(v => !v)}
+              style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#6c757d', zIndex: 10 }}
+            />
+          </span>
         </div>
 
         <Button

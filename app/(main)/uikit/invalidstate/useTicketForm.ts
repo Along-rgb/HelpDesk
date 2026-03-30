@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { Toast } from 'primereact/toast';
-import { TicketForm, MasterData, City } from './types';
+import { TicketForm, MasterData, City, ExistingFile } from './types';
+import { getHelpdeskFileUrl } from '@/utils/helpdeskFileUrl';
+import { getDownloadApiUrl } from '@/utils/downloadFile';
 import { ticketService } from '@/app/services/ticketService';
 import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
 import { HELPDESK_ENDPOINTS } from '@/config/endpoints';
@@ -25,6 +27,8 @@ const INITIAL_FORM: TicketForm = {
     description: '',
     attachments: [],
     images: [],
+    existingAttachments: [],
+    existingImages: [],
 };
 
 /** ເບີໂທ ແລະ ໝາຍເລກຫ້ອງ: ອະນຸຍາດແຕ່ຕົວເລກເທົ່ານັ້ນ */
@@ -95,6 +99,18 @@ export const useTicketForm = () => {
                             level = floors.find((f) => f.code === floorId) ?? null;
                         }
                         const route = turningId ? (data.routes ?? []).find((r) => r.code === turningId) ?? null : null;
+                        const hdFileRaw = row.hdFile != null && String(row.hdFile).trim() !== '' ? String(row.hdFile).trim() : '';
+                        const existingAttachments: ExistingFile[] = hdFileRaw
+                            ? [{ name: hdFileRaw, url: getDownloadApiUrl(getHelpdeskFileUrl('hdFile', hdFileRaw), hdFileRaw, 'attachment') }]
+                            : [];
+                        type HdImgItem = { id?: number; hdImg?: string };
+                        const hdImgsRaw = Array.isArray(row.hdImgs) ? (row.hdImgs as HdImgItem[]) : [];
+                        const existingImages: ExistingFile[] = hdImgsRaw
+                            .filter((i) => i != null && typeof i.hdImg === 'string' && i.hdImg.trim() !== '')
+                            .map((i) => {
+                                const name = String(i.hdImg).trim();
+                                return { name, url: getDownloadApiUrl(getHelpdeskFileUrl('hdImgs', name), name, 'inline') };
+                            });
                         nextForm = {
                             ticketId: ticket?.id ?? next.ticketId ?? null,
                             topic: ticket?.title ? { name: ticket.title } : next.topic ?? null,
@@ -107,6 +123,8 @@ export const useTicketForm = () => {
                             description: (row.details != null ? String(row.details) : '') || '',
                             attachments: [],
                             images: [],
+                            existingAttachments,
+                            existingImages,
                         };
                     } catch {
                         if (isMounted) nextForm = { ...nextForm, ticketId: next.ticketId ?? null, topic: next.topic ?? null };
@@ -219,8 +237,8 @@ export const useTicketForm = () => {
                 return;
             }
             const totalImages = form.images.length + newFiles.length;
-            if (totalImages > 2) {
-                toastRef.current?.show({ severity: 'warn', summary: 'ແຈ້ງເຕືອນ', detail: 'ແນບຮູບໄດ້ສູງສຸດ 2 ຮູບ', life: 4000 });
+            if (totalImages > 5) {
+                toastRef.current?.show({ severity: 'warn', summary: 'ແຈ້ງເຕືອນ', detail: 'ແນບຮູບໄດ້ສູງສຸດ 5 ຮູບ', life: 4000 });
                 return;
             }
             const maxPerImage = IMAGE_MAX_SIZE_MB * 1024 * 1024;
@@ -258,6 +276,20 @@ export const useTicketForm = () => {
         setForm((prev) => ({
             ...prev,
             images: prev.images.filter((_, index) => index !== indexToRemove),
+        }));
+    };
+
+    const handleRemoveExistingAttachment = (indexToRemove: number) => {
+        setForm((prev) => ({
+            ...prev,
+            existingAttachments: prev.existingAttachments.filter((_, index) => index !== indexToRemove),
+        }));
+    };
+
+    const handleRemoveExistingImage = (indexToRemove: number) => {
+        setForm((prev) => ({
+            ...prev,
+            existingImages: prev.existingImages.filter((_, index) => index !== indexToRemove),
         }));
     };
 
@@ -405,6 +437,8 @@ export const useTicketForm = () => {
         handleRemoveFile,
         handleImageSelect,
         handleRemoveImage,
+        handleRemoveExistingAttachment,
+        handleRemoveExistingImage,
         handleSubmit,
         handleReset,
         handleCancel,

@@ -5,6 +5,11 @@ export interface City {
     code?: string;
 }
 
+export interface ExistingFile {
+    name: string;
+    url: string;
+}
+
 // UI State (หน้าฟอร์ม) — payload: ticketId, buildingId, floorId, turningId, room, numberSKT, telephone, details, hdFile, hdImgs
 export interface TicketForm {
     /** From URL — ຫົວຂໍ້ (display + payload ticketId) */
@@ -28,6 +33,10 @@ export interface TicketForm {
     attachments: File[];
     /** ແນບຮູບ → hdImgs */
     images: File[];
+    /** ໄຟລ໌ PDF ທີ່ມີຢູ່ໃນ Server (edit mode) */
+    existingAttachments: ExistingFile[];
+    /** ຮູບທີ່ມີຢູ່ໃນ Server (edit mode) */
+    existingImages: ExistingFile[];
 }
 
 // Database Schema (ตรงกับ Fake-DB.json)

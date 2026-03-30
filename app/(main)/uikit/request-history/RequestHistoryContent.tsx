@@ -1,5 +1,4 @@
 // ປະຫວັດການຮ້ອງຂໍ — component ສຳລັບໃຊ້ໃນ request-history page (Role 4)
-// tabIndex 0–5 ແບ່ງຕາມ id ສະຖານະຈາກ helpdeskstatus/selecthelpdeskstatus
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
@@ -8,26 +7,26 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
 import { Button } from 'primereact/button';
-import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
+import { Dropdown } from 'primereact/dropdown';
 import { InputText } from 'primereact/inputtext';
-import { Calendar } from 'primereact/calendar';
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Toast } from 'primereact/toast';
 import { TicketActionMenu } from '@/app/components/TicketActionMenu';
 import { TitleColumn } from './TitleColumn';
-import { STATUS_MAP, ASSIGNEE_STATUS_MAP, CUSTOM_TOOLTIP_CSS } from '../table/constants';
+import { STATUS_MAP, ASSIGNEE_STATUS_MAP, CUSTOM_TOOLTIP_CSS, STATUS_ICON_MAP, STATUS_ICON_FALLBACK } from '../table/constants';
 import { sanitizeStyleContent } from '@/utils/sanitizeHtml';
 import { AssigneeAvatarGroup } from '../table/AssigneeAvatarGroup';
 import { Dialog } from 'primereact/dialog';
 import { Avatar } from 'primereact/avatar';
 import { TableTooltip } from '../table/TableTooltip';
 import type { Assignee } from '../table/types';
-import { useProfileData, useUserProfileStore } from '@/app/store/user/userProfileStore';
+import { useUserProfileStore } from '@/app/store/user/userProfileStore';
 import axiosClientsHelpDesk from '@/config/axiosClientsHelpDesk';
 import { HELPDESK_ENDPOINTS } from '@/config/endpoints';
 import { useHelpdeskStatusOptions } from '@/app/hooks/useHelpdeskStatusOptions';
+import { extractStatusFilterVal } from '@/app/(main)/uikit/shared/ticketFilterUtils';
 import { formatDateTime } from '@/utils/dateUtils';
 import type { HelpdeskStatusItem } from '@/app/hooks/useHelpdeskStatusOptions';
-import './request-history-table.css';
 
 export interface RequestHistoryContentProps {
     showTitle?: boolean;
@@ -53,8 +52,8 @@ export interface RequestHistoryRow {
 }
 
 type AssignmentRaw = {
-    assignedTo?: { id?: number; employee?: { id?: number; first_name?: string; last_name?: string } };
-    employee?: { id?: number; first_name?: string; last_name?: string };
+    assignedTo?: { id?: number; employee?: { id?: number; first_name?: string; last_name?: string; empimg?: string } };
+    employee?: { id?: number; first_name?: string; last_name?: string; empimg?: string };
     helpdeskStatusId?: number;
     helpdeskStatus?: { id?: number; name?: string };
 };
@@ -67,8 +66,9 @@ function normalizeHistoryResponse(data: unknown): RequestHistoryRow[] {
             const title = (ticket?.title as string) ?? (row.title as string) ?? '—';
             const createdAt = (row.createdAt as string | undefined) ?? '';
             const helpdeskStatus = row.helpdeskStatus as { id?: number; name?: string } | undefined;
-            const statusId = (row.helpdeskStatusId as number | undefined) ?? helpdeskStatus?.id;
-            const status = helpdeskStatus?.name ?? (row.name as string) ?? '—';
+            const statusId = row.helpdeskStatusId != null ? Number(row.helpdeskStatusId)
+                : helpdeskStatus?.id != null ? Number(helpdeskStatus.id) : undefined;
+            const status = helpdeskStatus?.name ?? '—';
             const assignmentsRaw = (row.assignments ?? []) as AssignmentRaw[];
             const assignees: Assignee[] = assignmentsRaw.map((a, idx) => {
                 const emp = a.assignedTo?.employee ?? a.employee;
@@ -78,10 +78,12 @@ function normalizeHistoryResponse(data: unknown): RequestHistoryRow[] {
                 const assigneeId = a.assignedTo?.id ?? emp?.id ?? idx;
                 const aStatusId = a.helpdeskStatus?.id ?? a.helpdeskStatusId;
                 const aStatus = a.helpdeskStatus?.name ?? status;
-                return { id: assigneeId, name, status: aStatus as Assignee['status'], statusId: aStatusId != null ? aStatusId : (statusId != null ? statusId : undefined) };
+                const empImage = emp?.empimg != null && String(emp.empimg).trim() !== '' ? String(emp.empimg).trim() : undefined;
+                return { id: assigneeId, name, image: empImage, status: aStatus as Assignee['status'], statusId: aStatusId != null ? aStatusId : (statusId != null ? statusId : undefined) };
             });
             const assignTo = assignees.length > 0 ? assignees[0].name : 'ຍັງບໍ່ໄດ້ມອບໝາຍ';
-            const createdById = row.createdById as number | undefined;
+            const createdById = (row.createdById as number | undefined) ??
+                ((row.createdBy as { id?: number } | null | undefined)?.id);
             const numberSKT = (row.numberSKT as string | undefined) ?? '';
             const ticketId = (row.ticketId as number | undefined) ?? ticket?.id;
             return {
@@ -105,15 +107,17 @@ function normalizeHistoryResponse(data: unknown): RequestHistoryRow[] {
     return [];
 }
 
-/** tabIndex 0–5 ແບ່ງຕາມ id ສະຖານະ: 0→1, 1→2,3, 2→6, 3→4,7, 4→5, 5→8 */
-const TAB_CONFIG: { tabIndex: number; statusIds: number[]; label: string }[] = [
-    { tabIndex: 0, statusIds: [1], label: 'ຄຳຮ້ອງຂໍໃໝ່' },
-    { tabIndex: 1, statusIds: [2, 3], label: 'ຄຳຮ້ອງຂໍທີ່ກຳລັງດຳເນີນການ' },
-    { tabIndex: 2, statusIds: [6], label: 'ຄຳຮ້ອງຂໍທີ່ຖືກພັກໄວ້' },
-    { tabIndex: 3, statusIds: [4, 7], label: 'ຄຳຮ້ອງຂໍທີ່ໄດ້ຖືກແກ້ໄຂແລ້ວ' },
-    { tabIndex: 4, statusIds: [5], label: 'ສົ່ງແປງພາຍນອກ' },
-    { tabIndex: 5, statusIds: [8], label: 'ຖືກປະຕິເສດ' },
-];
+type StatusOption = { label: string; value: string };
+
+const USER_DIALOG_SEVERITY_COLORS: Record<string, { bg: string; text: string }> = {
+    success:   { bg: '#22c55e', text: '#ffffff' },
+    info:      { bg: '#3b82f6', text: '#ffffff' },
+    warning:   { bg: '#f59e0b', text: '#ffffff' },
+    danger:    { bg: '#ef4444', text: '#ffffff' },
+    secondary: { bg: '#9ca3af', text: '#ffffff' },
+    default:   { bg: '#9ca3af', text: '#ffffff' },
+};
+const getUserDialogInitials = (name: string) => name ? name.substring(0, 2).toUpperCase() : '??';
 
 /** Local Assignee Dialog ສຳລັບ Role 4 — ແສງຊື່ ນາມສະກຸນ ເທົ່ານັ້ນ (ບໍ່ມີ emp_code) */
 const UserAssigneeDialog = ({ visible, onHide, assignees, statusList = [], ticketStatus, sectionTitle = 'ມອບໝາຍໃຫ້' }: {
@@ -121,6 +125,13 @@ const UserAssigneeDialog = ({ visible, onHide, assignees, statusList = [], ticke
     statusList?: HelpdeskStatusItem[]; ticketStatus?: string | null; sectionTitle?: string;
 }) => {
     const statusById = React.useMemo(() => new Map(statusList.map((s) => [s.id, s])), [statusList]);
+    const getStatusColor = (user: Assignee) => {
+        const statusName = user.statusId != null ? statusById.get(user.statusId)?.name ?? null : null;
+        const severity = statusName
+            ? (STATUS_MAP[statusName] ?? 'secondary')
+            : (ASSIGNEE_STATUS_MAP[user.status]?.severity || 'secondary');
+        return USER_DIALOG_SEVERITY_COLORS[severity] || USER_DIALOG_SEVERITY_COLORS.default;
+    };
     return (
         <Dialog header={sectionTitle} visible={visible} style={{ width: '30vw', minWidth: '350px' }} onHide={onHide} draggable={false}>
             <div className="flex flex-column gap-3 mt-2">
@@ -141,7 +152,17 @@ const UserAssigneeDialog = ({ visible, onHide, assignees, statusList = [], ticke
                     return (
                         <div key={user.id} className="flex align-items-center justify-content-between p-2 border-bottom-1 surface-border">
                             <div className="flex align-items-center gap-2">
-                                <Avatar icon="pi pi-user" shape="circle" className="surface-100 text-500 border-1 surface-border" />
+                                <Avatar
+                                    label={!user.image ? getUserDialogInitials(user.name) : undefined}
+                                    image={user.image}
+                                    icon={!user.image && !user.name ? 'pi pi-user' : undefined}
+                                    shape="circle"
+                                    style={{
+                                        backgroundColor: user.image ? 'transparent' : getStatusColor(user).bg,
+                                        color: user.image ? undefined : getStatusColor(user).text,
+                                        border: `3px solid ${getStatusColor(user).bg}`,
+                                    }}
+                                />
                                 <div className="flex flex-column">
                                     <span className="font-bold text-sm">{user.name}</span>
                                     <span className="text-xs text-500">Staff / IT Support</span>
@@ -156,22 +177,13 @@ const UserAssigneeDialog = ({ visible, onHide, assignees, statusList = [], ticke
     );
 };
 export function RequestHistoryContent({ showTitle = false }: RequestHistoryContentProps) {
-    const { profileData } = useProfileData();
     const currentUser = useUserProfileStore((s) => s.currentUser);
-    const displayName = profileData
-        ? [profileData.first_name, profileData.last_name].filter(Boolean).join(' ').trim() || '—'
-        : '—';
     const { list: statusList } = useHelpdeskStatusOptions();
 
-    const tabs: { tabIndex: number; statusIds: number[]; label: string }[] = useMemo(
-        () => TAB_CONFIG.map(({ tabIndex, statusIds, label }) => ({ tabIndex, statusIds, label })),
-        []
-    );
-    const [activeTabIndex, setActiveTabIndex] = useState<number>(TAB_CONFIG[0]?.tabIndex ?? 0);
     const [first, setFirst] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(15);
-    const [numberSKT, setNumberSKT] = useState('');
-    const [createdAtRange, setCreatedAtRange] = useState<Date[] | null>(null);
+    const [statusFilter, setStatusFilter] = useState<StatusOption | null>(null);
+    const [globalFilter, setGlobalFilter] = useState('');
     const [tickets, setTickets] = useState<RequestHistoryRow[]>([]);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
@@ -180,6 +192,11 @@ export function RequestHistoryContent({ showTitle = false }: RequestHistoryConte
     const [dialogAssignees, setDialogAssignees] = useState<Assignee[]>([]);
     const [dialogTicketStatus, setDialogTicketStatus] = useState<string | null>(null);
     const [dialogStatusList, setDialogStatusList] = useState<HelpdeskStatusItem[]>([]);
+
+    const statusOptions = useMemo<StatusOption[]>(() => {
+        const opts = statusList.map((s) => ({ label: s.name, value: String(s.id) }));
+        return [{ label: 'ທັງຫມົດ', value: 'Allin' }, ...opts];
+    }, [statusList]);
 
     const openAssigneeDialog = (assignees: Assignee[], ticketStatus: string) => {
         setDialogAssignees(assignees);
@@ -238,13 +255,7 @@ export function RequestHistoryContent({ showTitle = false }: RequestHistoryConte
                 params: loginUserId ? { createdById: loginUserId } : undefined,
             });
             const list = normalizeHistoryResponse(response.data);
-            /** Safety fallback: still filter client-side in case backend ignores the param */
-            const isMyRow = (row: RequestHistoryRow) => {
-                const createdBy = row.createdById == null ? '' : String(row.createdById);
-                return createdBy !== '' && createdBy === loginUserId;
-            };
-            const filtered = loginUserId ? list.filter(isMyRow) : [];
-            setTickets(filtered);
+            setTickets(list);
         } catch {
             setTickets([]);
         } finally {
@@ -258,272 +269,202 @@ export function RequestHistoryContent({ showTitle = false }: RequestHistoryConte
 
     useEffect(() => {
         setFirst(0);
-    }, [numberSKT, createdAtRange, activeTabIndex]);
+    }, [statusFilter, globalFilter]);
 
-    const filteredBySearch = tickets.filter((row) => {
-        if (numberSKT.trim()) {
-            const search = numberSKT.trim().toLowerCase();
-            const skt = (row.numberSKT ?? '').toLowerCase();
-            if (!skt.includes(search)) return false;
-        }
-        if (createdAtRange && createdAtRange.length >= 1) {
-            const rowDate = row.date ? new Date(row.date) : null;
-            if (!rowDate || Number.isNaN(rowDate.getTime())) return false;
-            const start = createdAtRange[0];
-            if (start) {
-                const startOfDay = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 0, 0, 0, 0);
-                if (rowDate < startOfDay) return false;
+    const filteredRows = useMemo(() => {
+        const statusNameToId = new Map(statusList.map((s) => [s.name, Number(s.id)]));
+        const statusFilterVal = extractStatusFilterVal(statusFilter);
+        return tickets.filter((row) => {
+            const rowStatusId = row.statusId != null ? row.statusId : statusNameToId.get(row.status);
+            if (statusFilterVal && statusFilterVal !== 'Allin') {
+                const sid = Number(statusFilterVal);
+                if (Number.isFinite(sid) && Number(rowStatusId) !== sid) return false;
             }
-            if (createdAtRange.length >= 2 && createdAtRange[1]) {
-                const end = createdAtRange[1];
-                const endOfDay = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59, 999);
-                if (rowDate > endOfDay) return false;
+            if (globalFilter.trim()) {
+                const q = globalFilter.trim().toLowerCase();
+                const inTitle = row.title.toLowerCase().includes(q);
+                const inSKT = (row.numberSKT ?? '').toLowerCase().includes(q);
+                const inAssign = (row.assignTo ?? '').toLowerCase().includes(q);
+                const inStatus = row.status.toLowerCase().includes(q);
+                if (!inTitle && !inSKT && !inAssign && !inStatus) return false;
             }
-        }
-        return true;
-    });
+            return true;
+        });
+    }, [tickets, statusFilter, globalFilter, statusList]);
 
-    const activeStatusIds = useMemo(
-        () => TAB_CONFIG.find((t) => t.tabIndex === activeTabIndex)?.statusIds ?? [],
-        [activeTabIndex]
-    );
-    const filteredByTab = filteredBySearch.filter((row) => {
-        if (row.statusId == null) return false;
-        return activeStatusIds.includes(row.statusId);
-    });
+    const centerProps = { align: 'center' as const, alignHeader: 'center' as const };
+
+    const getStatusIcon = (option: StatusOption | null) =>
+        option
+            ? STATUS_ICON_MAP[option.label] ?? STATUS_ICON_MAP[option.value] ?? STATUS_ICON_FALLBACK
+            : STATUS_ICON_FALLBACK;
+
+    const renderStatusOption = (option: StatusOption | null) => {
+        if (!option) return <span>ເລືອກສະຖານະ</span>;
+        return (
+            <div className="flex align-items-center gap-2">
+                <i className={getStatusIcon(option)} />
+                <span>{option.label}</span>
+            </div>
+        );
+    };
 
     return (
-        <>
+        <div className="grid">
             <Toast ref={toastRef} position="top-center" />
             <ConfirmDialog />
             <style dangerouslySetInnerHTML={{ __html: sanitizeStyleContent(CUSTOM_TOOLTIP_CSS) }} />
-            <TableTooltip target=".js-tooltip-target" dependencies={[filteredByTab, first]} />
-            <UserAssigneeDialog
-                visible={dialogVisible}
-                onHide={closeAssigneeDialog}
-                assignees={dialogAssignees}
-                statusList={dialogStatusList}
-                ticketStatus={dialogTicketStatus}
-                sectionTitle="ມອບໝາຍໃຫ້"
-            />
-            {showTitle && (
-                <h3 className="request-history-page-title m-0 mb-3 text-center">ປະຫວັດການຮ້ອງຂໍ</h3>
-            )}
-
-            <div className="request-history-search-row">
-                <div className="search-field">
-                    <label htmlFor="search-numberSKT" className="search-label">ເລກ ຊທຄ</label>
-                    <InputText
-                        id="search-numberSKT"
-                        value={numberSKT}
-                        onChange={(e) => setNumberSKT(e.target.value)}
-                        placeholder="ຄົ້ນຫາ ເລກ ຊທຄ"
-                        className="request-history-input w-full"
+            <div className="col-12">
+                <div className="card">
+                    <TableTooltip target=".js-tooltip-target" dependencies={[filteredRows, first]} />
+                    <UserAssigneeDialog
+                        visible={dialogVisible}
+                        onHide={closeAssigneeDialog}
+                        assignees={dialogAssignees}
+                        statusList={dialogStatusList}
+                        ticketStatus={dialogTicketStatus}
+                        sectionTitle="ມອບໝາຍໃຫ້"
                     />
-                </div>
-                <div className="search-field">
-                    <label htmlFor="search-createdAt" className="search-label">ວັນທີ</label>
-                    <div className="request-history-date-range-wrap">
-                        <Calendar
-                            id="search-createdAt"
-                            value={createdAtRange}
-                            onChange={(e) => {
-                                const v = e.value;
-                                if (v == null) setCreatedAtRange(null);
-                                else if (Array.isArray(v)) setCreatedAtRange(v.filter((d): d is Date => d instanceof Date));
-                                else setCreatedAtRange(null);
-                            }}
-                            selectionMode="range"
-                            dateFormat="dd/mm/yy"
-                            showIcon
-                            readOnlyInput
-                            placeholder="ເລືອກ ວັນທີ / ເດືອນ / ປີ"
-                            className="w-full"
-                            inputClassName="request-history-input"
-                        />
-                        {createdAtRange && createdAtRange.length > 0 && (
-                            <i
-                                className="pi pi-times request-history-date-clear"
-                                onClick={(e) => { e.stopPropagation(); setCreatedAtRange(null); }}
-                                role="button"
-                                aria-label="ລົບວັນທີ"
-                            />
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            <div className="divider-container">
-                <span className="divider-text">ການຮ້ອງຂໍຂອງທ່ານ: {displayName}</span>
-            </div>
-
-            <div className="selection-button-group">
-                {tabs.map((tab) => (
-                    <button
-                        key={tab.tabIndex}
-                        className={`selection-btn ${activeTabIndex === tab.tabIndex ? 'active' : ''}`}
-                        onClick={() => { setActiveTabIndex(tab.tabIndex); setFirst(0); }}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
-
-            <div
-                className="table-content-wrapper"
-                style={{
-                    backgroundColor: 'var(--surface-card)',
-                    borderRadius: '0 0 20px 20px',
-                    padding: '1rem'
-                }}
-            >
-                <DataTable
-                    value={filteredByTab}
-                    paginator
-                    rows={rowsPerPage}
-                    first={first}
-                    onPage={(e) => {
-                        const { first: f, rows: r } = e as { first: number; rows: number };
-                        setFirst(f);
-                        setRowsPerPage(r);
-                    }}
-                    rowsPerPageOptions={[15, 25, 50]}
-                    paginatorTemplate="CurrentPageReport FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
-                    currentPageReportTemplate="ສະແດງ {first} ເຖີງ {last} ຈາກທັງໝົດ {totalRecords} ລາຍການ"
-                    size="small"
-                    scrollable
-                    scrollHeight="60vh"
-                    loading={loading}
-                    emptyMessage={loading ? undefined : <div className="request-history-empty-msg">ບໍ່ພົບຂໍ້ມູນ</div>}
-                >
-                    <Column field="id" header="ລຳດັບ" style={{ width: '10%', fontWeight: 'bold' }} align="center" />
-                    <Column
-                        header="ຫົວຂໍ້ເລື່ອງ"
-                        body={(rowData: RequestHistoryRow) => (
-                            <TitleColumn title={rowData.title} id={String(rowData.id)} />
-                        )}
-                        style={{ minWidth: '200px' }}
-                    />
-                    <Column
-                        field="numberSKT"
-                        header="ເລກ ຊຄທ"
-                        body={(rowData: RequestHistoryRow) => rowData.numberSKT ?? '—'}
-                        style={{ width: '120px', minWidth: '120px' }}
-                        align="center"
-                    />
-                    <Column
-                        header="ວັນທີຮ້ອງຂໍ"
-                        body={(rowData: RequestHistoryRow) => formatRequestDateTime(rowData.date)}
-                        style={{ width: '200px', minWidth: '200px' }}
-                        align="center"
-                    />
-                    {activeTabIndex === 3 && (
-                        <Column
-                            header="ວັນທີແກ້ໄຂ"
-                            body={(rowData: RequestHistoryRow) => formatRequestDateTime(rowData.updatedAt)}
-                            style={{ width: '200px', minWidth: '200px' }}
-                            align="center"
-                        />
+                    {showTitle && (
+                        <h3 className="m-0 mb-3 text-center" style={{ fontSize: '1.75rem', fontWeight: 700 }}>ປະຫວັດການຮ້ອງຂໍ</h3>
                     )}
-                    <Column
-                        header="ຜູ້ຮັບຜິດຊອບ"
-                        body={(rowData: RequestHistoryRow) => {
-                            const list = rowData.assignees ?? [];
-                            if (list.length === 0) {
-                                return <span className="text-500 text-sm italic">ຍັງບໍ່ໄດ້ມອບໝາຍ</span>;
-                            }
-                            if (list.length === 1) {
-                                const user = list[0];
-                                const statusInfo = ASSIGNEE_STATUS_MAP[user.status] || ASSIGNEE_STATUS_MAP['default'];
-                                const helpdeskSeverity = rowData.status ? (STATUS_MAP[rowData.status] ?? null) : null;
-                                let textColor = 'text-700';
-                                if (helpdeskSeverity === 'info') textColor = 'text-blue-500';
-                                else if (helpdeskSeverity === 'success') textColor = 'text-green-500';
-                                else if (helpdeskSeverity === 'warning') textColor = 'text-orange-500';
-                                else if (helpdeskSeverity === 'danger') textColor = 'text-red-500';
-                                else {
-                                    if (statusInfo.severity === 'info') textColor = 'text-blue-500';
-                                    else if (statusInfo.severity === 'success') textColor = 'text-green-500';
-                                    else if (statusInfo.severity === 'warning') textColor = 'text-orange-500';
-                                }
-                                const statusLabel = rowData.status || '—';
-                                let displayNameShort = user.name;
-                                if (displayNameShort) {
-                                    const cleanName = displayNameShort.trim();
-                                    const parts = cleanName.split(' ');
-                                    const isTitle = parts[0] === 'ທ.' || parts[0] === 'ນ.' || (parts[0]?.includes('.') ?? false);
-                                    displayNameShort = parts.length > 1 && isTitle ? `${parts[0]} ${parts[1]}` : (parts[0] ?? '');
+                    <div className="flex flex-column md:flex-row justify-content-between gap-3 mb-4">
+                        <div className="flex flex-wrap gap-2 align-items-center">
+                            <Dropdown
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.value as StatusOption | null)}
+                                options={statusOptions}
+                                optionLabel="label"
+                                placeholder="ເລືອກສະຖານະ"
+                                className="p-inputtext-sm w-full md:w-12rem"
+                                showClear
+                                itemTemplate={renderStatusOption}
+                                valueTemplate={renderStatusOption}
+                            />
+                        </div>
+                        <div className="flex flex-wrap gap-2 align-items-center justify-content-end">
+                            <span className="p-input-icon-left w-full md:w-auto">
+                                <i className="pi pi-search" />
+                                <InputText
+                                    value={globalFilter}
+                                    onChange={(e) => setGlobalFilter(e.target.value)}
+                                    placeholder="ຄົ້ນຫາລວມ.."
+                                    className="p-inputtext-sm w-full md:w-15rem"
+                                />
+                            </span>
+                        </div>
+                    </div>
+                    <DataTable
+                        value={filteredRows}
+                        paginator
+                        rows={rowsPerPage}
+                        first={first}
+                        onPage={(e) => {
+                            const { first: f, rows: r } = e as { first: number; rows: number };
+                            setFirst(f);
+                            setRowsPerPage(r);
+                        }}
+                        rowsPerPageOptions={[15, 25, 50]}
+                        paginatorTemplate="CurrentPageReport FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+                        currentPageReportTemplate="ສະແດງ {first} ເຖີງ {last} ຈາກທັງໝົດ {totalRecords} ລາຍການ"
+                        size="small"
+                        scrollable
+                        scrollHeight="60vh"
+                        loading={loading}
+                        tableStyle={{ minWidth: '60rem' }}
+                        style={{ fontSize: '1rem' }}
+                        emptyMessage={<div className="text-center p-4">ບໍ່ພົບຂໍ້ມູນ</div>}
+                    >
+                        <Column
+                            field="id"
+                            header="ລຳດັບ"
+                            style={{ minWidth: '80px', fontWeight: 'bold' }}
+                            {...centerProps}
+                        />
+                        <Column
+                            header="ຫົວຂໍ້ເລື່ອງ"
+                            body={(rowData: RequestHistoryRow) => (
+                                <TitleColumn title={rowData.title} id={String(rowData.id)} />
+                            )}
+                            style={{ minWidth: '200px' }}
+                        />
+                        <Column
+                            field="numberSKT"
+                            header="ເລກ ຊຄທ"
+                            body={(rowData: RequestHistoryRow) => rowData.numberSKT ?? '—'}
+                            style={{ minWidth: '120px' }}
+                            {...centerProps}
+                        />
+                        <Column
+                            header="ວັນທີຮ້ອງຂໍ"
+                            body={(rowData: RequestHistoryRow) => formatRequestDateTime(rowData.date)}
+                            style={{ minWidth: '170px' }}
+                            {...centerProps}
+                        />
+                        <Column
+                            header="ຜູ້ຮັບຜິດຊອບ"
+                            body={(rowData: RequestHistoryRow) => {
+                                const list = rowData.assignees ?? [];
+                                if (list.length === 0) {
+                                    return <span className="text-500 text-sm italic">ຍັງບໍ່ໄດ້ມອບໝາຍ</span>;
                                 }
                                 return (
-                                    <div
-                                        role="button"
-                                        tabIndex={0}
-                                        className={`js-tooltip-target cursor-pointer ${textColor} font-bold text-sm`}
-                                        style={{ whiteSpace: 'nowrap' }}
-                                        data-pr-tooltip={`${user.name} | ${statusLabel}`}
-                                        data-pr-position="bottom"
-                                        onClick={(e) => { e.stopPropagation(); openAssigneeDialog(list, rowData.status); }}
-                                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAssigneeDialog(list, rowData.status); } }}
-                                    >
-                                        {displayNameShort}
-                                    </div>
+                                    <AssigneeAvatarGroup
+                                        assignees={list}
+                                        ticketStatus={rowData.status}
+                                        statusList={statusList}
+                                        onClick={() => openAssigneeDialog(list, rowData.status)}
+                                    />
                                 );
-                            }
-                            return (
-                                <AssigneeAvatarGroup
-                                    assignees={list}
-                                    ticketStatus={rowData.status}
-                                    onClick={() => openAssigneeDialog(list, rowData.status)}
+                            }}
+                            style={{ minWidth: '140px' }}
+                            {...centerProps}
+                        />
+                        <Column
+                            field="status"
+                            header="ສະຖານະ"
+                            body={(rowData: RequestHistoryRow) => (
+                                <Tag
+                                    value={rowData.status}
+                                    severity={(STATUS_MAP[rowData.status] ?? null) as 'success' | 'info' | 'warning' | 'danger' | null}
+                                    style={{ fontSize: '0.85rem' }}
                                 />
-                            );
-                        }}
-                        style={{ width: '150px', minWidth: '140px' }}
-                        align="center"
-                    />
-                    <Column
-                        field="status"
-                        header="ສະຖານະ"
-                        body={(rowData: RequestHistoryRow) => (
-                            <Tag
-                                value={rowData.status}
-                                severity={(STATUS_MAP[rowData.status] ?? null) as 'success' | 'info' | 'warning' | 'danger' | null}
-                                style={{ fontSize: '0.95rem', padding: '0.4rem 0.8rem', fontWeight: '600' }}
-                            />
-                        )}
-                        style={{ width: '150px' }}
-                        align="center"
-                    />
-                    <Column
-                        header="ດຳເນີນການ"
-                        body={(rowData: RequestHistoryRow) =>
-                            rowData.statusId === 1 ? (
-                                <div className="flex gap-2 justify-content-center align-items-center">
-                                    <Button
-                                        icon="pi pi-pencil"
-                                        rounded
-                                        text
-                                        className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-none"
-                                        tooltip="ແກ້ໄຂ"
-                                        onClick={(e) => { e.stopPropagation(); handleEditRequest(rowData); }}
-                                    />
-                                    <Button
-                                        icon="pi pi-trash"
-                                        rounded
-                                        text
-                                        className="bg-red-100 text-red-700 hover:bg-red-200 border-none"
-                                        tooltip="ລົບ"
-                                        onClick={(e) => { e.stopPropagation(); handleDeleteRequest(rowData); }}
-                                    />
-                                </div>
-                            ) : (
-                                <TicketActionMenu ticket={rowData} variant="user" hideDropdown />
-                            )
-                        }
-                        style={{ width: '150px' }}
-                        align="center"
-                    />
-                </DataTable>
+                            )}
+                            style={{ minWidth: '100px' }}
+                            {...centerProps}
+                        />
+                        <Column
+                            header="ດຳເນີນການ"
+                            body={(rowData: RequestHistoryRow) =>
+                                rowData.statusId === 1 ? (
+                                    <div className="flex gap-2 justify-content-center align-items-center">
+                                        <Button
+                                            icon="pi pi-pencil"
+                                            rounded
+                                            text
+                                            className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-none"
+                                            tooltip="ແກ້ໄຂ"
+                                            onClick={(e) => { e.stopPropagation(); handleEditRequest(rowData); }}
+                                        />
+                                        <Button
+                                            icon="pi pi-trash"
+                                            rounded
+                                            text
+                                            className="bg-red-100 text-red-700 hover:bg-red-200 border-none"
+                                            tooltip="ລົບ"
+                                            onClick={(e) => { e.stopPropagation(); handleDeleteRequest(rowData); }}
+                                        />
+                                    </div>
+                                ) : (
+                                    <TicketActionMenu ticket={rowData} variant="user" hideDropdown />
+                                )
+                            }
+                            style={{ minWidth: '160px' }}
+                            {...centerProps}
+                        />
+                    </DataTable>
+                </div>
             </div>
-        </>
+        </div>
     );
 }

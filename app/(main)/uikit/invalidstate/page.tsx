@@ -24,6 +24,8 @@ const RequestForm = () => {
     handleRemoveFile,
     handleImageSelect,
     handleRemoveImage,
+    handleRemoveExistingAttachment,
+    handleRemoveExistingImage,
     handleSubmit,
     handleReset,
     handleCancel,
@@ -188,7 +190,36 @@ const RequestForm = () => {
                 onChange={handleFileSelect}
                 accept=".pdf,application/pdf"
               />
-              {form.attachments.length === 0 && (
+              {form.existingAttachments.length > 0 && (
+                <div className="w-full flex flex-column align-items-center gap-2 mb-2">
+                  {form.existingAttachments.map((f, i) => (
+                    <div
+                      key={i}
+                      className="flex align-items-center justify-content-between w-full md:w-8 surface-100 border-round px-3 py-2 shadow-sm"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <a
+                        href={f.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex align-items-center gap-2 no-underline text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <i className="pi pi-file-pdf text-red-500" />
+                        <span className="text-sm font-medium">{f.name}</span>
+                      </a>
+                      <Button
+                        icon="pi pi-times"
+                        rounded
+                        text
+                        severity="danger"
+                        onClick={(e) => { e.stopPropagation(); handleRemoveExistingAttachment(i); }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {form.existingAttachments.length === 0 && form.attachments.length === 0 && (
                 <span className="text-500 text-sm">ຄິກທີ່ນີ້ເພື່ອແນບໄຟລ໌</span>
               )}
               {form.attachments.length > 0 && (
@@ -223,13 +254,13 @@ const RequestForm = () => {
                 <i className="pi pi-images mr-2" /> ແນບຮູບ
               </label>
               <span className="text-sm font-medium text-600">
-                ຈຳນວນຮູບ ({form.images.length}/2)
+                ຈຳນວນຮູບ ({form.images.length}/5)
               </span>
             </div>
             <div
-              className={`border-dashed border-1 border-round p-4 flex flex-column align-items-center justify-content-center cursor-pointer hover:surface-hover transition-colors ${form.images.length >= 2 ? "opacity-70" : ""}`}
+              className={`border-dashed border-1 border-round p-4 flex flex-column align-items-center justify-content-center cursor-pointer hover:surface-hover transition-colors ${form.images.length >= 5 ? "opacity-70" : ""}`}
               onClick={() => {
-                if (form.images.length < 2) imageInputRef.current?.click();
+                if (form.images.length < 5) imageInputRef.current?.click();
               }}
             >
               <input
@@ -241,7 +272,32 @@ const RequestForm = () => {
                 multiple
                 onChange={handleImageSelect}
               />
-              {form.images.length === 0 && (
+              {form.existingImages.length > 0 && (
+                <div className="flex flex-wrap gap-3 justify-content-center w-full mb-2">
+                  {form.existingImages.map((img, i) => (
+                    <div key={i} className="flex flex-column align-items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <div className="relative">
+                        <a href={img.url} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={img.url}
+                            alt={img.name}
+                            style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #e0e0e0', display: 'block' }}
+                          />
+                        </a>
+                        <button
+                          type="button"
+                          style={{ position: 'absolute', top: '-8px', right: '-8px', width: '20px', height: '20px', borderRadius: '50%', background: '#ef4444', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontSize: '11px', lineHeight: 1 }}
+                          onClick={(e) => { e.stopPropagation(); handleRemoveExistingImage(i); }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <span className="text-xs text-500" style={{ maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{img.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {form.existingImages.length === 0 && form.images.length === 0 && (
                 <span className="text-500 text-sm">ຄິກທີ່ນີ້ເພື່ອແນບຮູບພາບ</span>
               )}
               {form.images.length > 0 && (

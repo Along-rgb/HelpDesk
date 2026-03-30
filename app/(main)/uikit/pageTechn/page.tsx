@@ -324,6 +324,20 @@ export default function PageTechnDemo() {
                         />
 
                         <Column
+                            field="numberSKT"
+                            header="ເລກ ຊຄທ"
+                            style={{ minWidth: "120px" }}
+                            {...centerProps}
+                            body={(rowData: TicketRow) =>
+                                rowData.numberSKT ? (
+                                    <span className="font-medium text-700">{rowData.numberSKT}</span>
+                                ) : (
+                                    <span className="text-500 text-sm">-</span>
+                                )
+                            }
+                        />
+
+                        <Column
                             field="date"
                             header="ວັນທີຮ້ອງຂໍ"
                             style={{ minWidth: "170px" }}
@@ -393,12 +407,14 @@ export default function PageTechnDemo() {
                                                 const hideCancelled =
                                                     statusId === CANCEL_STATUS_ID || tStatusId === CANCEL_STATUS_ID;
                                                 const hideById =
-                                                    statusId === STATUS_DONE_ID || statusId === STATUS_CLOSED_ID;
+                                                    statusId === STATUS_CLOSED_ID;
                                                 const hideByName =
-                                                    statusName === STATUS_DONE_NAME || statusName === STATUS_CLOSED_NAME;
+                                                    statusName === STATUS_CLOSED_NAME;
                                                 const hideByTicketStatus =
-                                                    tStatusId === STATUS_DONE_ID || tStatusId === STATUS_CLOSED_ID;
-                                                return hideCancelled || hideById || hideByName || hideByTicketStatus;
+                                                    tStatusId === STATUS_CLOSED_ID;
+                                                const hideDone =
+                                                    statusId === STATUS_DONE_ID || tStatusId === STATUS_DONE_ID || statusName === STATUS_DONE_NAME;
+                                                return hideCancelled || hideById || hideByName || hideByTicketStatus || hideDone;
                                             })()
                                         }
                                         menuItems={buildDetailMenuItems(

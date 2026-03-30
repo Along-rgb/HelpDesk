@@ -123,6 +123,8 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
     targetStatusId: number;
     targetStatusName: string;
     assignees: Assignee[];
+    /** ເຊື່ອງປຸ່ມ ບັນທຶກ — ໃຊ້ເມື່ອ ຍົກເລີກ ແລະ ຊ່າງຍັງບໍ່ຄົບທັງໝົດ */
+    hideConfirm?: boolean;
   } | null>(null);
 
   /**
@@ -458,12 +460,15 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
         const relevant = (ticket.assignees ?? []).filter((a) => a.statusId === targetStatusId);
         if (relevant.length > 0) {
           const statusName = statusList.find((s) => s.id === targetStatusId)?.name ?? '';
+          const totalAssigneesCount = ticket.assignees?.length ?? 0;
+          const hideConfirm = targetStatusId === 8 && totalAssigneesCount > 1 && relevant.length < totalAssigneesCount;
           setSolutionDialogData({
             ticketId: ticket.id,
             ticketTitle: ticket.title,
             targetStatusId,
             targetStatusName: statusName,
             assignees: relevant,
+            hideConfirm,
           });
           setSolutionDialogVisible(true);
           return;

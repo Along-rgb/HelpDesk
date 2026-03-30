@@ -20,10 +20,29 @@ interface Props {
     sectionTitle?: string;
 }
 
+const SEVERITY_COLORS: Record<string, { bg: string; text: string }> = {
+    success:   { bg: '#22c55e', text: '#ffffff' },
+    info:      { bg: '#3b82f6', text: '#ffffff' },
+    warning:   { bg: '#f59e0b', text: '#ffffff' },
+    danger:    { bg: '#ef4444', text: '#ffffff' },
+    secondary: { bg: '#9ca3af', text: '#ffffff' },
+    default:   { bg: '#9ca3af', text: '#ffffff' },
+};
+
+const getInitials = (name: string) => name ? name.substring(0, 2).toUpperCase() : '??';
+
 /** Modal ສະຖານະ: ແຕ່ລະຄົນ (user role 3) ແສງຕາມສະຖານະຂອງ assignment ນັ້ນ — ໃຊ້ helpdeskStatusId ເປີດບັນທັດ name ຈາກ selecthelpdeskstatus */
 export const AssigneeDialog = ({ visible, onHide, assignees, statusList = [], sectionTitle = "ມອບໝາຍໃຫ້" }: Props) => {
     const header = sectionTitle ? `${sectionTitle}` : "ມອບໝາຍໃຫ້";
     const statusById = React.useMemo(() => new Map(statusList.map((s) => [s.id, s])), [statusList]);
+
+    const getStatusColor = (user: Assignee) => {
+        const statusName = user.statusId != null ? statusById.get(user.statusId)?.name ?? null : null;
+        const severity = statusName
+            ? (STATUS_MAP[statusName] ?? 'secondary')
+            : (ASSIGNEE_STATUS_MAP[user.status]?.severity || 'secondary');
+        return SEVERITY_COLORS[severity] || SEVERITY_COLORS.default;
+    };
     
     return (
         <Dialog
@@ -64,7 +83,17 @@ export const AssigneeDialog = ({ visible, onHide, assignees, statusList = [], se
                     return (
                         <div key={user.id} className="flex align-items-center justify-content-between p-2 border-bottom-1 surface-border">
                             <div className="flex align-items-center gap-2">
-                                <Avatar icon="pi pi-user" shape="circle" className="surface-100 text-500 border-1 surface-border" />
+                                <Avatar
+                                    label={!user.image ? getInitials(user.name) : undefined}
+                                    image={user.image}
+                                    icon={!user.image && !user.name ? 'pi pi-user' : undefined}
+                                    shape="circle"
+                                    style={{
+                                        backgroundColor: user.image ? 'transparent' : getStatusColor(user).bg,
+                                        color: user.image ? undefined : getStatusColor(user).text,
+                                        border: `3px solid ${getStatusColor(user).bg}`,
+                                    }}
+                                />
                                 <div className="flex flex-column">
                                     <span className="font-bold text-sm">
                                         [{user.emp_code != null && String(user.emp_code).trim() !== "" ? String(user.emp_code).trim() : "—"}] - {user.name}

@@ -42,7 +42,7 @@ export function isShowAll(val: string | null): boolean {
  * Searches: id, title, firstname_req, requester, contactPhone.
  */
 export function matchesGlobalFilter(
-  ticket: { id: string | number; title?: string; firstname_req?: string; requester?: string; contactPhone?: string; emp_code?: string },
+  ticket: { id: string | number; title?: string; firstname_req?: string; requester?: string; contactPhone?: string; emp_code?: string; numberSKT?: string },
   query: string
 ): boolean {
   if (!query.trim()) return true;
@@ -53,7 +53,8 @@ export function matchesGlobalFilter(
     (ticket.firstname_req ?? "").toLowerCase().includes(q) ||
     (ticket.requester ?? "").toLowerCase().includes(q) ||
     (ticket.contactPhone ?? "").toLowerCase().includes(q) ||
-    (ticket.emp_code ?? "").toLowerCase().includes(q)
+    (ticket.emp_code ?? "").toLowerCase().includes(q) ||
+    (ticket.numberSKT ?? "").toLowerCase().includes(q)
   );
 }
 

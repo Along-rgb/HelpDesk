@@ -9,6 +9,8 @@ import { Dialog } from "primereact/dialog";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Avatar } from "primereact/avatar";
 import { Tag } from "primereact/tag";
+import { TabMenu } from "primereact/tabmenu";
+import { Paginator } from "primereact/paginator";
 import { Image } from "primereact/image";
 import NextImage from "next/image";
 import { Ticket, AssigneeOption, type AdminAssignUserRow } from "@/app/(main)/uikit/table/types";
@@ -26,14 +28,19 @@ import { fetchTurningsForSelect } from "@/app/services/ticketService";
 import { getHelpdeskFileUrl, getHelpdeskFileUrlAbsolute } from "@/utils/helpdeskFileUrl";
 import { getDownloadApiUrl } from "@/utils/downloadFile";
 import { authenStore } from "@/app/store/user/loginAuthStore";
+import { EventSourcePolyfill } from "event-source-polyfill";
 
 /** ແປ statusId ຂອງ assignment ເປັນ PrimeReact Tag severity */
 function getAssigneeStatusSeverity(statusId?: number): "success" | "info" | "warning" | "secondary" | "danger" | null {
     if (statusId == null) return null;
     if (statusId === 1) return "warning";   // ລໍຖ້າຮັບວຽກ
     if (statusId === 2) return "info";      // ກຳລັງດຳເນີນການ
-    if (statusId === 3) return "success";   // ແກ້ໄຂແລ້ວ
-    if (statusId >= 7) return "secondary";  // ປິດວຽກ / ຍົກເລີກ
+    if (statusId === 3) return "success";   // (legacy)
+    if (statusId === 4) return "success";   // ແກ້ໄຂແລ້ວ — ສີຂຽວ
+    if (statusId === 5) return "info";      // ສົ່ງອອກແປງນອກ — ສີຟ້າ
+    if (statusId === 6) return "warning";   // ພັກໃວ້ — ສີສົ້ມ
+    if (statusId === 8) return "danger";    // ຍົກເລີກ — ສີແດງ
+    if (statusId >= 7) return "secondary";  // ປິດວຽກ / ອື່ນໆ
     return null;
 }
 
@@ -49,6 +56,19 @@ const ROLE_IDS_CAN_ADMIN_ASSIGN = [1, 2] as const;
 const STATUS_WAITING_ACCEPT = "ລໍຖ້າຮັບວຽກ";
 /** ກຳລັງດຳເນີນການ — ໃຊ້ເມື່ອຮັບວຽກເອງ (เหมือน pageTechn) */
 const HELPDESK_STATUS_IN_PROGRESS = 2;
+/** ສະຖານະທີ່ໃຊ້ກັ່ນຕອງ assignee ໃນ panel ລາຍລະອຽດການແກ້ໄຂບັນຫາ: ແກ້ໄຂແລ້ວ(4), ສົ່ງອອກແປງນອກ(5), ພັກໃວ້(6), ຍົກເລີກ(8) */
+const HELPDESK_STATUS_SOLUTION_IDS = new Set([4, 5, 6, 8]);
+/** Fallback label map — ໃຊ້ເມື່ອ API ບໍ່ສົ່ງ helpdeskStatus.name */
+const STATUS_ID_LABEL: Record<number, string> = {
+    1: 'ລໍຖ້າຮັບວຽກ',
+    2: 'ກຳລັງດຳເນີນການ',
+    3: 'ຮັບວຽກແລ້ວ',
+    4: 'ແກ້ໄຂແລ້ວ',
+    5: 'ສົ່ງອອກແປງນອກ',
+    6: 'ພັກໃວ້',
+    7: 'ປິດວຽກ',
+    8: 'ຍົກເລີກ',
+};
 
 interface ChatMessage {
     id: number;
@@ -98,6 +118,60 @@ export default function TicketDetailPage() {
     const [editChat, setEditChat] = useState<{ id: number | null; input: string; saving: boolean; visible: boolean }>({
         id: null, input: '', saving: false, visible: false,
     });
+
+    // --- Tab State ---
+    const TAB_ITEMS = [{ label: 'ລາຍລະອຽດ', icon: 'pi pi-file' }, { label: 'ປະຫວັດ', icon: 'pi pi-history' }];
+    const [activeTabIndex, setActiveTabIndex] = useState(0);
+
+    // --- History Tab State ---
+    interface HistoryAssignee { id: number; name: string; phone?: string; statusId?: number; statusName?: string; comment?: string | null; commentImg?: string | null; }
+    interface HistoryItem { id: number; ticketTitle: string; createdAt: string; updatedAt: string; assignees: HistoryAssignee[]; }
+    const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [historyFetched, setHistoryFetched] = useState(false);
+    const [historyFirst, setHistoryFirst] = useState(0);
+    const HISTORY_ROWS = 5;
+
+    const fetchHistory = useCallback((numberSKT: string) => {
+        if (!numberSKT) { setHistoryItems([]); return; }
+        setHistoryLoading(true);
+        axiosClientsHelpDesk
+            .get(HELPDESK_ENDPOINTS.REQUESTS_HISTORY)
+            .then((res) => {
+                const raw = Array.isArray(res.data?.data) ? res.data.data : Array.isArray(res.data) ? res.data : [];
+                const matching = (raw as any[])
+                    .filter((r: any) => r.numberSKT != null && String(r.numberSKT).trim() === numberSKT.trim())
+                    .sort((a: any, b: any) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime());
+                const items: HistoryItem[] = matching.map((r: any) => {
+                    const assignments = Array.isArray(r.assignments) ? r.assignments : [];
+                    const resolved: HistoryAssignee[] = assignments
+                        .filter((a: any) => {
+                            const sId = a.helpdeskStatus?.id ?? a.helpdeskStatusId;
+                            return sId != null && HELPDESK_STATUS_SOLUTION_IDS.has(Number(sId));
+                        })
+                        .map((a: any) => {
+                            const emp = a.assignedTo?.employee ?? a.employee;
+                            const first = emp?.first_name ?? '';
+                            const last = emp?.last_name ?? '';
+                            const name = [first, last].filter(Boolean).join(' ').trim() || '—';
+                            const phone = emp?.tel != null ? String(emp.tel).trim() || undefined : undefined;
+                            const sId = a.helpdeskStatus?.id ?? a.helpdeskStatusId;
+                            const sName = a.helpdeskStatus?.name ?? (sId != null ? (STATUS_ID_LABEL[Number(sId)] ?? undefined) : undefined);
+                            return { id: a.assignedTo?.id ?? a.id ?? 0, name, phone, statusId: sId != null ? Number(sId) : undefined, statusName: sName, comment: a.comment ?? null, commentImg: a.commentImg ?? null };
+                        });
+                    return {
+                        id: r.id,
+                        ticketTitle: r.ticket?.title ?? '—',
+                        createdAt: r.createdAt ?? '',
+                        updatedAt: r.updatedAt ?? '',
+                        assignees: resolved,
+                    };
+                });
+                setHistoryItems(items);
+            })
+            .catch(() => setHistoryItems([]))
+            .finally(() => { setHistoryLoading(false); setHistoryFetched(true); });
+    }, []);
 
     /** ລອງ GET helpdeskrequests/[id] ກ່ອນເພື່ອໃຫ້ໄດ້ຂໍ້ມູນເຕັມລວມ hdFile, hdImgs. ຖ້າ 403/404 ຈຶ່ງ fallback ໃສ່ list (Admin/User). */
     const fetchTicket = useCallback(
@@ -186,6 +260,12 @@ export default function TicketDetailPage() {
         fetchTicket(ticketId);
     }, [params.id, fetchTicket]);
 
+    useEffect(() => {
+        if (activeTabIndex === 1 && ticket?.numberSKT && !historyFetched) {
+            fetchHistory(ticket.numberSKT);
+        }
+    }, [activeTabIndex, ticket?.numberSKT, historyFetched, fetchHistory]);
+
     const handleAcceptWork = useCallback(() => {
         if (!ticket || ticket.status !== STATUS_WAITING_ACCEPT) return;
         const id = Number(ticket.id);
@@ -268,15 +348,15 @@ export default function TicketDetailPage() {
         if (!ticket?.id) return;
         fetchChatHistory();
 
-        const baseUrl = env.useHelpdeskProxy ? '/api/helpdesk-proxy' : env.helpdeskApiUrl;
+        const baseUrl = '/api/proxy-helpdesk';
         const token = getTokenFromStorage();
         if (!token) return;
-        const sseParams = new URLSearchParams({ helpdeskRequestId: String(ticket.id), token });
+        const sseParams = new URLSearchParams({ helpdeskRequestId: String(ticket.id) });
         const sseUrl = [baseUrl, HELPDESK_ENDPOINTS.CHATS_SSE].join('/') + '?' + sseParams.toString();
 
-        let es: EventSource | null = null;
+        let es: EventSourcePolyfill | null = null;
         try {
-            es = new EventSource(sseUrl);
+            es = new EventSourcePolyfill(sseUrl, { headers: { 'Authorization': 'Bearer ' + token } });
             es.onmessage = (event) => {
                 try {
                     const msg: ChatMessage = JSON.parse(event.data);
@@ -399,7 +479,7 @@ export default function TicketDetailPage() {
                                 )}
                             </div>
 
-                            <div className="flex align-items-center gap-2 mt-3 md:mt-0 w-full md:w-auto justify-content-end">
+                            <div className="hidden md:flex align-items-center gap-2 mt-3 md:mt-0 w-full md:w-auto justify-content-end">
                                 {/* ปุ่ม Toggle Sidebar */}
                                 <Button
                                     icon={isSidebarVisible ? "pi pi-chevron-right" : "pi pi-chevron-left"}
@@ -421,7 +501,11 @@ export default function TicketDetailPage() {
                             </span>
                         </div>
 
-                        {/* CONTENT */}
+                        {/* TAB MENU */}
+                        <TabMenu model={TAB_ITEMS} activeIndex={activeTabIndex} onTabChange={(e) => setActiveTabIndex(e.index)} className="mb-3" />
+
+                        {/* TAB 0: CONTENT */}
+                        {activeTabIndex === 0 && (
                         <div className="flex flex-column gap-3 mt-3 -mx-3 md:-mx-4">
 
                                     <Panel header="ລາຍລະອຽດ" toggleable className="border-top-1 border-yellow-500 shadow-none border-1 surface-border border-round-none">
@@ -589,15 +673,16 @@ export default function TicketDetailPage() {
 
                                     {/* Panel: Internal Repair */}
                                     <Panel
-                                        header="ຫນ່ວຍງານສ້ອມແປງພາຍໃນ"
+                                        header="ລາຍລະອຽດການແກ້ໄຂບັນຫາ"
                                         toggleable
                                         className="border-top-1 border-yellow-500 shadow-none border-1 surface-border border-round-none"
                                     >
                                         <div className="m-0 px-3 md:px-4 py-2">
                                             <div className="text-700 font-bold mb-3 text-base">ວິຊາການກວດກາ:</div>
                                             <ul className="list-none p-0 m-0">
-                                                {ticket.assignees && ticket.assignees.length > 0 ? (
-                                                    ticket.assignees.map((assignee: any, index: number) => (
+                                                {(() => {
+                                                    const resolved = (ticket.assignees ?? []).filter((a: any) => a.statusId != null && HELPDESK_STATUS_SOLUTION_IDS.has(a.statusId));
+                                                    return resolved.length > 0 ? resolved.map((assignee: any, index: number) => (
                                                         <li key={assignee.id ?? index} className="py-2 border-bottom-1 surface-border last:border-none">
                                                             <div className="flex align-items-center justify-content-between gap-2 mb-1">
                                                                 <span className="text-700 text-base font-medium">
@@ -644,21 +729,122 @@ export default function TicketDetailPage() {
                                                                 </div>
                                                             )}
                                                         </li>
-                                                    ))
-                                                ) : (
-                                                    <div className="text-500 italic text-base">ຍັງບໍ່ມີຜູ້ຮັບຜິດຊອບ</div>
-                                                )}
+                                                    )) : (
+                                                        <div className="text-500 italic text-base">ຍັງບໍ່ມີຜູ້ຮັບຜິດຊອບ</div>
+                                                    );
+                                                })()}
                                             </ul>
                                         </div>
                                     </Panel>
 
 
                         </div>
+                        )}
+
+                        {/* TAB 1: HISTORY */}
+                        {activeTabIndex === 1 && (
+                        <div className="surface-card border-round border-1 surface-border p-3 md:p-4" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+                        <div className="flex flex-column gap-3">
+                            {historyLoading ? (
+                                <div className="text-center p-4 text-500 text-base"><i className="pi pi-spin pi-spinner mr-2" />ກໍາລັງໂຫຼດປະຫວັດ...</div>
+                            ) : historyItems.length === 0 ? (
+                                <div className="text-center p-4 text-500 text-base italic">ບໍ່ພົບປະຫວັດການສ້ອມແປງ</div>
+                            ) : (
+                                <>
+                                    <div className="px-3 md:px-4 mb-2">
+                                        <span className="text-700 font-bold text-base">
+                                            ເຄີຍສ້ອມແປງມາແລ້ວ {historyItems.length} ຄັ້ງ
+                                        </span>
+                                        <span className="text-500 text-sm ml-2">(ເລກ ຊຄທ: {ticket?.numberSKT ?? '—'})</span>
+                                    </div>
+                                    {historyItems.slice(historyFirst, historyFirst + HISTORY_ROWS).map((item) => (
+                                        <Panel
+                                            key={item.id}
+                                            header={Number(roleId) === ROLE_ID_STAFF || Number(roleId) === ROLE_ID_USER ? item.ticketTitle : `#${item.id} ${item.ticketTitle}`}
+                                            toggleable
+                                            className="border-top-1 border-yellow-500 shadow-none border-1 surface-border border-round-none"
+                                        >
+                                            <div className="m-0 px-3 md:px-4 py-2">
+                                                <div className="flex flex-wrap gap-3 mb-3 text-sm text-500">
+                                                    <span><i className="pi pi-calendar mr-1" />ວັນທີຮ້ອງຂໍ: {item.createdAt ? new Date(item.createdAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) : '—'}</span>
+                                                    <span><i className="pi pi-clock mr-1" />ອັບເດດ: {item.updatedAt ? new Date(item.updatedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) : '—'}</span>
+                                                </div>
+                                                <div className="text-700 font-bold mb-3 text-base">ວິຊາການກວດກາ:</div>
+                                                <ul className="list-none p-0 m-0">
+                                                    {item.assignees.length > 0 ? item.assignees.map((assignee, idx) => (
+                                                        <li key={assignee.id ?? idx} className="py-2 border-bottom-1 surface-border last:border-none">
+                                                            <div className="flex align-items-center justify-content-between gap-2 mb-1">
+                                                                <span className="text-700 text-base font-medium">
+                                                                    <i className="pi pi-user text-400 mr-2" />
+                                                                    {assignee.name}{assignee.phone ? ` | ${assignee.phone}` : ''}
+                                                                </span>
+                                                                {assignee.statusName && (
+                                                                    <Tag
+                                                                        value={assignee.statusName}
+                                                                        severity={getAssigneeStatusSeverity(assignee.statusId)}
+                                                                        className="text-xs white-space-nowrap flex-shrink-0"
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                            {(assignee.comment || assignee.commentImg) && (
+                                                                <div className="mt-2 pl-3 border-left-2 border-300">
+                                                                    {assignee.comment && (
+                                                                        <p className="m-0 text-500 text-sm">
+                                                                            <span className="font-medium text-600">ລາຍລະອຽດການກວດກາ ແລະ ສ້ອມແປງ:</span> {assignee.comment}
+                                                                        </p>
+                                                                    )}
+                                                                    {assignee.commentImg && (() => {
+                                                                        const name = (assignee.commentImg ?? '').trim().replace(/^\//, '');
+                                                                        if (!name) return null;
+                                                                        const base = (env.helpdeskUploadRequestBaseUrl ?? '').trim();
+                                                                        const src = base
+                                                                            ? `${base}/commentimg/${encodeURIComponent(name)}`
+                                                                            : env.useHelpdeskProxy
+                                                                                ? `/api/proxy-helpdesk/upload/commentimg/${encodeURIComponent(name)}`
+                                                                                : '';
+                                                                        if (!src) return null;
+                                                                        return (
+                                                                            <Image
+                                                                                src={src}
+                                                                                alt="repair-img"
+                                                                                preview
+                                                                                className="mt-2"
+                                                                                style={{ display: 'inline-block', maxWidth: '100%' }}
+                                                                                imageClassName="border-round border-1 surface-border"
+                                                                                imageStyle={{ maxHeight: '180px', objectFit: 'contain', display: 'block' }}
+                                                                            />
+                                                                        );
+                                                                    })()}
+                                                                </div>
+                                                            )}
+                                                        </li>
+                                                    )) : (
+                                                        <div className="text-500 italic text-base">ບໍ່ມີຂໍ້ມູນຊ່າງທີ່ແກ້ໄຂແລ້ວ</div>
+                                                    )}
+                                                </ul>
+                                            </div>
+                                        </Panel>
+                                    ))}
+                                    {historyItems.length > HISTORY_ROWS && (
+                                        <Paginator
+                                            first={historyFirst}
+                                            rows={HISTORY_ROWS}
+                                            totalRecords={historyItems.length}
+                                            onPageChange={(e) => setHistoryFirst(e.first)}
+                                            className="border-none surface-ground border-round mt-2"
+                                        />
+                                    )}
+                                </>
+                            )}
+                        </div>
+                        </div>
+                        )}
+
                     </div>
 
                     {/* --- RIGHT COLUMN: Sidebar --- */}
                     {isSidebarVisible && (
-                        <div className="col-12 md:col-3 p-4 md:p-4 surface-border md:border-left-1 surface-50 md:surface-0 fadein animation-duration-300">
+                        <div className="hidden md:block col-12 md:col-3 p-4 md:p-4 surface-border md:border-left-1 surface-50 md:surface-0 fadein animation-duration-300">
 
                             {/* Card 1: Requester Info */}
                             <div className="mb-4">
@@ -735,7 +921,31 @@ export default function TicketDetailPage() {
                                 </ul>
                             </div>
 
-                            {/* Card 2: External Repair */}
+                            {/* Card 2: Internal Repair Unit */}
+                            <div className="mt-4 -mx-4">
+                                <Panel
+                                    header="ຫນ່ວຍງານສ້ອມແປງພາຍໃນ"
+                                    toggleable
+                                    className="shadow-none border-y-1 border-x-none border-noround surface-border"
+                                >
+                                    <ul className="list-none p-0 m-0 text-base">
+                                        {ticket.assignees && ticket.assignees.length > 0 ? (
+                                            ticket.assignees.map((assignee: any, idx: number) => (
+                                                <li key={assignee.id ?? idx} className="flex align-items-center gap-2 py-2 border-bottom-1 surface-border last:border-none">
+                                                    <i className="pi pi-user text-400" />
+                                                    <span className="text-700 font-medium">
+                                                        {assignee.name}{assignee.phone ? ` | ${assignee.phone}` : ''}
+                                                    </span>
+                                                </li>
+                                            ))
+                                        ) : (
+                                            <li className="py-2 text-500 italic">ຍັງບໍ່ມີຜູ້ຮັບຜິດຊອບ</li>
+                                        )}
+                                    </ul>
+                                </Panel>
+                            </div>
+
+                            {/* Card 3: External Repair */}
                             <div className="mt-4 -mx-4">
                                 <Panel
                                     header="ຮ້ານແປງນອກ"
