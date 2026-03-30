@@ -118,6 +118,7 @@ export default function PageTechnDemo() {
         receiveSelfDisabled,
         refetch,
         getAssignmentIdForTicket,
+        roleId,
     } = useTicketTableTechn(toastRef);
 
     const { currentUserId } = useUserRoleAndId();
@@ -413,7 +414,7 @@ export default function PageTechnDemo() {
                                                 const hideByTicketStatus =
                                                     tStatusId === STATUS_CLOSED_ID;
                                                 const hideDone =
-                                                    statusId === STATUS_DONE_ID || tStatusId === STATUS_DONE_ID || statusName === STATUS_DONE_NAME;
+                                                    roleId === 3 && (statusId === STATUS_DONE_ID || tStatusId === STATUS_DONE_ID || statusName === STATUS_DONE_NAME);
                                                 return hideCancelled || hideById || hideByName || hideByTicketStatus || hideDone;
                                             })()
                                         }

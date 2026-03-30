@@ -348,7 +348,7 @@ export default function TicketDetailPage() {
         if (!ticket?.id) return;
         fetchChatHistory();
 
-        const baseUrl = '/api/proxy-helpdesk';
+        const baseUrl = env.useHelpdeskProxy ? '/api/proxy-helpdesk' : env.helpdeskApiUrl;
         const token = getTokenFromStorage();
         if (!token) return;
         const sseParams = new URLSearchParams({ helpdeskRequestId: String(ticket.id) });
