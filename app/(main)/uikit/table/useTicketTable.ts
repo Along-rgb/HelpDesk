@@ -123,7 +123,7 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
     targetStatusId: number;
     targetStatusName: string;
     assignees: Assignee[];
-    /** ເຊື່ອງປຸ່ມ ບັນທຶກ — ໃຊ້ເມື່ອ ຍົກເລີກ ແລະ ຊ່າງຍັງບໍ່ຄົບທັງໝົດ */
+    /** ເຊື່ອງປຸ່ມ ບັນທຶກ — ໃຊ້ເມື່ອ ຍົກເລີກ/ພັກໃວ້/ສົ່ງອອກແປງນອກ ແລະ ຊ່າງຍັງລາຍງານບໍ່ຄົບທຸກຄົນ */
     hideConfirm?: boolean;
   } | null>(null);
 
@@ -461,7 +461,8 @@ export const useTicketTable = (toastRef?: RefObject<Toast | null>) => {
         if (relevant.length > 0) {
           const statusName = statusList.find((s) => s.id === targetStatusId)?.name ?? '';
           const totalAssigneesCount = ticket.assignees?.length ?? 0;
-          const hideConfirm = targetStatusId === 8 && totalAssigneesCount > 1 && relevant.length < totalAssigneesCount;
+          const REQUIRE_ALL_REPORTED_IDS = new Set([5, 6, 8]);
+          const hideConfirm = REQUIRE_ALL_REPORTED_IDS.has(targetStatusId) && totalAssigneesCount > 1 && relevant.length < totalAssigneesCount;
           setSolutionDialogData({
             ticketId: ticket.id,
             ticketTitle: ticket.title,
