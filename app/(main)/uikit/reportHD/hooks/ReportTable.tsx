@@ -67,8 +67,8 @@ export const ReportTable = ({ data, activeIndex }: Props) => {
                 <Column header="ສະຖານທີ່" colSpan={3} headerStyle={{ textAlign: 'center' }} />            
                 <Column header="ວັນທີຮ້ອງຂໍ" rowSpan={2} style={{ minWidth: '120px', textAlign: 'center' }} />     
                 
-                {viewConfig.showNote && 
-                    <Column header="ໝາຍເຫດ" rowSpan={2} style={{ minWidth: '80px', textAlign: 'center' }} />
+                {viewConfig.showStatus && 
+                    <Column header="ສະຖານະ" rowSpan={2} style={{ minWidth: '100px', textAlign: 'center' }} />
                 }
             </Row>
             <Row>
@@ -100,8 +100,8 @@ export const ReportTable = ({ data, activeIndex }: Props) => {
                 
                 <Column header="ວັນທີຮ້ອງຂໍ" rowSpan={2} style={{ minWidth: '120px', textAlign: 'center' }} />     
                 
-                {viewConfig.showNote && 
-                    <Column header="ໝາຍເຫດ" rowSpan={2} style={{ minWidth: '80px', textAlign: 'center' }} />
+                {viewConfig.showStatus && 
+                    <Column header="ສະຖານະ" rowSpan={2} style={{ minWidth: '100px', textAlign: 'center' }} />
                 }
             </Row>
             <Row>
@@ -196,9 +196,36 @@ export const ReportTable = ({ data, activeIndex }: Props) => {
                 {/* 8. วันที่ */}
                 <Column field="date" body={(d: ReportItem) => renderTruncateText(d.date, '140px', 'center')} className="text-center" style={{ minWidth: '130px' }} />                  
                 
-                {/* 9. หมายเหตุ */}
-                {viewConfig.showNote && 
-                    <Column field="note" body={(d: ReportItem) => renderTruncateText(d.note, '150px')} style={{ minWidth: '80px' }} />
+                {/* 9. ສະຖານະ */}
+                {viewConfig.showStatus && 
+                    <Column 
+                        field="helpdeskStatusName" 
+                        body={(d: ReportItem) => {
+                            const statusId = d.helpdeskStatusId;
+                            const statusName = d.helpdeskStatusName || '-';
+                            
+                            // Color mapping for status IDs
+                            const getStatusStyle = (id?: number) => {
+                                switch (id) {
+                                    case 4: return { backgroundColor: '#dcfce7', color: '#166534', borderRadius: '4px', padding: '4px 8px', fontWeight: 500 }; // green
+                                    case 5: return { backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '4px', padding: '4px 8px', fontWeight: 500 }; // blue
+                                    case 6: return { backgroundColor: '#ffedd5', color: '#9a3412', borderRadius: '4px', padding: '4px 8px', fontWeight: 500 }; // orange
+                                    case 7: return { backgroundColor: '#dcfce7', color: '#166534', borderRadius: '4px', padding: '4px 8px', fontWeight: 500 }; // green
+                                    case 8: return { backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '4px', padding: '4px 8px', fontWeight: 500 }; // red
+                                    default: return { backgroundColor: '#f3f4f6', color: '#374151', borderRadius: '4px', padding: '4px 8px' };
+                                }
+                            };
+                            
+                            return (
+                                <div className="text-center">
+                                    <span style={getStatusStyle(statusId)}>
+                                        {statusName}
+                                    </span>
+                                </div>
+                            );
+                        }} 
+                        style={{ minWidth: '100px' }} 
+                    />
                 }
             </DataTable>
         </>

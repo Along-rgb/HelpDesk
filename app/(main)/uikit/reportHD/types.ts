@@ -16,6 +16,10 @@ export interface ReportItem {
     note: string;
     telephone: string | number;
     
+    // สถานะของ ticket
+    helpdeskStatusId?: number;
+    helpdeskStatusName?: string;
+    
     // Field เสริมที่อาจมีหรือไม่มี
     technician?: string;
     category?: string;

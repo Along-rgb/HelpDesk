@@ -50,6 +50,8 @@ function mapRequestToReportItem(
         telephone: req.telephone ?? employee?.tel ?? '',
         category: req.ticket?.category?.name ?? '',
         technician: req.technician?.name ?? '',
+        helpdeskStatusId: req.helpdeskStatus?.id ?? req.helpdeskStatusId ?? undefined,
+        helpdeskStatusName: req.helpdeskStatus?.name ?? req.helpdeskStatusName ?? '',
     };
 }
 

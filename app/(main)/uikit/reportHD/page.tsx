@@ -40,7 +40,7 @@ export default function ReportHD() {
             /* ═══════ Department Tab ═══════ */
             const r1 = ['#', 'ພະແນກ', 'ລະຫັດ', 'ເລກ ຊຄທ', 'ເບີໂທ', 'ຫົວຂໍ້ເລື່ອງ', 'ລາຍລະອຽດການຮ້ອງຂໍ', 'ຜູ້ຮ້ອງຂໍ', 'ສະຖານທີ່', '', '', 'ວັນທີຮ້ອງຂໍ'];
             const r2 = ['', '', '', '', '', '', '', '', 'ຕຶກ', 'ຊັ້ນ', 'ຫ້ອງ', ''];
-            if (viewConfig.showNote) { r1.push('ໝາຍເຫດ'); r2.push(''); }
+            if (viewConfig.showStatus) { r1.push('ສະຖານະ'); r2.push(''); }
             const colCount = r1.length;
 
             sheet.addRow(r1);
@@ -48,7 +48,7 @@ export default function ReportHD() {
 
             [1, 2, 3, 4, 5, 6, 7, 8, 12].forEach(c => sheet.mergeCells(1, c, 2, c));
             sheet.mergeCells(1, 9, 1, 11);
-            if (viewConfig.showNote) sheet.mergeCells(1, 13, 2, 13);
+            if (viewConfig.showStatus) sheet.mergeCells(1, 13, 2, 13);
 
             styleHeaderRows(sheet, colCount);
 
@@ -69,12 +69,12 @@ export default function ReportHD() {
                     item.requester ?? '-', item.building ?? '-', item.floor ?? '-',
                     item.room ?? '-', item.date ?? '-'
                 ];
-                if (viewConfig.showNote) d.push(item.note ?? '-');
+                if (viewConfig.showStatus) d.push(item.helpdeskStatusName ?? '-');
                 const row = sheet.addRow(d);
                 styleDataRow(row, colCount, centerCols);
             });
 
-            [8, 20, 12, 14, 14, 22, 30, 18, 14, 10, 12, 16, ...(viewConfig.showNote ? [18] : [])]
+            [8, 20, 12, 14, 14, 22, 30, 18, 14, 10, 12, 16, ...(viewConfig.showStatus ? [18] : [])]
                 .forEach((w, i) => { sheet.getColumn(i + 1).width = w; });
 
         } else {
@@ -99,7 +99,7 @@ export default function ReportHD() {
             const dateCol = r1.length + 1;
             r1.push('ວັນທີຮ້ອງຂໍ'); r2.push(''); widths.push(16);
 
-            if (viewConfig.showNote) { r1.push('ໝາຍເຫດ'); r2.push(''); widths.push(18); }
+            if (viewConfig.showStatus) { r1.push('ສະຖານະ'); r2.push(''); widths.push(18); }
 
             const colCount = r1.length;
             sheet.addRow(r1);
@@ -113,14 +113,17 @@ export default function ReportHD() {
             sheet.mergeCells(1, reqCol, 1, reqCol + 2);
             sheet.mergeCells(1, locCol, 1, locCol + 2);
             sheet.mergeCells(1, dateCol, 2, dateCol);
-            if (viewConfig.showNote) sheet.mergeCells(1, dateCol + 1, 2, dateCol + 1);
+            if (viewConfig.showStatus) sheet.mergeCells(1, dateCol + 1, 2, dateCol + 1);
 
             styleHeaderRows(sheet, colCount);
 
             const centerCols = new Set([1, 2, 3, 4, locCol, locCol + 1, locCol + 2, dateCol]);
+            const exportData = activeIndex === 3
+                ? [...data].sort((a, b) => ((a[groupField] as string) || '').localeCompare((b[groupField] as string) || ''))
+                : data;
             let prevGroup = '';
             let globalSeq = 0;
-            data.forEach((item: ReportItem) => {
+            exportData.forEach((item: ReportItem) => {
                 const grpVal = (item[groupField] as string) || 'Unknown';
                 if (grpVal !== prevGroup) {
                     const count = item._groupTotal ?? groupCounts[grpVal] ?? 0;
@@ -136,7 +139,7 @@ export default function ReportHD() {
                     item.building ?? '-', item.floor ?? '-', item.room ?? '-',
                     item.date ?? '-'
                 );
-                if (viewConfig.showNote) d.push(item.note ?? '-');
+                if (viewConfig.showStatus) d.push(item.helpdeskStatusName ?? '-');
                 const row = sheet.addRow(d);
                 styleDataRow(row, colCount, centerCols);
             });

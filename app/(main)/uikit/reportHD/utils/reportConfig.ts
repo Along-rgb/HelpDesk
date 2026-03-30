@@ -22,6 +22,8 @@ export const getViewConfig = (activeIndex: number) => ({
     isDepartmentTab: activeIndex === 2,
     showCategory: activeIndex !== 1,
     showTopic: activeIndex !== 0,
-    // ✅ ເພີ່ມເງື່ອນໄຂ: ຖ້າ activeIndex ແມ່ນ 3 (ແຍກຕາມວິຊາການຊ່າງ) ໃຫ້ເຊື່ອງ Note, ອື່ນໆໃຫ້ສະແດງ
-    showNote: activeIndex !== 3, 
+    // แสดงสถานะสำหรับ tab 0, 1, 2 (แทนที่ note column)
+    showStatus: activeIndex !== 3,
+    // ซ่อน note column ทั้งหมด (ใช้ status แทน)
+    showNote: false,
 });
