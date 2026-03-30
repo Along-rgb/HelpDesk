@@ -413,9 +413,9 @@ export default function PageTechnDemo() {
                                                     statusName === STATUS_CLOSED_NAME;
                                                 const hideByTicketStatus =
                                                     tStatusId === STATUS_CLOSED_ID;
-                                                const hideDone =
-                                                    roleId === 3 && (statusId === STATUS_DONE_ID || tStatusId === STATUS_DONE_ID || statusName === STATUS_DONE_NAME);
-                                                return hideCancelled || hideById || hideByName || hideByTicketStatus || hideDone;
+                                                const hideSelfDone =
+                                                    roleId === 3 && statusId === STATUS_DONE_ID;
+                                                return hideCancelled || hideById || hideByName || hideByTicketStatus || hideSelfDone;
                                             })()
                                         }
                                         menuItems={buildDetailMenuItems(
