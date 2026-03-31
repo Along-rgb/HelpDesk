@@ -11,6 +11,7 @@ import {
   updatePasswordById,
   hashPassword,
   comparePassword,
+  MockPasswordServiceDisabledError,
 } from './userPasswordService';
 
 const MIN_PASSWORD_LENGTH = 6;
@@ -156,27 +157,41 @@ export async function POST(request: NextRequest) {
 
   const { oldpassword, password1 } = body as { oldpassword: string; password1: string };
 
-  const currentHash = await getPasswordHashByUserId(userId);
-  if (!currentHash) {
+  try {
+    const currentHash = await getPasswordHashByUserId(userId);
+    if (!currentHash) {
+      return NextResponse.json(
+        { message: 'ບໍ່ພົບຜູ້ໃຊ້ (User not found)' },
+        { status: 404 }
+      );
+    }
+
+    const isOldCorrect = await comparePassword(oldpassword, currentHash);
+    if (!isOldCorrect) {
+      return NextResponse.json(
+        { message: 'ລະຫັດຜ່ານປະຈຸບັນບໍ່ຖືກຕ້ອງ' },
+        { status: 400 }
+      );
+    }
+
+    const newHash = await hashPassword(password1);
+    await updatePasswordById(userId, newHash);
+
     return NextResponse.json(
-      { message: 'ບໍ່ພົບຜູ້ໃຊ້ (User not found)' },
-      { status: 404 }
+      { message: 'ປ່ຽນລະຫັດຜ່ານສຳເລັດ' },
+      { status: 200 }
+    );
+  } catch (err) {
+    /* ── Fail closed: if mock service is disabled, return 503 ── */
+    if (err instanceof MockPasswordServiceDisabledError) {
+      return NextResponse.json(
+        { message: 'ບໍລິການປ່ຽນລະຫັດຜ່ານຍັງບໍ່ພ້ອມ (Password service unavailable)' },
+        { status: 503 }
+      );
+    }
+    return NextResponse.json(
+      { message: 'ເກີດຂໍ້ຜິດພາດ (Internal server error)' },
+      { status: 500 }
     );
   }
-
-  const isOldCorrect = await comparePassword(oldpassword, currentHash);
-  if (!isOldCorrect) {
-    return NextResponse.json(
-      { message: 'ລະຫັດຜ່ານປະຈຸບັນບໍ່ຖືກຕ້ອງ' },
-      { status: 400 }
-    );
-  }
-
-  const newHash = await hashPassword(password1);
-  await updatePasswordById(userId, newHash);
-
-  return NextResponse.json(
-    { message: 'ປ່ຽນລະຫັດຜ່ານສຳເລັດ' },
-    { status: 200 }
-  );
 }

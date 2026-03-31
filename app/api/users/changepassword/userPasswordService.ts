@@ -7,33 +7,42 @@
  *   getPasswordHashByUserId → prisma.user.findUnique({ where: { id }, select: { password: true } })
  *   updatePasswordById      → prisma.user.update({ where: { id }, data: { password: hash } })
  *
- * The current mock is acceptable for development / demo only.
+ * Security: Disabled by default. Set ENABLE_INMEMORY_PASSWORD_SERVICE=true in .env.local
+ * to enable for local development ONLY. Always disabled in production (NODE_ENV=production).
  * Data is lost on every server restart.
  */
 import bcrypt from 'bcrypt';
 
 const SALT_ROUNDS = 12;
 
-/** Mock: เก็บ hash ต่อ userId (in-memory). ถ้ายังไม่มี จะคืน hash ของรหัสผ่านเริ่มต้นสำหรับ demo */
-const passwordHashByUserId = new Map<number, string>();
-
-/** Hash รหัสผ่านเริ่มต้นสำหรับ demo (a12345) — ใช้เมื่อ userId ยังไม่มีใน Map */
-let defaultHash: string | null = null;
-
-async function getDefaultHash(): Promise<string> {
-  if (defaultHash) return defaultHash;
-  defaultHash = await bcrypt.hash('a12345', SALT_ROUNDS);
-  return defaultHash;
+/**
+ * Thrown when the mock password service is disabled.
+ * The route handler should catch this and return 503.
+ */
+export class MockPasswordServiceDisabledError extends Error {
+  constructor() {
+    super('In-memory password service is disabled. Connect a real database.');
+    this.name = 'MockPasswordServiceDisabledError';
+  }
 }
 
+function isMockEnabled(): boolean {
+  // Never allow in production
+  if (process.env.NODE_ENV === 'production') return false;
+  return process.env.ENABLE_INMEMORY_PASSWORD_SERVICE?.trim().toLowerCase() === 'true';
+}
+
+/** Mock: เก็บ hash ต่อ userId (in-memory). ใช้เฉพาะ dev เท่านั้น */
+const passwordHashByUserId = new Map<number, string>();
+
 /**
- * ดึง password hash ของ user จากฐานข้อมูล (Mock: in-memory หรือ hash เริ่มต้น)
+ * ดึง password hash ของ user จากฐานข้อมูล (Mock: in-memory)
  * Production: แทนที่ด้วย Prisma เช่น prisma.user.findUnique({ where: { id: userId }, select: { password: true } })
  */
 export async function getPasswordHashByUserId(userId: number): Promise<string | null> {
-  const stored = passwordHashByUserId.get(userId);
-  if (stored) return stored;
-  return getDefaultHash();
+  if (!isMockEnabled()) throw new MockPasswordServiceDisabledError();
+  // No default hash fallback — user must exist in the map
+  return passwordHashByUserId.get(userId) ?? null;
 }
 
 /**
@@ -41,6 +50,7 @@ export async function getPasswordHashByUserId(userId: number): Promise<string | 
  * Production: แทนที่ด้วย Prisma เช่น prisma.user.update({ where: { id: userId }, data: { password: newHash } })
  */
 export async function updatePasswordById(userId: number, newPasswordHash: string): Promise<void> {
+  if (!isMockEnabled()) throw new MockPasswordServiceDisabledError();
   passwordHashByUserId.set(userId, newPasswordHash);
 }
 
